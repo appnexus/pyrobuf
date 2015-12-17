@@ -1,0 +1,6 @@
+message TestRef {
+	optional uint32 timestamp = 1;
+	optional int64 field1 = 2;
+	optional double field2 = 3;
+	optional string field3 = 4;
+}

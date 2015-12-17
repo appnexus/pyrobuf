@@ -1,0 +1,215 @@
+from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
+from libc.stdint cimport *
+
+cdef class TypedList(list):
+
+    def __init__(self, type list_type):
+        self._list_type = list_type
+
+    property list_type:
+        def __get__(self):
+            return self._list_type
+
+    def __setitem__(self, i, x):
+        try:
+            assert isinstance(x, self._list_type)
+        except AssertionError:
+            raise Exception("type mismatch")
+
+        super(TypedList, self).__setitem__(i, x)
+
+    def __setslice__(self, i, j, x):
+        try:
+            assert isinstance(x, TypedList)
+            assert self._list_type == x.list_type
+        except AssertionError:
+            raise Exception("type mismatch")
+
+        super(TypedList, self).__setslice__(i, j, x)
+
+    def add(self):
+        elt = self._list_type()
+        self.append(elt)
+        return elt
+
+    def append(self, x):
+        try:
+            assert isinstance(x, self._list_type)
+        except AssertionError:
+            raise Exception("type mismatch")
+
+        super(TypedList, self).append(x)
+
+    def extend(self, x):
+        try:
+            assert isinstance(x, TypedList)
+            assert self._list_type == x.list_type
+        except AssertionError:
+            raise Exception("type mismatch")
+
+        super(TypedList, self).extend(x)
+
+    def insert(self, i, x):
+        try:
+            assert isinstance(x, self._list_type)
+        except AssertionError:
+            raise Exception("type mismatch")
+
+        super(TypedList, self).insert(i, x)
+
+
+{% macro scalar_list(name, type) %}
+cdef class {{ name }}:
+
+    def __cinit__(self, size_t size=16):
+        self._data = <{{ type }} *>PyMem_Malloc(size * sizeof({{ type }}))
+        if not self._data:
+            raise MemoryError()
+
+        self._n_items = 0
+        self._size = size
+
+    def __dealloc__(self):
+        PyMem_Free(self._data)
+
+    def __contains__(self, {{ type }} x):
+        cdef int i
+        for i in range(self._n_items):
+            if self._data[i] == x:
+                return True
+
+        return False
+
+    def __delitem__(self, int i):
+        if i < 0:
+            i += self._n_items
+
+        if i >= self._n_items or i < 0:
+            raise IndexError("list index out of range")
+
+        cdef int j
+        for j in range(i, self._n_items):
+            self._data[j] = self._data[j + 1]
+
+        self._n_items -= 1
+
+    def __getitem__(self, int i):
+        if i < 0:
+            i += self._n_items
+
+        if i >= self._n_items or i < 0:
+            raise IndexError("list index out of range")
+
+        return self._data[i]
+
+    def __iter__(self):
+        cdef size_t idx = 0
+        while idx < self._n_items:
+            yield self._data[idx]
+            idx += 1
+
+    def __len__(self):
+        return self._n_items
+
+    def __repr__(self):
+        return repr(list(self))
+
+    def __setitem__(self, int i, {{ type }} x):
+        if i < 0:
+            i += self._n_items
+
+        if i >= self._n_items or i < 0:
+            raise IndexError("list index out of range")
+
+        self._data[i] = x
+
+    def __str__(self):
+        return str(list(self))
+
+    cpdef append(self, {{ type }} x):
+        cdef {{ type }} *mem
+
+        if self._n_items == self._size:
+            mem = <{{ type }} *>PyMem_Realloc(self._data, 2 * self._size * sizeof({{ type }}))
+            if not mem:
+                raise MemoryError()
+
+            self._data = mem
+            self._size *= 2
+
+        self._data[self._n_items] = x
+        self._n_items += 1
+
+    cpdef extend(self, {{ name }} x):
+        cdef {{ type }} *mem
+        cdef size_t new_len = self._n_items + len(x)
+        cdef size_t new_size
+        cdef size_t i
+
+        if new_len > self._size:
+            new_size = max(new_len, 2 * self._size)
+            mem = <{{ type }} *>PyMem_Realloc(self._data, new_size * sizeof({{ type }}))
+            if not mem:
+                raise MemoryError()
+
+            self._data = mem
+            self._size = new_size
+
+        for i in range(len(x)):
+            self._data[self._n_items + i] = x[i]
+
+        self._n_items = new_len
+
+    cpdef insert(self, int i, {{ type }} x):
+        cdef {{ type }} *mem
+        cdef int j
+
+        if i < 0:
+            i += self._n_items
+
+        if i > self._n_items or i < 0:
+            raise IndexError("list index out of range")
+
+        if self._n_items == self._size:
+            mem = <{{ type }} *>PyMem_Realloc(self._data, 2 * self._size * sizeof({{ type }}))
+            if not mem:
+                raise MemoryError()
+
+            self._data = mem
+            self._size *= 2
+
+        for j in range(self._n_items, i, -1):
+            self._data[j] = self._data[j - 1]
+
+        self._data[i] = x
+        self._n_items += 1
+
+    cpdef pop(self):
+        if self._n_items == 0:
+            raise IndexError("pop from empty list")
+
+        self._n_items -= 1
+        return self._data[self._n_items]
+
+    cpdef remove(self, {{ type }} x):
+        cdef int i
+        cdef int j
+        cdef bint found = 0
+
+        for i in range(self._n_items):
+            if self._data[i] == x:
+                found = 1
+                break
+
+        if found == 0:
+            raise ValueError("x not in list")
+
+        for j in range(i, self._n_items):
+            self._data[j] = self._data[j + 1]
+        
+        self._n_items -= 1
+{% endmacro %}
+
+{% for name, type in def.iteritems() %}
+{{ scalar_list(name, type) }}
+{% endfor %}

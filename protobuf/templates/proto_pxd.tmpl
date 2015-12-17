@@ -1,0 +1,55 @@
+from libc.stdint cimport *
+from libc.string cimport *
+
+from pyrobuf_list cimport *
+from pyrobuf_util cimport *
+
+import json
+
+{%- for import in imports %}
+from {{ import }}_proto cimport *
+{%- endfor %}
+
+{%- macro classdef(name, message) %}
+cdef class {{ name }}:
+{% for field in message.fields|sort(attribute='index') -%}
+    {%- if field.modifier == 'repeated' %}
+    cdef {{ field.list_type }} _{{ field.name }}
+    {%- elif field.type in ('string', 'bytes') %}
+    cdef str _{{ field.name }}
+    {%- elif field.type == 'message' %}
+    cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} _{{ field.name }}
+    {%- elif field.type == 'enum' %}
+    cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }} _{{ field.name }}
+    {%- else %}
+    cdef {{ field.c_type }} _{{ field.name }}
+    {%- endif %}
+
+    {%- if field.modifier == 'required' and field.default == None %}
+    cdef bint __{{ field.name }}_set
+    {%- endif %}
+{%- endfor %}
+
+    cpdef reset(self)
+
+    cdef int _protobuf_deserialize(self, const unsigned char *memory, int size)
+
+    cdef void _protobuf_serialize(self, bytearray buf)
+
+    {%- for message_name, message_message in message.messages.iteritems() %}
+{{ classdef(name + message_name, message_message) }}
+    {%- endfor %}
+
+    {%- for enum_name, enum in message.enums.iteritems() %}
+{{ enumdef(name + enum_name, enum) }}
+    {%- endfor %}
+{%- endmacro %}
+
+{%- macro enumdef(name, enum) %}
+cdef enum {{ name }}:
+    {%- for field in enum.fields %}
+    {{ field.name }} = {{ field.value }}
+    {%- endfor %}
+{%- endmacro %}
+
+{{ classdef(message.name, message) }}
