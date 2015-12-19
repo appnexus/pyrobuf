@@ -93,7 +93,7 @@ Google took 1.113041 seconds to deserialize
 Pyrobuf took 0.466113 seconds to deserialize
 ```
 
-When not using the C++ backend, Pyrobuf is roughly 25x as fast for serializtion
+When not using the C++ backend, Pyrobuf is roughly 25x as fast for serialization
 and 55x as fast for deserialization:
 ```
 Google took 20.215662 seconds to serialize
@@ -111,6 +111,6 @@ to populate a message class from multiple protobuf messages. We may add these
 methods later.
 
 Second, Pyrobuf simply assumes that the schema being used for a given message 
-is the same on the send and recieve ends, so changing the type of a field on
+is the same on the send and receive ends, so changing the type of a field on
 one end without changing it on the other may cause bugs; adding or removing
 fields will not break anything.
