@@ -18,6 +18,6 @@ cdef class {{ name }}:
     cpdef remove(self, {{ type }} x)
 {% endmacro %}
 
-{% for name, type in def.iteritems() %}
+{% for name, type in def.items() %}
 {{ scalar_list(name, type) }}
 {% endfor %}

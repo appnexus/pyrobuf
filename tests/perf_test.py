@@ -17,28 +17,28 @@ def main():
         buf1 = t1.SerializeToString()
     
     end = time.time()
-    print "Google took %f seconds to serialize" % (end - start)
+    print("Google took %f seconds to serialize" % (end - start))
 
     start = time.time()
     for i in xrange(100000):
         buf2 = t2.SerializeToString()
 
     end = time.time()
-    print "Pyrobuf took %f seconds to serialize" % (end - start)
+    print("Pyrobuf took %f seconds to serialize" % (end - start))
 
     start = time.time()
     for i in xrange(100000):
         t1.ParseFromString(buf1)
 
     end = time.time()
-    print "Google took %f seconds to deserialize" % (end - start)
+    print("Google took %f seconds to deserialize" % (end - start))
 
     start = time.time()
     for i in xrange(100000):
         t2.ParseFromString(buf1)
 
     end = time.time()
-    print "Pyrobuf took %f seconds to deserialize" % (end - start)
+    print("Pyrobuf took %f seconds to deserialize" % (end - start))
 
 if __name__ == "__main__":
     main()

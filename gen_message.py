@@ -9,7 +9,7 @@ def gen_message(fname, direc=""):
     get_name = re.compile(r'([A-Za-z][A-Za-z0-9_]*).proto').match
     m = get_name(fname[fname.rfind('/')+1:])
     if m is None:
-        print "not a .proto file"
+        print("not a .proto file")
         return
 
     name_pxd = "%s_proto.pxd" % m.group(1)
@@ -31,7 +31,7 @@ def gen_message(fname, direc=""):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print "ERROR: no message supplied"
+        print("ERROR: no message supplied")
 
     elif len(sys.argv) == 2:
         gen_message(sys.argv[1])

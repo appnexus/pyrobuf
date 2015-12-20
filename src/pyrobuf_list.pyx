@@ -18,6 +18,7 @@ cdef class TypedList(list):
 
         super(TypedList, self).__setitem__(i, x)
 
+
     def __setslice__(self, i, j, x):
         try:
             assert isinstance(x, TypedList)

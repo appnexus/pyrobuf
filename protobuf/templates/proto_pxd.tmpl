@@ -36,11 +36,11 @@ cdef class {{ name }}:
 
     cdef void _protobuf_serialize(self, bytearray buf)
 
-    {%- for message_name, message_message in message.messages.iteritems() %}
+    {%- for message_name, message_message in message.messages.items() %}
 {{ classdef(name + message_name, message_message) }}
     {%- endfor %}
 
-    {%- for enum_name, enum in message.enums.iteritems() %}
+    {%- for enum_name, enum in message.enums.items() %}
 {{ enumdef(name + enum_name, enum) }}
     {%- endfor %}
 {%- endmacro %}

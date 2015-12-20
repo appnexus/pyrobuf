@@ -1,4 +1,5 @@
 from jinja2 import Environment, PackageLoader
+import sys
 
 def gen_list():
     env = Environment(loader=PackageLoader('protobuf', 'templates'))
@@ -21,10 +22,10 @@ def gen_list():
     }
 
     with open('src/' + name_pyx, 'w') as fp:
-        fp.write(templ_pyx.render({'def': listdict}))
+        fp.write(templ_pyx.render({'def': listdict, 'version_major': sys.version_info.major}))
 
     with open('src/' + name_pxd, 'w') as fp:
-        fp.write(templ_pxd.render({'def': listdict}))
+        fp.write(templ_pxd.render({'def': listdict, 'version_major': sys.version_info.major}))
 
 if __name__ == "__main__":
     gen_list()
