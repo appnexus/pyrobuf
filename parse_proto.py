@@ -83,9 +83,9 @@ class Parser(object):
     }
 
     def __init__(self):
-        token_regex = '|'.join('(?P<%s>%s)' % pair for pair in self.tokens.iteritems())
+        token_regex = '|'.join('(?P<%s>%s)' % pair for pair in self.tokens.items())
         self.get_token = re.compile(token_regex).match
-        self.token_getter = {key: re.compile(val).match for key, val in self.tokens.iteritems()}
+        self.token_getter = {key: re.compile(val).match for key, val in self.tokens.items()}
 
     def tokenize(self, s):
         pos = 0
@@ -163,7 +163,7 @@ class Parser(object):
 
     def _parse_message(self, s, current, tokens):
         try:
-            assert tokens.next().token_type == 'LBRACE'
+            assert next(tokens).token_type == 'LBRACE'
         except AssertionError:
             raise Exception("missing opening paren at pos %d: '%s'" % (token.pos, s[token.pos:token.pos+10]))
 
@@ -214,7 +214,7 @@ class Parser(object):
 
     def _parse_enum(self, s, current, tokens):
         try:
-            assert tokens.next().token_type == 'LBRACE'
+            assert next(tokens).token_type == 'LBRACE'
         except AssertionError:
             raise Exception("missing opening paren at pos %d: '%s'" % (token.pos, s[token.pos:token.pos+10]))
 
@@ -243,7 +243,7 @@ class Parser(object):
                 field.getter = self.getter_map[field.type]
                 field.setter = self.setter_map[field.type]
 
-        for submessage in message.messages.itervalues():
+        for submessage in message.messages.values():
             self.add_cython_info(submessage)
 
 

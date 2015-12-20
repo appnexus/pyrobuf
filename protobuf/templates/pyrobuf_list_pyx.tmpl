@@ -18,6 +18,7 @@ cdef class TypedList(list):
 
         super(TypedList, self).__setitem__(i, x)
 
+{% if version_major != 3 %}
     def __setslice__(self, i, j, x):
         try:
             assert isinstance(x, TypedList)
@@ -26,6 +27,7 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).__setslice__(i, j, x)
+{%- endif %}
 
     def add(self):
         elt = self._list_type()
@@ -210,6 +212,6 @@ cdef class {{ name }}:
         self._n_items -= 1
 {% endmacro %}
 
-{% for name, type in def.iteritems() %}
+{% for name, type in def.items() %}
 {{ scalar_list(name, type) }}
 {% endfor %}

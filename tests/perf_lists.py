@@ -15,7 +15,7 @@ def main():
         y += i
 
     end = time.time()
-    print "list took %f seconds" % (end - start)
+    print("list took %f seconds" % (end - start))
 
     start = time.time()
     x = TypedList(float)
@@ -28,7 +28,7 @@ def main():
         y += i
 
     end = time.time()
-    print "TypedList took %f seconds" % (end - start)
+    print("TypedList took %f seconds" % (end - start))
 
     start = time.time()
     x = DoubleList()
@@ -41,7 +41,7 @@ def main():
         y += i
 
     end = time.time()
-    print "DoubleList took %f seconds" % (end - start)
+    print("DoubleList took %f seconds" % (end - start))
 
     start = time.time()
     x = FloatList()
@@ -54,7 +54,7 @@ def main():
         y += i
 
     end = time.time()
-    print "FloatList took %f seconds" % (end - start)
+    print("FloatList took %f seconds" % (end - start))
 
     start = time.time()
     x = array('f')
@@ -67,7 +67,7 @@ def main():
         y += i
 
     end = time.time()
-    print "array 'f' took %f seconds" % (end - start)
+    print("array 'f' took %f seconds" % (end - start))
 
     start = time.time()
     x = array('d')
@@ -80,7 +80,7 @@ def main():
         y += i
 
     end = time.time()
-    print "array 'd' took %f seconds" % (end - start)
+    print("array 'd' took %f seconds" % (end - start))
 
     print ""
 
@@ -95,7 +95,7 @@ def main():
         y += i
 
     end = time.time()
-    print "list took %f seconds" % (end - start)
+    print("list took %f seconds" % (end - start))
 
     start = time.time()
     x = IntList()
@@ -108,7 +108,7 @@ def main():
         y += i
 
     end = time.time()
-    print "IntList took %f seconds" % (end - start)
+    print("IntList took %f seconds" % (end - start))
 
     start = time.time()
     x = Int32List()
@@ -121,7 +121,7 @@ def main():
         y += i
 
     end = time.time()
-    print "Int32List took %f seconds" % (end - start)
+    print("Int32List took %f seconds" % (end - start))
 
     start = time.time()
     x = array('i')
@@ -134,7 +134,7 @@ def main():
         y += i
 
     end = time.time()
-    print "array 'i' took %f seconds" % (end - start)
+    print("array 'i' took %f seconds" % (end - start))
 
 
 if __name__ == "__main__":

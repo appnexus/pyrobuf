@@ -6,10 +6,10 @@ pushd $DIR
 
 mkdir -p out
 
-python2.7 gen_list.py
-python2.7 gen_all_messages.py
+python gen_list.py
+python gen_all_messages.py
 
-python2.7 setup.py build
-sudo python2.7 setup.py install
+python setup.py build
+sudo python setup.py install
 
 popd
