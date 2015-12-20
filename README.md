@@ -9,8 +9,9 @@ implementation. What's more, Pyrobuf is self-contained and easy to install.
 
 ### Requirements
 
-Pyrobuf requires Cython (`sudo pip install cython`) and setuptools (`sudo pip
-install setuptools`).
+Pyrobuf requires Cython (`sudo pip install cython`), setuptools (`sudo pip
+install setuptools`), and Jinja2 (`sudo pip install Jinja2`). Pyrobuf *does
+not* require protoc. Pyrobuf has been tested with Python 2.7 and Python 3.4.
 
 ### Installation
 
