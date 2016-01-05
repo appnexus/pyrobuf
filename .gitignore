@@ -3,3 +3,4 @@
 *.pyc
 build/
 out/
+messages/*.proto
