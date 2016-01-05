@@ -236,6 +236,12 @@ cdef class {{ name }}:
 
         return buf
 
+    @classmethod
+    def FromString(cls, s):
+        message = cls()
+        message.ParseFromString(s)
+        return message
+
     cdef void _protobuf_serialize(self, bytearray buf):
         cdef int key
         cdef int field_idx
