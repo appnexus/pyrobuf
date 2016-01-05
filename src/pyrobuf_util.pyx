@@ -1,6 +1,9 @@
 from libc.stdint cimport *
 from libc.string cimport *
 
+cdef extern from "strndup.c":
+    char * strndup (const char *s, size_t n)
+
 
 cdef safe_fill(char *dest, const unsigned char *source, size_t max_len):
     """
