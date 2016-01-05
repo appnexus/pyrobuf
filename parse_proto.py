@@ -13,11 +13,12 @@ class Parser(object):
         'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[packed\s*=\s*true\];',
         'ENUM': r'enum\s+([A-Z][0-9A-Za-z]*)',
         'ENUM_FIELD': r'([A-Za-z][0-9A-Za-z_]*);',
-        'ENUM_FIELD_WITH_VALUE': r'([A-Za-z][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+);',
+        'ENUM_FIELD_WITH_VALUE': r'([A-Za-z][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x\d*);',
         'LBRACE': r'\{',
         'RBRACE': r'\}',
         'SKIP': r'[ \t]',
-        'NEWLINE': r'[\r\n]'
+        'NEWLINE': r'[\r\n]',
+        'PACKAGE': r'package\s.*;'
     }
 
     scalars = (
@@ -135,7 +136,8 @@ class Parser(object):
 
     def parse(self, s, cython_info=True):
         tokens = self.tokenize(s)
-        rep = {'imports': []}
+        rep = {'imports': [], 'messages': [], 'enums': []}
+        enums = {}
 
         for token in tokens:
             if token.token_type == 'OPTION':
@@ -145,13 +147,19 @@ class Parser(object):
                 rep['imports'].append(token.value)
 
             elif token.token_type == 'MESSAGE':
-                rep['message'] = self._parse_message(s, token, tokens)
+                rep['messages'].append(self._parse_message(s, token, tokens, enums))
+
+            elif token.token_type == 'ENUM':
+                ret = self._parse_enum(s, token, tokens)
+                rep['enums'].append(ret)
+                enums[token.name] = token
 
             else:
                 raise Exception("unexpected %s token at character %d: '%s'" % (token.typ, token.pos, s[token.pos:token.pos+10]))
 
         if cython_info:
-            self.add_cython_info(rep['message'])
+            for message in rep['messages']:
+                self.add_cython_info(message)
 
         return rep
 
@@ -161,7 +169,7 @@ class Parser(object):
 
         return self.parse(s)
 
-    def _parse_message(self, s, current, tokens):
+    def _parse_message(self, s, current, tokens, enums):
         try:
             assert next(tokens).token_type == 'LBRACE'
         except AssertionError:
@@ -169,7 +177,7 @@ class Parser(object):
 
         for token in tokens:
             if token.token_type == 'MESSAGE':
-                current.messages[token.name] = self._parse_message(s, token, tokens)
+                current.messages[token.name] = self._parse_message(s, token, tokens, enums)
 
             elif token.token_type == 'ENUM':
                 current.enums[token.name] = self._parse_enum(s, token, tokens)
@@ -194,6 +202,22 @@ class Parser(object):
                         token.is_nested = True
 
                     token.enum_def = current.enums[token.type]
+                    token.enum_name = token.type
+                    token.type = 'enum'
+
+                elif enums.get(token.type) != None:
+                    if token.default is not None:
+                        for entry in enums[token.type].fields:
+                            if token.default == entry.name:
+                                default = entry.value
+                                enum_default = entry.name
+                                break
+
+                        token.default = default
+                        token.enum_default = enum_default
+                        token.is_nested = True
+
+                    token.enum_def = enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
 
@@ -309,7 +333,7 @@ class ParserEnumField(object):
         self.pos = pos
         self.name = name
         if value is not None:
-            self.value = int(value)
+            self.value = int(value, 0)
         else:
             self.value = None
 

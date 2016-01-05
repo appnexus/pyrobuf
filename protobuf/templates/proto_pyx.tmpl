@@ -12,7 +12,7 @@ from {{ import }}_proto cimport *
 
 {%- macro classdef(name, message) %}
 cdef class {{ name }}:
-    
+
     def __init__(self):
         self.reset()
         return
@@ -150,7 +150,7 @@ cdef class {{ name }}:
         {%- else %}
             elif field_idx == {{ field.index }}:
         {%- endif %}
-        
+
         {%- if field.modifier == 'repeated' %}
             {%- if field.packed|default(false) == true %}
                 {{ field.name }}_marker = get_varint64(memory, &current_offset)
@@ -175,11 +175,11 @@ cdef class {{ name }}:
                     {{ field.name }}_elt = {{ field.getter }}(memory, &current_offset)
             {%- endif %}
                     self._{{ field.name }}.append({{ field.name }}_elt)
-                    
+
         {%- elif field.type == 'message' %}
                 {{ field.name }}_size = get_varint64(memory, &current_offset)
                 current_offset += self._{{ field.name }}._protobuf_deserialize(memory[current_offset:current_offset + {{ field.name }}_size], {{ field.name }}_size)
-                
+
         {%- elif field.type == 'string' %}
                 {{ field.name }}_size = get_varint64(memory, &current_offset)
                 self._{{ field.name }} = str(memory[current_offset:current_offset + {{ field.name }}_size])
@@ -194,17 +194,17 @@ cdef class {{ name }}:
 
         {%- elif field.var_width == true %}
                 self._{{ field.name }} = {{ field.getter }}(memory, &current_offset)
-                    
+
         {%- endif %}
 
         {%- if field.modifier == 'required' and field.default == None %}
                 self.__{{ field.name }}_set = 1
         {%- endif %}
-                
+
     {%- endfor %}
             else:
                 continue
-        
+
         return current_offset
 
     def ParseFromString(self, data, size=None, reset=True):
@@ -269,14 +269,14 @@ cdef class {{ name }}:
 
         {%- elif field.modifier == 'required' and field.default == None %}
         if self.__{{ field.name }}_set != 0:
-        
+
         {%- elif field.default != None %}
             {%- if field.type == 'string' %}
         if self._{{ field.name }} != "{{ field.default }}":
             {%- else %}
         if self._{{ field.name }} != {{ field.default }}:
             {%- endif %}
-        
+
         {%- elif field.type == 'string' %}
         if self._{{ field.name }} != "":
         {%- else %}
@@ -287,7 +287,7 @@ cdef class {{ name }}:
         {%- if field.modifier == 'repeated' and field.packed == true %}
             wire_type = 2
         {%- elif field.type in ('message', 'string') %}
-            wire_type = 2    
+            wire_type = 2
         {%- elif field.type in ('fixed64', 'sfixed64', 'double') %}
             wire_type = 1
         {%- elif field.type in ('fixed32', 'sfixed32', 'float') %}
@@ -312,7 +312,7 @@ cdef class {{ name }}:
             set_varint64(len({{ field.name }}_buf), buf)
             buf += {{ field.name }}_buf
                 {%- endif %}
-                
+
             {%- else %}
             for {{ field.name }}_elt in self._{{ field.name }}:
                 set_varint64(key, buf)
@@ -334,7 +334,7 @@ cdef class {{ name }}:
             set_varint64(key, buf)
             set_varint64(len({{ field.name }}_buf), buf)
             buf += {{ field.name }}_buf
-        
+
         {%- elif field.type == 'string' %}
             set_varint64(key, buf)
             set_varint64(len(self._{{ field.name }}), buf)
@@ -343,11 +343,11 @@ cdef class {{ name }}:
         {%- elif field.fixed_width == true %}
             set_varint64(key, buf)
             buf += (<unsigned char *>&self._{{ field.name }})[:sizeof({{ field.c_type }})]
-            
+
         {%- elif field.var_width == true %}
             set_varint64(key, buf)
             {{ field.setter }}(self._{{ field.name }}, buf)
-            
+
         {%- endif %}
     {%- endfor %}
 
@@ -396,7 +396,7 @@ cdef class {{ name }}:
     def ParseFromDict(self, d, reset=True):
         """
         Populate the message class from a Python dictionary.
-        
+
         Params:
             d (dict): a Python dictionary representing the message
             reset (bool): optional - whether to reset to default values before serializing
@@ -421,7 +421,7 @@ cdef class {{ name }}:
         except KeyError:
             pass
     {%- endfor %}
-        
+
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'required' and field.default == None %}
         if self.__{{ field.name }}_set == False:
@@ -488,5 +488,7 @@ cdef class {{ name }}:
     {% endfor %}
 {% endmacro %}
 
+{%- for message in messages %}
 {{ classdef(message.name, message) }}
+{%- endfor %}
 
