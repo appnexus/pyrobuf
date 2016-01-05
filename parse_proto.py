@@ -303,7 +303,7 @@ class ParserField(object):
         self.type = ftype
         self.name = name
         self.index = int(index)
-        self.default = default
+        self.default = True if default == 'true' else default
         self.packed = False
 
 
