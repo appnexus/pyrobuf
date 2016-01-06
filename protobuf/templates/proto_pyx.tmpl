@@ -227,6 +227,9 @@ cdef class {{ name }}:
 
         buf = self._protobuf_deserialize(data, size)
 
+        if buf != size:
+            raise DecodeError("Truncated message")
+
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'required' and field.default == None %}
         if self.__{{ field.name }}_set == 0:
@@ -493,6 +496,9 @@ cdef class {{ name }}:
 {{ classdef(name + message_name, message_message) }}
     {% endfor %}
 {% endmacro %}
+
+class DecodeError(Exception):
+    pass
 
 {%- for message in messages %}
 {{ classdef(message.name, message) }}
