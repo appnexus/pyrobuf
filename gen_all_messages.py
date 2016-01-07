@@ -1,12 +1,12 @@
-import glob
 import re
+import glob
+import os.path
 
 from jinja2 import Environment, PackageLoader
 
 from parse_proto import Parser
 
 def gen_all_messages():
-    get_name = re.compile(r'([A-Za-z][A-Za-z0-9_]*).proto').match
     parser = Parser()
 
     env = Environment(loader=PackageLoader('protobuf', 'templates'))
@@ -14,9 +14,9 @@ def gen_all_messages():
     for spec in glob.glob('messages/*.proto'):
         print("parsing %s" % spec)
 
-        m = get_name(spec[spec.rfind('\\')+1:])
-        name_pxd = "%s_proto.pxd" % m.group(1)
-        name_pyx = "%s_proto.pyx" % m.group(1)
+        m = os.path.basename(spec)
+        name_pxd = "%s_proto.pxd" % m
+        name_pyx = "%s_proto.pyx" % m
 
         msgdef = parser.parse_from_filename(spec)
 
