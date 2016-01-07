@@ -17,6 +17,25 @@ cdef class {{ name }}:
         self.reset()
         return
 
+    def __str__(self):
+        fields = [{%- for field in message.fields %}
+                      {%- if field.type != 'message' %}
+                          '{{field.name}}',
+                          {%- endif %}
+                      {%- endfor %}]
+        components = ['{0}: {1}'.format(field, getattr(self, field)) for field in fields]
+        messages = [{%- for field in message.fields %}
+                        {%- if field.type == 'message' %}
+                            '{{field.name}}',
+                        {%- endif %}
+                    {%- endfor %}]
+        for message in messages:
+            components.append('{0}: {{'{{'}}'.format(message))
+            for line in str(getattr(self, message)).split('\n'):
+                components.append('  {0}'.format(line))
+            components.append('}')
+        return '\n'.join(components)
+
     cpdef reset(self):
         # reset values and populate defaults
     {% for field in message.fields %}
