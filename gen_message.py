@@ -1,19 +1,19 @@
-import sys
 import re
+import sys
+import os.path
 
 from jinja2 import Environment, PackageLoader
 
 from parse_proto import Parser
 
 def gen_message(fname, direc=""):
-    get_name = re.compile(r'([A-Za-z][A-Za-z0-9_]*).proto').match
-    m = get_name(fname[fname.rfind('/')+1:])
+    m, _ = os.path.splitext(os.path.basename(fname))
     if m is None:
         print("not a .proto file")
         return
 
-    name_pxd = "%s_proto.pxd" % m.group(1)
-    name_pyx = "%s_proto.pyx" % m.group(1)
+    name_pxd = "%s_proto.pxd" % m
+    name_pyx = "%s_proto.pyx" % m
 
     parser = Parser()
     msgdef = parser.parse_from_filename(fname)
@@ -23,10 +23,10 @@ def gen_message(fname, direc=""):
     templ_pxd = env.get_template('proto_pxd.tmpl')
     templ_pyx = env.get_template('proto_pyx.tmpl')
 
-    with open(direc.rstrip('/') + '/' + name_pxd, 'w') as fp:
+    with open(os.path.join(direc, name_pxd), 'w') as fp:
         fp.write(templ_pxd.render(msgdef))
 
-    with open(direc.rstrip('/') + '/' + name_pyx, 'w') as fp:
+    with open(os.path.join(direc, name_pyx), 'w') as fp:
         fp.write(templ_pyx.render(msgdef))
 
 if __name__ == "__main__":

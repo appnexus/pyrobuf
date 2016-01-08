@@ -14,7 +14,7 @@ def gen_all_messages():
     for spec in glob.glob('messages/*.proto'):
         print("parsing %s" % spec)
 
-        m = os.path.basename(spec)
+        m, _ = os.path.splitext(os.path.basename(spec))
         name_pxd = "%s_proto.pxd" % m
         name_pyx = "%s_proto.pyx" % m
 
