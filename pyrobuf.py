@@ -49,7 +49,7 @@ def gen_message(fname, out="out", build="build", install=False):
 
 
 def cli_argument_parser():
-    parser = argparse.ArgumentParser("pyrobuf - a Cython base protobuf _compiler_")
+    parser = argparse.ArgumentParser("pyrobuf - a Cython base protobuf compiler")
     parser.add_argument('source', type=str,
                         help="filename.proto or directory containing proto files")
     parser.add_argument('--out-dir', default='out',
