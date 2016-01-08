@@ -47,18 +47,18 @@ def gen_message(fname, out="out", build="build", install=False):
                                 include_path=['src']),
           script_args=script_args)
 
-
 def cli_argument_parser():
     parser = argparse.ArgumentParser("pyrobuf - a Cython base protobuf compiler")
     parser.add_argument('source', type=str,
                         help="filename.proto or directory containing proto files")
     parser.add_argument('--out-dir', default='out',
-                        help="cythonize output directory [default out]")
+                        help="cythonize output directory [default: out]")
     parser.add_argument('--build-dir', default='build',
-                        help="C compiler build directory [default build]")
+                        help="C compiler build directory [default: build]")
     parser.add_argument('--install', action='store_true',
-                        help="install the extension [default False]")
+                        help="install the extension [default: False]")
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = cli_argument_parser()
