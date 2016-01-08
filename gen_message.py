@@ -1,12 +1,15 @@
 import re
 import sys
-import os.path
+import os
+from distutils.core import setup
 
 from jinja2 import Environment, PackageLoader
+from Cython.Build import cythonize
 
 from parse_proto import Parser
 
-def gen_message(fname, direc=""):
+
+def gen_message(fname, out="out", build="build"):
     m, _ = os.path.splitext(os.path.basename(fname))
     if m is None:
         print("not a .proto file")
@@ -23,11 +26,20 @@ def gen_message(fname, direc=""):
     templ_pxd = env.get_template('proto_pxd.tmpl')
     templ_pyx = env.get_template('proto_pyx.tmpl')
 
-    with open(os.path.join(direc, name_pxd), 'w') as fp:
+    try:
+        os.makedirs(out)
+    except:
+        pass
+
+    with open(os.path.join(out, name_pxd), 'w') as fp:
         fp.write(templ_pxd.render(msgdef))
 
-    with open(os.path.join(direc, name_pyx), 'w') as fp:
+    with open(os.path.join(out, name_pyx), 'w') as fp:
         fp.write(templ_pyx.render(msgdef))
+
+    setup(ext_modules=cythonize([os.path.join(out, name_pyx)],
+                                include_path=['src']),
+          script_args=['build', '--build-base={0}'.format(build)])
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
