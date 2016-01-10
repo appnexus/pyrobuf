@@ -1,29 +1,21 @@
 import re
-import sys
 import os
-from distutils.core import setup
+import sys
+import glob
 import argparse
+from distutils.core import setup
 
-from jinja2 import Environment, PackageLoader
 from Cython.Build import cythonize
+from jinja2 import Environment, PackageLoader
 
 from parse_proto import Parser
 
 
 def gen_message(fname, out="out", build="build", install=False):
-    m, _ = os.path.splitext(os.path.basename(fname))
-    if m is None:
-        print("not a .proto file")
-        return
-
-    name_pxd = "%s_proto.pxd" % m
-    name_pyx = "%s_proto.pyx" % m
 
     parser = Parser()
-    msgdef = parser.parse_from_filename(fname)
 
     env = Environment(loader=PackageLoader('protobuf', 'templates'))
-
     templ_pxd = env.get_template('proto_pxd.tmpl')
     templ_pyx = env.get_template('proto_pyx.tmpl')
 
@@ -32,20 +24,48 @@ def gen_message(fname, out="out", build="build", install=False):
     except:
         pass
 
+    script_args = ['build', '--build-base={0}'.format(build)]
+    if install:
+        script_args.append('install')
+
+    if os.path.isdir(fname):
+        for spec in glob.glob(os.path.join(fname, '*.proto')):
+            generate(spec, out, parser, templ_pxd, templ_pyx)
+
+        _, name = os.path.split(fname)
+        pyx = os.path.join(out, '*.pyx')
+
+    else:
+        name, _ = os.path.splitext(os.path.basename(fname))
+        if not name:
+            print("not a .proto file")
+            return
+
+        generate(fname, out, parser, templ_pxd, templ_pyx)
+
+        pyx = os.path.join(out, "%s_proto.pyx" % name)
+
+    setup(name=name,
+          ext_modules=cythonize([pyx],
+                                include_path=['src', out]),
+          script_args=script_args)
+
+def generate(fname, out, parser, templ_pxd, templ_pyx):
+
+    print("generating {0}".format(fname))
+
+    m, _ = os.path.splitext(os.path.basename(fname))
+
+    name_pxd = "%s_proto.pxd" % m
+    name_pyx = "%s_proto.pyx" % m
+
+    msgdef = parser.parse_from_filename(fname)
+
     with open(os.path.join(out, name_pxd), 'w') as fp:
         fp.write(templ_pxd.render(msgdef))
 
     with open(os.path.join(out, name_pyx), 'w') as fp:
         fp.write(templ_pyx.render(msgdef))
-
-    script_args = ['build', '--build-base={0}'.format(build)]
-    if install:
-        script_args.append('install')
-
-    setup(name=m,
-          ext_modules=cythonize([os.path.join(out, name_pyx)],
-                                include_path=['src']),
-          script_args=script_args)
 
 def cli_argument_parser():
     parser = argparse.ArgumentParser("pyrobuf", description="a Cython based protobuf compiler")
