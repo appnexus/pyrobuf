@@ -22,4 +22,5 @@ message Two
 {
     required fixed64 some_id = 1;
     optional bool status = 2 [default = true];
+    optional bool neg_status = 3 [default = false];
 }

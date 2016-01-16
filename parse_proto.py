@@ -303,9 +303,16 @@ class ParserField(object):
         self.type = ftype
         self.name = name
         self.index = int(index)
-        self.default = True if default == 'true' else default
+        self.default = process_default(default)
         self.packed = False
 
+def process_default(default):
+    if default == 'true':
+        return True
+    elif default == 'false':
+        return False
+    else:
+        return default
 
 class ParserFieldPacked(object):
     def __init__(self, pos, modifier, ftype, name, index):
