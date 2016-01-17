@@ -11,11 +11,13 @@ from jinja2 import Environment, PackageLoader
 from parse_proto import Parser
 
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+
 def gen_message(fname, out="out", build="build", install=False):
 
     parser = Parser()
 
-    env = Environment(loader=PackageLoader('protobuf', 'templates'))
+    env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
     templ_pxd = env.get_template('proto_pxd.tmpl')
     templ_pyx = env.get_template('proto_pyx.tmpl')
 
@@ -47,7 +49,7 @@ def gen_message(fname, out="out", build="build", install=False):
 
     setup(name=name,
           ext_modules=cythonize([pyx],
-                                include_path=['src', out]),
+                                include_path=[os.path.join(HERE, 'src'), out]),
           script_args=script_args)
 
 def generate(fname, out, parser, templ_pxd, templ_pyx):
