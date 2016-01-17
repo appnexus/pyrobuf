@@ -1,6 +1,6 @@
 import os, sys
-from distutils.core import setup
-from distutils.command.install import install as _install
+from setuptools import setup, find_packages
+from setuptools.command.install import install as _install
 
 from Cython.Build import cythonize
 
@@ -22,5 +22,7 @@ class install(_install):
 setup(
     name="pyrobuf",
     version=VERSION,
+    packages=find_packages(),
+    include_package_data=True,
     cmdclass={'install': install},
 )

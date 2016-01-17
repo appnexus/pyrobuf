@@ -4,3 +4,5 @@
 build/
 out/
 messages/*.proto
+dist/
+*.egg-info
