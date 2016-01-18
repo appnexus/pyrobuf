@@ -13,12 +13,25 @@ Pyrobuf requires Cython (`sudo pip install cython`), setuptools (`sudo pip
 install setuptools`), and Jinja2 (`sudo pip install Jinja2`). Pyrobuf *does
 not* require protoc. Pyrobuf has been tested with Python 2.7 and Python 3.4.
 
-### Installation
+### Compiling
 
-To generate usable Python modules from `.proto` files, simply copy the `.proto`
-templates into the folder `messages` and run `build.sh`. Pyrobuf will parse the
-`.proto` files, generate corresponding Cython code, and then compile and install
-the resulting Cython libraries.
+When you `pip install pyrobuf` you get the pyrobuf CLI tool ...:
+
+    $ pyrobuf --help
+    usage: pyrobuf [-h] [--out-dir OUT_DIR] [--build-dir BUILD_DIR] [--install]
+                   source
+
+    a Cython based protobuf compiler
+
+    positional arguments:
+      source                filename.proto or directory containing proto files
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --out-dir OUT_DIR     cythonize output directory [default: out]
+      --build-dir BUILD_DIR
+                            C compiler build directory [default: build]
+      --install             install the extension [default: False]
 
 ### Use
 
@@ -111,7 +124,7 @@ currently implement the `MergeFrom` and `MergeFromString` methods that allow you
 to populate a message class from multiple protobuf messages. We may add these
 methods later.
 
-Second, Pyrobuf simply assumes that the schema being used for a given message 
+Second, Pyrobuf simply assumes that the schema being used for a given message
 is the same on the send and receive ends, so changing the type of a field on
 one end without changing it on the other may cause bugs; adding or removing
 fields will not break anything.
