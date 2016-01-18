@@ -13,18 +13,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 class install(_install):
     def run(self):
+        self.execute(_pre_install, (), msg="Running pre install task")
         _install.run(self)
         self.execute(_post_install, (), msg="Running post install task")
 
 def _post_install():
-    _gen_list()
     setup(name="pyrobuf_postinstall",
           version=VERSION,
           ext_modules=cythonize([os.path.join(HERE, 'pyrobuf', 'src', '*.pyx')],
                                 include_path=[os.path.join(HERE, 'pyrobuf', 'src')]),
           script_args=['build', 'install'])
 
-def _gen_list():
+def _pre_install():
     env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
 
     name_pyx = 'pyrobuf_list.pyx'

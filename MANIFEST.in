@@ -3,5 +3,5 @@ include README.md
 include pyrobuf/protobuf/templates/*.tmpl
 include pyrobuf/src/ansidecl.h
 include pyrobuf/src/strndup.c
-include pyrobuf/src/pyrobuf_util.pxd
-include pyrobuf/src/pyrobuf_util.pyx
+include pyrobuf/src/*.pxd
+include pyrobuf/src/*.pyx
