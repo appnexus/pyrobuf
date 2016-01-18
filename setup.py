@@ -57,4 +57,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     cmdclass={'install': install},
+    entry_points={
+        'console_scripts': ['pyrobuf = pyrobuf.__main__:main']
+    }
 )
