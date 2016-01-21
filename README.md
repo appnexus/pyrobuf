@@ -13,6 +13,30 @@ Pyrobuf requires Cython (`sudo pip install cython`), setuptools (`sudo pip
 install setuptools`), and Jinja2 (`sudo pip install Jinja2`). Pyrobuf *does
 not* require protoc. Pyrobuf has been tested with Python 2.7 and Python 3.4.
 
+### Installation
+
+**You need `jinja2` and `cython` installed prior to installing pyrobuf.**
+
+```
+$ pip install pyrobuf
+```
+
+Should do the trick!
+
+To check you may want to make sure the following command does not raise an
+exception:
+
+```
+$ python -c "import pyrobuf_list"
+```
+
+If it does raise an exception (are you sure you had jinja2 and cython installed
+prior to trying `pip install pyrobuf`? Try:
+
+```
+$ pip install pyrobuf -v -v -v --upgrade --force --no-cache
+```
+
 ### Compiling
 
 When you `pip install pyrobuf` you get the pyrobuf CLI tool ...:
