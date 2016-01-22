@@ -8,7 +8,7 @@ from distutils.core import setup
 from Cython.Build import cythonize
 from jinja2 import Environment, PackageLoader
 
-from parse_proto import Parser
+from .parse_proto import Parser
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
