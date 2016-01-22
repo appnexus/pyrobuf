@@ -8,7 +8,7 @@ from jinja2 import Environment, PackageLoader
 from Cython.Build import cythonize
 
 
-VERSION = "0.0.1"
+VERSION = "0.0.2a3"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 class install(_install):
@@ -63,5 +63,9 @@ setup(
     cmdclass={'install': install},
     entry_points={
         'console_scripts': ['pyrobuf = pyrobuf.__main__:main']
-    }
+    },
+    description='A Cython based protobuf compiler',
+    long_description=open(os.path.join(HERE, 'README.md')).read(),
+    url='https://github.com/appnexus/pyrobuf',
+    author='AppNexus',
 )
