@@ -1,0 +1,4 @@
+message FooMessage {
+    repeated uint32 foo = 1;
+    repeated uint32 bar = 2;
+}

@@ -148,7 +148,7 @@ cdef class {{ name }}:
             {%- elif field.type == 'enum' %}
         cdef int32_t {{ field.name }}_elt
             {%- else  %}
-        cdef {{ field.c_type }} {{ field.type }}_elt
+        cdef {{ field.c_type }} {{ field.name }}_elt
             {%- endif %}
         {%- elif field.type == 'message' %}
         cdef int {{ field.name }}_size
