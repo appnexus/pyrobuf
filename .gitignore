@@ -7,3 +7,4 @@ messages/*.proto
 dist/
 *.egg-info
 pyrobuf/src/pyrobuf_list.*
+.cache/
