@@ -8,7 +8,7 @@ from jinja2 import Environment, PackageLoader
 from Cython.Build import cythonize
 
 
-VERSION = "0.0.2a4"
+VERSION = "0.5.0"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
