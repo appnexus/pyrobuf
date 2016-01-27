@@ -20,39 +20,39 @@ Pyrobuf *does not* require protoc.
 
 Pyrobuf has been tested with Python 2.7 and Python 3.5.
 
-Pyrobuf appears to be workin on OSX, Linux and Windows (for the later getting
+Pyrobuf appears to be workin on OSX, Linux and Windows (for the latter getting
 Cython to work properly is the trickiest bit especially if you are still using
 2.7).
 
 
 ### Contributing
 
-People use protobuf in many different ways, pyrobuf handles the use cases of
-AppNexus and other contributors but is not yet a 100% shoe-in replacement to
+People use protobuf in many different ways. Pyrobuf handles the use cases of
+AppNexus and other contributors, but is not yet a 100% shoe-in replacement to
 what protoc would generate.
 
 You can help make it so!
 
-Fork and clone the repository then run:
+Fork and clone the repository, then run:
 
     $ python setup.py generate_list list_and_util
 
 It will generate the platform specific pyrobuf_list them compile and install
 the pyrobuf_list and pyrobuf_util modules.
 
-Once done you can run the test suite (a work in progress) using py.test:
+You can then run the test suite (a work in progress) using py.test:
 
     $ PYTHONPATH=. py.test
 
 `test_gen_message` will attempt to process all the proto files in
 `tests/proto`.
 
-If you find that pyrobuf does not work for one of your proto file. Put a minimal
-proto file in there that make the test break before submitting a pull request.
+If you find that pyrobuf does not work for one of your proto files, add a minimal
+proto file to `tests/proto` that breaks before submitting a pull request.
 
 Pull requests including a breaking test are gold!
 
-Improving testing is on the card.
+Improving testing is on the cards.
 
 
 ### Installation
@@ -65,13 +65,13 @@ $ pip install pyrobuf
 ```
 Should do the trick!
 
-To check you may want to make sure the following command does not raise an
+To check, you may want to make sure the following command does not raise an
 exception:
 
     $ python -c "import pyrobuf_list"
 
 If it does raise an exception (are you sure you had jinja2 and cython installed
-prior to trying `pip install pyrobuf`? Try:
+prior to trying `pip install pyrobuf`?), try:
 
 ```
 $ pip install pyrobuf -v -v -v --upgrade --force --no-cache
@@ -189,10 +189,10 @@ Pyrobuf took 0.455732 seconds to deserialize
 
 ### Differences from the Google library
 
-If pyrobuf does not do something protoc is doing that you need. We are
+If pyrobuf is missing a feature from protoc that you need, let us know! We are
 trying to make it as easy as possible for you to help make pyrobuf better.
 
-But for the most part, Pyrobuf should be a drag-and-drop replacement for the Google
+For the most part, Pyrobuf should be a drag-and-drop replacement for the Google
 protobuf library. There are a few differences, though. First, Pyrobuf does not
 currently implement the `MergeFrom` and `MergeFromString` methods that allow you
 to populate a message class from multiple protobuf messages. We may add these
