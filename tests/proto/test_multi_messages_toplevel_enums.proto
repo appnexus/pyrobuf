@@ -3,7 +3,7 @@ package i_am_a_package;
 enum MessageID
 {
     MSG_ONE = 0x1;
-    MSG_TWO = 0x2;
+    MSG_TWO = 0xa;
 }
 
 enum Status

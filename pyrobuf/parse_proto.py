@@ -13,7 +13,7 @@ class Parser(object):
         'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[packed\s*=\s*true\];',
         'ENUM': r'enum\s+([A-Z][0-9A-Za-z]*)',
         'ENUM_FIELD': r'([A-Za-z][0-9A-Za-z_]*);',
-        'ENUM_FIELD_WITH_VALUE': r'([A-Za-z][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x\d*);',
+        'ENUM_FIELD_WITH_VALUE': r'([A-Za-z][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x[0-9A-Fa-f]*);',
         'LBRACE': r'\{',
         'RBRACE': r'\}',
         'SKIP': r'[ \t]',
