@@ -1,0 +1,26 @@
+package i_am_a_package;
+
+enum MessageID
+{
+    MSG_ONE = 0x1;
+    MSG_TWO = 0xa;
+}
+
+enum Status
+{
+    OPEN = 1;
+    CLOSE = 2;
+}
+
+message One
+{
+    required fixed64 some_id = 1;
+    required Status status = 2;
+}
+
+message Two
+{
+    required fixed64 some_id = 1;
+    optional bool status = 2 [default = true];
+    optional bool neg_status = 3 [default = false];
+}

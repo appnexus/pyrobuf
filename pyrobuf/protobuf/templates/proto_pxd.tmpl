@@ -52,4 +52,10 @@ cdef enum {{ name }}:
     {%- endfor %}
 {%- endmacro %}
 
+{%- for enum in enums %}
+{{ enumdef(enum.name, enum) }}
+{%- endfor %}
+
+{%- for message in messages %}
 {{ classdef(message.name, message) }}
+{%- endfor %}
