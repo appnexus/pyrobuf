@@ -1,7 +1,18 @@
+import os
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+BUILD = os.path.join(HERE, 'build')
+LIB = os.path.join(BUILD, [name for name in os.listdir(BUILD)
+                           if name.startswith('lib')].pop())
+
+sys.path.insert(0, LIB)
+
 import messages.test_message_pb2 as google_test
-import test_message_proto as an_test
 
 def create_an_test():
+    print LIB
+    import test_message_proto as an_test
     test = an_test.Test()
     test.timestamp = 539395200
     test.field = 10689

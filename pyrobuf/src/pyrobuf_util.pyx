@@ -56,21 +56,25 @@ cdef int32_t get_varint32(const unsigned char *memory, int *offset):
     return varint
 
 
-cdef int64_t get_varint64(const unsigned char *memory, int *offset):
+cdef int64_t get_varint64(const unsigned char *varint, int *offset):
     """
     Deserialize a protobuf varint starting from give offset in memory; update
     offset based on number of bytes consumed.
     """
-    cdef int64_t varint = 0
-    cdef int idx = 0
-    while memory[offset[0] + idx] >> 7:
-        varint += ((memory[offset[0] + idx] ^ 0x80) << (7 * idx))
-        idx += 1
+    cdef int64_t value = 0
+    cdef int64_t base = 1
+    cdef int index = 0
+    cdef int val_byte
 
-    varint += (memory[offset[0] + idx] << (7 * idx))
-    offset[0] += (idx + 1)
-    return varint
-
+    while True:
+        val_byte = varint[offset[0] + index]
+        value += (val_byte & 0x7F) * base
+        if (val_byte & 0x80):
+            base *= 128
+            index += 1
+        else:
+            offset[0] += (index + 1)
+            return value
 
 def get_varint(data, offset=0):
     cdef int _offset = offset
