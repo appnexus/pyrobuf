@@ -25,6 +25,10 @@ cdef class {{ name }}:
     cdef {{ field.c_type }} _{{ field.name }}
     {%- endif %}
 
+    {%- if field.modifier != 'repeated' and field.type != 'message'%}
+    cdef bint _{{ field.name}}_isDefault
+    {%endif%}
+
     {%- if field.modifier == 'required' and field.default == None %}
     cdef bint __{{ field.name }}_set
     {%- endif %}

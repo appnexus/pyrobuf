@@ -39,6 +39,9 @@ cdef class {{ name }}:
     cpdef reset(self):
         # reset values and populate defaults
     {% for field in message.fields %}
+        {%- if field.type != 'message' and field.modifier != 'repeated' %}
+        self._{{ field.name }}_isDefault = True
+        {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
         self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }})
@@ -76,6 +79,9 @@ cdef class {{ name }}:
             return self._{{ field.name }}
 
         def __set__(self, value):
+            {%- if field.type != 'message' and field.modifier != 'repeated' %}
+            self._{{ field.name }}_isDefault = False
+            {%-endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
             self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }})
@@ -169,6 +175,10 @@ cdef class {{ name }}:
         {%- else %}
             elif field_idx == {{ field.index }}:
         {%- endif %}
+
+        {%- if field.modifier != 'repeated' and field.type != 'message'%}
+                self._{{field.name}}_isDefault = False
+        {% endif -%}
 
         {%- if field.modifier == 'repeated' %}
             {%- if field.packed|default(false) == true %}
@@ -295,15 +305,12 @@ cdef class {{ name }}:
         self._{{ field.name }}._protobuf_serialize({{ field.name }}_buf)
         if len({{ field.name }}_buf) > 0:
 
+        {# !messages and !repeated fields can all have default values #}
+        {%- elif field.modifier != 'repeated'%}
+        if not self._{{ field.name }}_isDefault:
+
         {%- elif field.modifier == 'required' and field.default == None %}
         if self.__{{ field.name }}_set != 0:
-
-        {%- elif field.default != None %}
-            {%- if field.type == 'string' %}
-        if self._{{ field.name }} != "{{ field.default }}":
-            {%- else %}
-        if self._{{ field.name }} != {{ field.default }}:
-            {%- endif %}
 
         {%- elif field.type == 'string' %}
         if self._{{ field.name }} != "":
