@@ -44,4 +44,5 @@ message Test {
     }
 	optional Ss3 another_substruct = 9;
 	required int64 req_field = 10;
+    optional int32 negative_32 = 11;
 }

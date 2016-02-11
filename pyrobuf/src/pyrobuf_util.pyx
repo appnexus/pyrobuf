@@ -40,20 +40,25 @@ cdef safe_dup(const unsigned char *source, size_t max_len):
     return s
 
 
-cdef int32_t get_varint32(const unsigned char *memory, int *offset):
+cdef int32_t get_varint32(const unsigned char *varint, int *offset):
     """
     Deserialize a protobuf varint starting from give offset in memory; update
     offset based on number of bytes consumed.
     """
-    cdef int32_t varint = 0
-    cdef int idx = 0
-    while memory[offset[0] + idx] >> 7:
-        varint += ((memory[offset[0] + idx] ^ 0x80) << (7 * idx))
-        idx += 1
+    cdef int32_t value = 0
+    cdef int32_t base = 1
+    cdef int index = 0
+    cdef int val_byte
 
-    varint += (memory[offset[0] + idx] << (7 * idx))
-    offset[0] += (idx + 1)
-    return varint
+    while True:
+        val_byte = varint[offset[0] + index]
+        value += (val_byte & 0x7F) * base
+        if (val_byte & 0x80):
+            base *= 128
+            index += 1
+        else:
+            offset[0] += (index + 1)
+            return value
 
 
 cdef int64_t get_varint64(const unsigned char *varint, int *offset):
@@ -123,30 +128,40 @@ cdef int set_varint32(int32_t varint, bytearray buf):
     Serialize an integer into a protobuf varint; return the number of bytes
     serialized.
     """
+
+	# Negative numbers are always 10 bytes, so we need a uint64_t to
+    # facilitate encoding
+    cdef uint64_t enc = varint
+    bits = enc & 0x7f
+    enc >>= 7
     cdef int idx = 1
-    while varint >> 7:
-        buf.append(<unsigned char>(varint | 0x80))
-        varint >>= 7
+    while enc:
+        buf.append(<unsigned char>(0x80|bits))
+        bits = enc & 0x7f
+        enc >>= 7
         idx += 1
-
-    buf.append(<unsigned char>varint)
+    buf.append(<unsigned char>bits)
     return idx + 1
-
 
 cdef int set_varint64(int64_t varint, bytearray buf):
     """
     Serialize an integer into a protobuf varint; return the number of bytes
     serialized.
     """
+
+    # Negative numbers are always 10 bytes, so we need a uint64_t to
+    # facilitate encoding
+    cdef uint64_t enc = varint
+    bits = enc & 0x7f
+    enc >>= 7
     cdef int idx = 1
-    while varint >> 7:
-        buf.append(<unsigned char>(varint | 0x80))
-        varint = varint >> 7
+    while enc:
+        buf.append(<unsigned char>(0x80|bits))
+        bits = enc & 0x7f
+        enc >>= 7
         idx += 1
-
-    buf.append(<unsigned char>varint)
+    buf.append(<unsigned char>bits)
     return idx + 1
-
 
 def to_varint(varint):
     buf = bytearray()
