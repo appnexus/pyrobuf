@@ -54,7 +54,8 @@ def create_an_test():
     test.another_substruct.substruct_ref.field2 = 1.2345
     test.another_substruct.substruct_ref.field3 = "foo"
 
-    test.req_field = 80914
+    test.req_field = -80914
+    test.negative_32 = -1
 
     return test
 
@@ -100,7 +101,8 @@ def create_google_test():
     test.another_substruct.substruct_ref.field2 = 1.2345
     test.another_substruct.substruct_ref.field3 = "foo"
 
-    test.req_field = 80914
+    test.req_field = -80914
+    test.negative_32 = -1
 
     return test
 
