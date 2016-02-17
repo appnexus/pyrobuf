@@ -170,8 +170,9 @@ class Parser(object):
         return self.parse(s)
 
     def _parse_message(self, s, current, tokens, enums):
+        token = next(tokens)
         try:
-            assert next(tokens).token_type == 'LBRACE'
+            assert token.token_type == 'LBRACE'
         except AssertionError:
             raise Exception("missing opening paren at pos %d: '%s'" % (token.pos, s[token.pos:token.pos+10]))
 
@@ -237,8 +238,9 @@ class Parser(object):
         raise Exception("unexpected EOF at character %d: '%s'" % (token.pos, s[token.pos:token.pos+10]))
 
     def _parse_enum(self, s, current, tokens):
+        token = next(tokens)
         try:
-            assert next(tokens).token_type == 'LBRACE'
+            assert token.token_type == 'LBRACE'
         except AssertionError:
             raise Exception("missing opening paren at pos %d: '%s'" % (token.pos, s[token.pos:token.pos+10]))
 
