@@ -9,7 +9,7 @@ class Parser(object):
         'IMPORT': r'import\s+"(.+?).proto"[ ]*;',
         'MESSAGE': r'message\s+([A-Z][0-9A-Za-z]*)',
         'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
-        'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*)\];',
+        'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\];',
         'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[packed\s*=\s*true\];',
         'ENUM': r'enum\s+([A-Z][0-9A-Za-z]*)',
         'ENUM_FIELD': r'([A-Za-z][0-9A-Za-z_]*);',
