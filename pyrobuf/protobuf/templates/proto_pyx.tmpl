@@ -169,6 +169,7 @@ cdef class {{ name }}:
         {%- endif %}
     {%- endfor %}
 
+    {%- if message.fields|count > 0 %}
         while current_offset < size:
             key = get_varint64(memory, &current_offset)
             field_idx = (key >> 3)
@@ -239,6 +240,7 @@ cdef class {{ name }}:
     {%- endfor %}
             else:
                 continue
+    {%- endif %}
 
         return current_offset
 
