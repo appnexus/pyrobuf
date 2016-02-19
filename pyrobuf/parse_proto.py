@@ -11,7 +11,7 @@ class Parser(object):
         'IMPORT': r'import\s+"(.+?).proto"[ ]*;',
         'MESSAGE': r'message\s+([A-Z][0-9A-Za-z]*)',
         'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
-        'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\];',
+        'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')\s*\];',
         'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[packed\s*=\s*true\];',
         'ENUM': r'enum\s+([A-Za-z_][0-9A-Za-z_]*)',
         'ENUM_FIELD': r'([A-Za-z_][0-9A-Za-z_]*);',
@@ -252,6 +252,10 @@ class Parser(object):
                     token.enum_def = imported_enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
+
+                elif (token.type == 'string') and token.default is not None and (len(token.default) > 1):
+                    if token.default.startswith(('"', "'")) and token.default.endswith(('"', "'")):
+                        token.default = token.default[1:-1]
 
                 elif (token.type not in self.scalars) and (token.type != 'string'):
                     token.message_name = token.type
