@@ -1,4 +1,4 @@
-message TestRealDefaults {
+message TestDecimalDefaultsMessage {
     required double zero_point_zero = 1 [default = 0.0];
     optional double point_zero = 2 [default = .0];
     optional double zero_point_five = 3 [default = 0.5];

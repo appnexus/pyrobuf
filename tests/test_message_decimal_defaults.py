@@ -5,20 +5,25 @@ import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, 'build')
-LIB = os.path.join(BUILD, [name for name in os.listdir(BUILD)
-                           if name.startswith('lib')].pop())
-
-if LIB not in sys.path:
-    sys.path.insert(0, LIB)
 
 
-from test_real_defaults_proto import TestRealDefaults
+TestDecimalDefaultsMessage = None
 
 
-class RealDefaultsTest(unittest.TestCase):
+class DecimalDefaultsTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        lib = os.path.join(BUILD, [name for name in os.listdir(BUILD)
+                                   if name.startswith('lib')].pop())
+
+        if lib not in sys.path:
+            sys.path.insert(0, lib)
+
+        global TestDecimalDefaultsMessage
+        from test_decimal_defaults_proto import TestDecimalDefaultsMessage
 
     def setUp(self):
-        self.message = TestRealDefaults()
+        self.message = TestDecimalDefaultsMessage()
 
     def test_zero_point_zero(self):
         self.assertEqual(self.message.zero_point_zero, 0.0)
