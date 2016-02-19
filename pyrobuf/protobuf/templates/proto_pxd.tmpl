@@ -52,7 +52,7 @@ cdef class {{ name }}:
 {%- macro enumdef(name, enum) %}
 cdef enum {{ name }}:
     {%- for field in enum.fields %}
-    {{ field.name }} = {{ field.value }}
+    _{{ field.name }} = {{ field.value }}
     {%- endfor %}
 {%- endmacro %}
 

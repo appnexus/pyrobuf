@@ -1,4 +1,6 @@
+import os
 import re
+
 
 class Parser(object):
 
@@ -11,9 +13,9 @@ class Parser(object):
         'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
         'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\];',
         'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[packed\s*=\s*true\];',
-        'ENUM': r'enum\s+([A-Z][0-9A-Za-z]*)',
-        'ENUM_FIELD': r'([A-Za-z][0-9A-Za-z_]*);',
-        'ENUM_FIELD_WITH_VALUE': r'([A-Za-z][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x[0-9A-Fa-f]*);',
+        'ENUM': r'enum\s+([A-Za-z_][0-9A-Za-z_]*)',
+        'ENUM_FIELD': r'([A-Za-z_][0-9A-Za-z_]*);',
+        'ENUM_FIELD_WITH_VALUE': r'([A-Za-z_][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x[0-9A-Fa-f]+);',
         'LBRACE': r'\{',
         'RBRACE': r'\}',
         'SKIP': r'[ \t]',
@@ -134,10 +136,11 @@ class Parser(object):
         if pos != len(s):
             raise Exception("Unexpected character '%s' in line %d: '%s'" % (s[pos], line, s[pos-10:pos+10]))
 
-    def parse(self, s, cython_info=True):
+    def parse(self, s, cython_info=True, fname=''):
         tokens = self.tokenize(s)
         rep = {'imports': [], 'messages': [], 'enums': []}
         enums = {}
+        imported = {'messages': {}, 'enums': {}}
 
         for token in tokens:
             if token.token_type == 'OPTION':
@@ -146,8 +149,14 @@ class Parser(object):
             elif token.token_type == 'IMPORT':
                 rep['imports'].append(token.value)
 
+                # Google's protoc only supports the use of messages and enums from direct imports.
+                # So messages and enums from indirect imports are not fetched here.
+                imported_rep = self._parse_import(token.value + '.proto', fname)
+                imported['messages'].update((m.name, m) for m in imported_rep['messages'])
+                imported['enums'].update((e.name, e) for e in imported_rep['enums'])
+
             elif token.token_type == 'MESSAGE':
-                rep['messages'].append(self._parse_message(s, token, tokens, enums))
+                rep['messages'].append(self._parse_message(s, token, tokens, enums, imported['enums']))
 
             elif token.token_type == 'ENUM':
                 ret = self._parse_enum(s, token, tokens)
@@ -167,9 +176,15 @@ class Parser(object):
         with open(fname, 'r') as fp:
             s = fp.read()
 
-        return self.parse(s)
+        return self.parse(s, fname=fname)
 
-    def _parse_message(self, s, current, tokens, enums):
+    def _parse_import(self, fname, parent_fname):
+        i_parser = Parser()
+        actual_fname = fname if os.path.isabs(fname) else os.path.join(os.path.dirname(parent_fname), fname)
+        rep = i_parser.parse_from_filename(actual_fname)
+        return rep
+
+    def _parse_message(self, s, current, tokens, enums, imported_enums):
         token = next(tokens)
         try:
             assert token.token_type == 'LBRACE'
@@ -178,19 +193,19 @@ class Parser(object):
 
         for token in tokens:
             if token.token_type == 'MESSAGE':
-                current.messages[token.name] = self._parse_message(s, token, tokens, enums)
+                current.messages[token.name] = self._parse_message(s, token, tokens, enums, imported_enums)
 
             elif token.token_type == 'ENUM':
                 current.enums[token.name] = self._parse_enum(s, token, tokens)
 
             elif token.token_type == 'FIELD':
-                if current.messages.get(token.type) != None:
+                if current.messages.get(token.type) is not None:
                     token.message_def = current.messages[token.type]
                     token.message_name = token.type
                     token.type = 'message'
                     token.is_nested = True
 
-                elif current.enums.get(token.type) != None:
+                elif current.enums.get(token.type) is not None:
                     if token.default is not None:
                         for entry in current.enums[token.type].fields:
                             if token.default == entry.name:
@@ -206,7 +221,7 @@ class Parser(object):
                     token.enum_name = token.type
                     token.type = 'enum'
 
-                elif enums.get(token.type) != None:
+                elif enums.get(token.type) is not None:
                     if token.default is not None:
                         for entry in enums[token.type].fields:
                             if token.default == entry.name:
@@ -219,6 +234,22 @@ class Parser(object):
                         token.is_nested = True
 
                     token.enum_def = enums[token.type]
+                    token.enum_name = token.type
+                    token.type = 'enum'
+
+                elif imported_enums.get(token.type) is not None:
+                    if token.default is not None:
+                        for entry in imported_enums[token.type].fields:
+                            if token.default == entry.name:
+                                default = entry.value
+                                enum_default = entry.name
+                                break
+
+                        token.default = default
+                        token.enum_default = enum_default
+                        token.is_nested = False
+
+                    token.enum_def = imported_enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
 

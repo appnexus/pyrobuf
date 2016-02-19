@@ -6,7 +6,7 @@ from pyrobuf.__main__ import gen_message
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FIRST = ['test_ref_message.proto', 'test_message.proto']
+FIRST = ['test_ref_message.proto', 'test_message.proto', 'test_multi_messages_toplevel_enums.proto']
 PROTO = [os.path.join(HERE, 'proto', filename) for filename in FIRST]
 PROTO.extend(os.path.join(HERE, 'proto', filename)
              for filename in os.listdir(os.path.join(HERE, 'proto'))
