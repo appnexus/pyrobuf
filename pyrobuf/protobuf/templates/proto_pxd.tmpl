@@ -25,20 +25,25 @@ cdef class {{ name }}:
     cdef {{ field.c_type }} _{{ field.name }}
     {%- endif %}
 
-    {%- if field.modifier != 'repeated' and field.type != 'message'%}
+    {%- if field.modifier != 'repeated' and field.type != 'message' %}
     cdef bint _{{ field.name}}_isDefault
-    {%endif%}
-
-    {%- if field.modifier == 'required' and field.default == None %}
     cdef bint __{{ field.name }}_set
-    {%- endif %}
+    {%endif%}
 {%- endfor %}
+
+    cdef public bint _is_present_in_parent
+
+    cdef public object _listener
 
     cpdef reset(self)
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size)
 
     cdef void _protobuf_serialize(self, bytearray buf)
+
+    cpdef void _Modified(self)
+
+    cpdef void _SetListener(self, listener)
 
     {%- for message_name, message_message in message.messages.items() %}
 {{ classdef(name + message_name, message_message) }}
