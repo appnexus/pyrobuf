@@ -21,8 +21,6 @@ cdef class {{ name }}:
 
     def __init__(self):
         self.reset()
-        self._is_present_in_parent = False
-        self._listener = None
         return
 
     def __str__(self):
@@ -52,15 +50,14 @@ cdef class {{ name }}:
         {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
-        self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
+        self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }})
             {%- elif field.type == 'string' %}
-        self._{{ field.name }} = TypedList(str, self)
+        self._{{ field.name }} = TypedList(str)
             {%- else %}
-        self._{{ field.name }} = {{ field.list_type }}(message_listener=self)
+        self._{{ field.name }} = {{ field.list_type }}()
             {%- endif %}
         {%- elif field.type == 'message' %}
         self._{{ field.name }} = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
-        self._{{ field.name }}._SetListener(self)
         {%- elif field.default != None %}
             {%- if field.type == 'string' %}
         self._{{ field.name }} = "{{ field.default }}"
@@ -76,7 +73,7 @@ cdef class {{ name }}:
         {%- else %}
         self._{{ field.name }} = 0
         {%- endif %}
-        {%- if field.modifier != 'repeated' and field.type != 'message' %}
+        {%- if field.modifier == 'required' and field.default == None %}
         self.__{{ field.name }}_set = 0
         {%- endif %}
     {%- endfor %}
@@ -90,14 +87,14 @@ cdef class {{ name }}:
         def __set__(self, value):
             {%- if field.type != 'message' and field.modifier != 'repeated' %}
             self._{{ field.name }}_isDefault = False
-            {%- endif -%}
+            {%-endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
-            self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
+            self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }})
             {%- elif field.type == 'string' %}
-            self._{{ field.name }} = TypedList(str, self)
+            self._{{ field.name }} = TypedList(str)
             {%- else %}
-            self._{{ field.name }} = {{ field.list_type }}(message_listener=self)
+            self._{{ field.name }} = {{ field.list_type }}()
             {%- endif %}
             for val in value:
             {%- if field.type == 'enum' and field.enum_def != None %}
@@ -140,11 +137,9 @@ cdef class {{ name }}:
             self._{{ field.name }} = value
             {%- endif %}
         {%- endif %}
-        {%- if field.modifier != 'repeated' and field.type != 'message' %}
+        {%- if field.modifier == 'required' and field.default == None %}
             self.__{{ field.name }}_set = 1
         {%- endif %}
-            if not self._is_present_in_parent:
-                self._Modified()
     {% endfor %}
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size):
@@ -238,146 +233,16 @@ cdef class {{ name }}:
 
         {%- endif %}
 
-        {%- if field.modifier != 'repeated' and field.type != 'message' %}
+        {%- if field.modifier == 'required' and field.default == None %}
                 self.__{{ field.name }}_set = 1
         {%- endif %}
+
     {%- endfor %}
             else:
                 continue
     {%- endif %}
 
-        self._is_present_in_parent = True
-
         return current_offset
-
-    def Clear(self):
-        """Clears all data that was set in the message."""
-        self.reset()
-        self._Modified()
-
-    def ClearField(self, field_name):
-        """Clears the contents of a given field."""
-    {%- for field in message.fields|sort(attribute='index') %}
-        {%- if loop.index == 1 %}
-        if field_name == '{{ field.name }}':
-        {%- else %}
-        elif field_name == '{{ field.name }}':
-        {%- endif %}
-            {%- if field.type != 'message' and field.modifier != 'repeated' %}
-            self._{{ field.name }}_isDefault = True
-            {%- endif -%}
-            {%- if field.modifier == 'repeated' %}
-                {%- if field.type == 'message' %}
-            self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
-                {%- elif field.type == 'string' %}
-            self._{{ field.name }} = TypedList(str, self)
-                {%- else %}
-            self._{{ field.name }} = {{ field.list_type }}(message_listener=self)
-                {%- endif %}
-            {%- elif field.type == 'message' %}
-            self._{{ field.name }} = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
-            {%- elif field.default != None %}
-                {%- if field.type == 'string' %}
-            self._{{ field.name }} = "{{ field.default }}"
-                {%- elif field.type == 'enum' %}
-            self._{{ field.name }} = _{{ field.enum_default }}
-                {%- else %}
-            self._{{ field.name }} = {{ field.default }}
-                {%- endif %}
-            {%- elif field.type == 'string' %}
-            self._{{ field.name }} = ""
-            {%- elif field.type == 'enum' and field.enum_def != None %}
-            self._{{ field.name }} = _{{ field.enum_def.fields[0].name }}
-            {%- else %}
-            self._{{ field.name }} = 0
-            {%- endif %}
-            {%- if field.modifier != 'repeated' and field.type != 'message' %}
-            self.__{{ field.name }}_set = 0
-            {%- endif %}
-    {%- endfor %}
-
-        self._Modified()
-
-    def CopyFrom(self, other_msg):
-        """
-        Copies the content of the specified message into the current message.
-
-        Params:
-            other_msg: Message to copy into the current one.
-        """
-        if self is other_msg:
-            return
-        self.reset()
-        self.MergeFrom(other_msg)
-
-    def HasField(self, field_name):
-        """
-        Checks if a certain field is set for the message.
-        """
-    {%- for field in message.fields|rejectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
-        if field_name == '{{ field.name }}':
-        {%- if field.type == 'message' %}
-            return self._{{ field.name }}._is_present_in_parent
-        {%- else %}
-            return self.__{{ field.name }}_set != 0
-        {%- endif %}
-    {%- endfor %}
-        raise ValueError('Protocol message has no singular "%s" field.' % field_name)
-
-    def IsInitialized(self):
-        """
-        Checks if the message is initialized.
-
-        Returns:
-            bool: True if the message is initialized (i.e. all of its required
-                fields are set).
-        """
-    {%- for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
-        {%- if field.type == 'message' %}
-        if not self._{{ field.name }}._is_present_in_parent:
-        {%- else %}
-        if self.__{{ field.name }}_set == 0:
-        {%- endif %}
-            return False
-    {%- endfor %}
-
-        return True
-
-    def MergeFrom(self, other_msg):
-        """
-        Merges the contents of the specified message into the current message.
-
-        Params:
-            other_msg: Message to merge into the current message.
-        """
-        if not isinstance(other_msg, {{ name }}):
-            raise TypeError(
-                "Parameter to MergeFrom() must be instance of same class: "
-                "expected %s got %s." % ('{{ name }}', type(other_msg).__name__))
-
-    {%- for field in message.fields|sort(attribute='index') %}
-        {%- if field.modifier == 'repeated' and field.type == 'message' %}
-        for {{ field.name }}_msg in other_msg.{{ field.name }}:
-            {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
-            {{ field.name }}_elt.MergeFrom({{ field.name }}_msg)
-            self.{{ field.name }}.append({{ field.name }}_elt)
-        {%- elif field.modifier == 'repeated' %}
-        self._{{ field.name }}.extend(other_msg.{{ field.name }})
-        {%- elif field.type == 'message' %}
-        if other_msg.{{ field.name }}._is_present_in_parent:
-            self._{{ field.name }}.MergeFrom(other_msg.{{ field.name }})
-        {%- else %}
-        if other_msg.HasField('{{ field.name }}'):
-            {%- if field.type == 'enum' %}
-            self.{{ field.name }} = other_msg.{{ field.name }}
-            {%- else %}
-            self._{{ field.name }} = other_msg.{{ field.name }}
-            self.__{{ field.name }}_set = 1
-            {%- endif %}
-        {%- endif %}
-    {%- endfor %}
-
-        self._Modified()
 
     def ParseFromString(self, data, size=None, reset=True):
         """
@@ -404,16 +269,10 @@ cdef class {{ name }}:
 
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'required' and field.default == None %}
-            {%- if field.type == 'message' %}
-        if not self._{{field.name}}._is_present_in_parent:
-            {%- else %}
         if self.__{{ field.name }}_set == 0:
-            {%- endif %}
             raise Exception("required field '{{ field.name }}' not parsed and does not have default")
         {%- endif %}
     {%- endfor %}
-
-        self._Modified()
 
         return buf
 
@@ -535,15 +394,6 @@ cdef class {{ name }}:
         {%- endif %}
     {%- endfor %}
 
-    cpdef void _Modified(self):
-        if not self._is_present_in_parent:
-            self._is_present_in_parent = True
-            if self._listener is not None:
-                self._listener._Modified()
-
-    cpdef void _SetListener(self, listener):
-        self._listener = listener
-
     def SerializeToString(self):
         """
         Serialize the message class into a bytearray of protobuf encoded binary data.
@@ -553,11 +403,7 @@ cdef class {{ name }}:
         """
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'required' and field.default == None %}
-            {%- if field.type == 'message' %}
-        if not self._{{ field.name }}._is_present_in_parent:
-            {%- else %}
         if self.__{{ field.name }}_set == 0:
-            {%- endif %}
             raise Exception("required field '{{ field.name }}' not initialized and does not have default")
         {%- endif %}
     {%- endfor %}
@@ -621,16 +467,10 @@ cdef class {{ name }}:
 
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'required' and field.default == None %}
-            {%- if field.type == 'message' %}
-        if not self._{{ field.name }}._is_present_in_parent:
-            {%- else %}
-        if self.__{{ field.name }}_set == 0:
-            {%- endif %}
+        if self.__{{ field.name }}_set == False:
             raise Exception("required field '{{ field.name }}' not parsed and does not have default")
         {%- endif %}
     {%- endfor %}
-
-        self._Modified()
 
         return
 
@@ -645,11 +485,7 @@ cdef class {{ name }}:
 
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'required' and field.default == None %}
-            {%- if field.type == 'message' %}
-        if not self._{{ field.name }}._is_present_in_parent:
-            {%- else %}
-        if self.__{{ field.name }}_set == 0:
-            {%- endif %}
+        if self.__{{ field.name }}_set == False:
             raise Exception("required field '{{ field.name }}' not initialized and does not have default")
         {%- endif %}
     {%- endfor %}

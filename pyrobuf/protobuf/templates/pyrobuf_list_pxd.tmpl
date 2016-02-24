@@ -3,7 +3,6 @@ from libc.stdint cimport *
 cdef class TypedList(list):
     
     cdef type _list_type
-    cdef object _message_listener
 
 {% macro scalar_list(name, type) %}
 cdef class {{ name }}:
@@ -11,7 +10,6 @@ cdef class {{ name }}:
     cdef {{ type }} *_data
     cdef size_t _n_items
     cdef size_t _size
-    cdef object _message_listener
 
     cpdef append(self, {{ type }} x)
     cpdef extend(self, {{ name }} x)
