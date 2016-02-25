@@ -1,5 +1,10 @@
 from libc.stdint cimport *
 
+cdef class NullListener:
+    cpdef void _Modified(self)
+
+cdef public NullListener null_listener
+
 cdef class TypedList(list):
     
     cdef type _list_type

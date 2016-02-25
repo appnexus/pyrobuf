@@ -1,11 +1,21 @@
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from libc.stdint cimport *
 
+import weakref
+
+
+cdef class NullListener:
+    cpdef void _Modified(self):
+        return
+
+cdef public NullListener null_listener = NullListener()
+
+
 cdef class TypedList(list):
 
     def __init__(self, type list_type, object message_listener=None):
         self._list_type = list_type
-        self._message_listener = message_listener
+        self._message_listener = null_listener if message_listener is None else weakref.proxy(message_listener)
 
     property list_type:
         def __get__(self):
@@ -18,8 +28,7 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).__setitem__(i, x)
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 
 {% if version_major != 3 %}
     def __setslice__(self, i, j, x):
@@ -30,15 +39,13 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).__setslice__(i, j, x)
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 {%- endif %}
 
     def add(self):
         elt = self._list_type()
         self.append(elt)
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
         return elt
 
     def append(self, x):
@@ -48,8 +55,7 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).append(x)
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 
     def extend(self, x):
         try:
@@ -59,8 +65,7 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).extend(x)
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 
     def insert(self, i, x):
         try:
@@ -69,8 +74,7 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).insert(i, x)
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 
 
 {% macro scalar_list(name, type) %}
@@ -83,7 +87,7 @@ cdef class {{ name }}:
 
         self._n_items = 0
         self._size = size
-        self._message_listener = message_listener
+        self._message_listener = null_listener if message_listener is None else weakref.proxy(message_listener)
 
     def __dealloc__(self):
         PyMem_Free(self._data)
@@ -108,8 +112,7 @@ cdef class {{ name }}:
             self._data[j] = self._data[j + 1]
 
         self._n_items -= 1
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 
     def __getitem__(self, int i):
         if i < 0:
@@ -140,8 +143,7 @@ cdef class {{ name }}:
             raise IndexError("list index out of range")
 
         self._data[i] = x
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 
     def __str__(self):
         return str(list(self))
@@ -159,8 +161,7 @@ cdef class {{ name }}:
 
         self._data[self._n_items] = x
         self._n_items += 1
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 
     cpdef extend(self, {{ name }} x):
         cdef {{ type }} *mem
@@ -180,7 +181,7 @@ cdef class {{ name }}:
         for i in range(len(x)):
             self._data[self._n_items + i] = x[i]
 
-        if new_len != self._n_items and self._message_listener is not None:
+        if new_len != self._n_items:
             self._message_listener._Modified()
         self._n_items = new_len
 
@@ -207,16 +208,14 @@ cdef class {{ name }}:
 
         self._data[i] = x
         self._n_items += 1
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 
     cpdef pop(self):
         if self._n_items == 0:
             raise IndexError("pop from empty list")
 
         self._n_items -= 1
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
         return self._data[self._n_items]
 
     cpdef remove(self, {{ type }} x):
@@ -236,8 +235,7 @@ cdef class {{ name }}:
             self._data[j] = self._data[j + 1]
         
         self._n_items -= 1
-        if self._message_listener is not None:
-            self._message_listener._Modified()
+        self._message_listener._Modified()
 {% endmacro %}
 
 {% for name, type in def.items() %}

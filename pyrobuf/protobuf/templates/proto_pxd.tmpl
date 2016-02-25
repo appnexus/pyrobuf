@@ -12,6 +12,9 @@ from {{ import }}_proto cimport *
 
 {%- macro classdef(name, message) %}
 cdef class {{ name }}:
+
+    cdef object __weakref__
+
 {% for field in message.fields|sort(attribute='index') -%}
     {%- if field.modifier == 'repeated' %}
     cdef {{ field.list_type }} _{{ field.name }}

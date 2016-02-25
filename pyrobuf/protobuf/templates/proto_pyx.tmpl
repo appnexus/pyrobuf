@@ -5,6 +5,7 @@ from pyrobuf_list cimport *
 from pyrobuf_util cimport *
 
 import json
+import weakref
 
 {%- for import in imports %}
 from {{ import }}_proto cimport *
@@ -22,7 +23,7 @@ cdef class {{ name }}:
     def __init__(self):
         self.reset()
         self._is_present_in_parent = False
-        self._listener = None
+        self._listener = null_listener
         return
 
     def __str__(self):
@@ -538,11 +539,13 @@ cdef class {{ name }}:
     cpdef void _Modified(self):
         if not self._is_present_in_parent:
             self._is_present_in_parent = True
-            if self._listener is not None:
-                self._listener._Modified()
+            self._listener._Modified()
 
     cpdef void _SetListener(self, listener):
-        self._listener = listener
+        if listener is None:
+            self._listener = null_listener
+        else:
+            self._listener = weakref.proxy(listener)
 
     def SerializeToString(self):
         """
