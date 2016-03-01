@@ -1,5 +1,6 @@
 from libc.stdint cimport *
 from libc.string cimport *
+from cpython.ref cimport PyObject
 
 from pyrobuf_list cimport *
 from pyrobuf_util cimport *
@@ -12,8 +13,6 @@ from {{ import }}_proto cimport *
 
 {%- macro classdef(name, message) %}
 cdef class {{ name }}:
-
-    cdef object __weakref__
 
 {% for field in message.fields|sort(attribute='index') -%}
     {%- if field.modifier == 'repeated' %}
@@ -34,11 +33,16 @@ cdef class {{ name }}:
     {%endif%}
 {%- endfor %}
 
-    cdef public bint _is_present_in_parent
+    cdef bint __is_present_in_parent
 
-    cdef public object _listener
+    cdef PyObject *_listener
 
     cpdef reset(self)
+
+    cpdef void Clear(self)
+    cpdef void ClearField(self, field_name)
+    cpdef void CopyFrom(self, {{ name }} other_msg)
+    cpdef void MergeFrom(self, {{ name }} other_msg)
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size)
 

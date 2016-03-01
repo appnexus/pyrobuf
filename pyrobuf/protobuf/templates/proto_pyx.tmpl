@@ -1,11 +1,11 @@
 from libc.stdint cimport *
 from libc.string cimport *
+from cpython.ref cimport PyObject
 
 from pyrobuf_list cimport *
 from pyrobuf_util cimport *
 
 import json
-import weakref
 
 {%- for import in imports %}
 from {{ import }}_proto cimport *
@@ -20,10 +20,23 @@ from {{ import }}_proto cimport *
 {%- macro classdef(name, message) %}
 cdef class {{ name }}:
 
+    def __cinit__(self):
+        self._listener = <PyObject *>null_listener
+
+    {% if (message.fields|selectattr('type', 'equalto', 'message')|first is defined or
+           message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined) %}
+    def __dealloc__(self):
+        # Remove any references to self from child messages or repeated fields
+    {%- for field in message.fields %}
+        {%- if field.type == 'message' or field.modifier == 'repeated' %}
+        if self._{{ field.name }} is not None:
+            self._{{ field.name }}._SetListener(None)
+        {%- endif %}
+    {%- endfor %}
+    {%- endif %}
+
     def __init__(self):
         self.reset()
-        self._is_present_in_parent = False
-        self._listener = null_listener
         return
 
     def __str__(self):
@@ -50,6 +63,9 @@ cdef class {{ name }}:
     {% for field in message.fields %}
         {%- if field.type != 'message' and field.modifier != 'repeated' %}
         self._{{ field.name }}_isDefault = True
+        {%- else %}
+        if self._{{ field.name }} is not None:
+            self._{{ field.name }}._SetListener(None)
         {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
@@ -89,9 +105,12 @@ cdef class {{ name }}:
             return self._{{ field.name }}
 
         def __set__(self, value):
-            {%- if field.type != 'message' and field.modifier != 'repeated' %}
+        {%- if field.type != 'message' and field.modifier != 'repeated' %}
             self._{{ field.name }}_isDefault = False
-            {%- endif -%}
+        {%- else %}
+            if self._{{ field.name }} is not None:
+                self._{{ field.name }}._SetListener(None)
+        {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
             self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
@@ -144,9 +163,13 @@ cdef class {{ name }}:
         {%- if field.modifier != 'repeated' and field.type != 'message' %}
             self.__{{ field.name }}_set = 1
         {%- endif %}
-            if not self._is_present_in_parent:
+            if not self.__is_present_in_parent:
                 self._Modified()
     {% endfor %}
+
+    property _is_present_in_parent:
+        def __get__(self):
+            return self.__is_present_in_parent
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size):
         cdef int current_offset = 0
@@ -189,7 +212,7 @@ cdef class {{ name }}:
             elif field_idx == {{ field.index }}:
         {%- endif %}
 
-        {%- if field.modifier != 'repeated' and field.type != 'message'%}
+        {%- if field.modifier != 'repeated' and field.type != 'message' and field.type != 'enum' %}
                 self._{{field.name}}_isDefault = False
         {% endif -%}
 
@@ -205,7 +228,7 @@ cdef class {{ name }}:
             {%- if field.type == 'message' %}
                     {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
                     {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
-                    current_offset += {{ field.name }}_elt._protobuf_deserialize(memory[current_offset:current_offset + {{ field.name }}_elt_size], {{ field.name }}_elt_size)
+                    current_offset += {{ field.name }}_elt._protobuf_deserialize(&memory[current_offset], {{ field.name }}_elt_size)
             {%- elif field.type == 'string' %}
                     {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
                     {{ field.name }}_elt = str(memory[current_offset:current_offset + {{ field.name }}_elt_size])
@@ -220,7 +243,7 @@ cdef class {{ name }}:
 
         {%- elif field.type == 'message' %}
                 {{ field.name }}_size = get_varint64(memory, &current_offset)
-                current_offset += self._{{ field.name }}._protobuf_deserialize(memory[current_offset:current_offset + {{ field.name }}_size], {{ field.name }}_size)
+                current_offset += self._{{ field.name }}._protobuf_deserialize(&memory[current_offset], {{ field.name }}_size)
 
         {%- elif field.type == 'string' %}
                 {{ field.name }}_size = get_varint64(memory, &current_offset)
@@ -239,7 +262,7 @@ cdef class {{ name }}:
 
         {%- endif %}
 
-        {%- if field.modifier != 'repeated' and field.type != 'message' %}
+        {%- if field.modifier != 'repeated' and field.type != 'message' and field.type != 'enum' %}
                 self.__{{ field.name }}_set = 1
         {%- endif %}
     {%- endfor %}
@@ -247,16 +270,16 @@ cdef class {{ name }}:
                 continue
     {%- endif %}
 
-        self._is_present_in_parent = True
+        self.__is_present_in_parent = True
 
         return current_offset
 
-    def Clear(self):
+    cpdef void Clear(self):
         """Clears all data that was set in the message."""
         self.reset()
         self._Modified()
 
-    def ClearField(self, field_name):
+    cpdef void ClearField(self, field_name):
         """Clears the contents of a given field."""
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if loop.index == 1 %}
@@ -266,6 +289,8 @@ cdef class {{ name }}:
         {%- endif %}
             {%- if field.type != 'message' and field.modifier != 'repeated' %}
             self._{{ field.name }}_isDefault = True
+            {%- else %}
+            self._{{ field.name }}._SetListener(None)
             {%- endif -%}
             {%- if field.modifier == 'repeated' %}
                 {%- if field.type == 'message' %}
@@ -299,12 +324,12 @@ cdef class {{ name }}:
 
         self._Modified()
 
-    def CopyFrom(self, other_msg):
+    cpdef void CopyFrom(self, {{ name }} other_msg):
         """
         Copies the content of the specified message into the current message.
 
         Params:
-            other_msg: Message to copy into the current one.
+            other_msg ({{ name }}): Message to copy into the current one.
         """
         if self is other_msg:
             return
@@ -344,18 +369,13 @@ cdef class {{ name }}:
 
         return True
 
-    def MergeFrom(self, other_msg):
+    cpdef void MergeFrom(self, {{ name }} other_msg):
         """
         Merges the contents of the specified message into the current message.
 
         Params:
-            other_msg: Message to merge into the current message.
+            other_msg ({{ name }}): Message to merge into the current message.
         """
-        if not isinstance(other_msg, {{ name }}):
-            raise TypeError(
-                "Parameter to MergeFrom() must be instance of same class: "
-                "expected %s got %s." % ('{{ name }}', type(other_msg).__name__))
-
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
         for {{ field.name }}_msg in other_msg.{{ field.name }}:
@@ -537,15 +557,15 @@ cdef class {{ name }}:
     {%- endfor %}
 
     cpdef void _Modified(self):
-        if not self._is_present_in_parent:
-            self._is_present_in_parent = True
-            self._listener._Modified()
+        if not self.__is_present_in_parent:
+            self.__is_present_in_parent = True
+            (<object> self._listener)._Modified()
 
     cpdef void _SetListener(self, listener):
         if listener is None:
-            self._listener = null_listener
+            self._listener = <PyObject *>null_listener
         else:
-            self._listener = weakref.proxy(listener)
+            self._listener = <PyObject *>listener
 
     def SerializeToString(self):
         """
