@@ -1,0 +1,7 @@
+message TestStringDefaultsMessage {
+    required string hello = 1 [ default = "Hello World!" ];
+    optional string empty = 2 [ default = "" ];
+    optional string spaces = 3 [ default = "   " ];
+    optional string single_quotes = 4 [ default = 'Single quotes' ];
+    optional string escaped_quote = 5 [ default = "Escaped \" quote\n" ]; // This comment with a " shouldn't hurt...
+}

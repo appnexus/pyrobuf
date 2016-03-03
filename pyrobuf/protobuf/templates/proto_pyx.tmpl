@@ -10,6 +10,12 @@ import json
 from {{ import }}_proto cimport *
 {%- endfor %}
 
+{%- macro message_enum_fields_def(enum) %}
+    {%- for field in enum.fields %}
+    {{ field.name }} = _{{ field.name }}
+    {%- endfor %}
+{%- endmacro %}
+
 {%- macro classdef(name, message) %}
 cdef class {{ name }}:
 
@@ -56,14 +62,14 @@ cdef class {{ name }}:
             {%- if field.type == 'string' %}
         self._{{ field.name }} = "{{ field.default }}"
             {%- elif field.type == 'enum' %}
-        self._{{ field.name }} = {{ field.enum_default }}
+        self._{{ field.name }} = _{{ field.enum_default }}
             {%- else %}
         self._{{ field.name }} = {{ field.default }}
             {%- endif %}
         {%- elif field.type == 'string' %}
         self._{{ field.name }} = ""
         {%- elif field.type == 'enum' and field.enum_def != None %}
-        self._{{ field.name }} = {{ field.enum_def.fields[0].name }}
+        self._{{ field.name }} = _{{ field.enum_def.fields[0].name }}
         {%- else %}
         self._{{ field.name }} = 0
         {%- endif %}
@@ -98,7 +104,7 @@ cdef class {{ name }}:
                     {%- else %}
                 elif value == {{ enum_field.value }}:
                     {%- endif %}
-                    self._{{ field.name }}.append({{ enum_field.name }})
+                    self._{{ field.name }}.append(_{{ enum_field.name }})
                 {% endfor %}
                 else:
                     raise Exception("not a valid value for enum {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }}")
@@ -118,7 +124,7 @@ cdef class {{ name }}:
                     {%- else %}
             elif value == {{ enum_field.value }}:
                     {%- endif %}
-                self._{{ field.name }} = {{ enum_field.name }}
+                self._{{ field.name }} = _{{ enum_field.name }}
                 {% endfor %}
             else:
                 raise Exception("not a valid value for enum {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }}")
@@ -163,6 +169,7 @@ cdef class {{ name }}:
         {%- endif %}
     {%- endfor %}
 
+    {%- if message.fields|count > 0 %}
         while current_offset < size:
             key = get_varint64(memory, &current_offset)
             field_idx = (key >> 3)
@@ -233,6 +240,7 @@ cdef class {{ name }}:
     {%- endfor %}
             else:
                 continue
+    {%- endif %}
 
         return current_offset
 
@@ -517,6 +525,10 @@ cdef class {{ name }}:
 
         return out
 
+    {% for message_enum_name, message_enum in message.enums.items() %}
+        {{ message_enum_fields_def(message_enum) }}
+    {% endfor %}
+
 
     {% for message_name, message_message in message.messages.items() %}
 {{ classdef(name + message_name, message_message) }}
@@ -530,3 +542,12 @@ class DecodeError(Exception):
 {{ classdef(message.name, message) }}
 {%- endfor %}
 
+{%- macro enum_fields_def(enum) %}
+{%- for field in enum.fields %}
+{{ field.name }} = _{{ field.name }}
+{%- endfor %}
+{%- endmacro %}
+
+{%- for enum in enums %}
+{{ enum_fields_def(enum) }}
+{%- endfor %}
