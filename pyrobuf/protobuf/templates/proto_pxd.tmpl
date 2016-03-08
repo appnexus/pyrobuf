@@ -28,12 +28,11 @@ cdef class {{ name }}:
     {%- endif %}
 
     {%- if field.modifier != 'repeated' and field.type != 'message' %}
-    cdef bint _{{ field.name}}_isDefault
-    cdef bint __{{ field.name }}_set
+    cdef bint _{{ field.name}}_isSet
     {%endif%}
 {%- endfor %}
 
-    cdef bint __is_present_in_parent
+    cdef public bint _is_present_in_parent
 
     cdef PyObject *_listener
 
@@ -41,8 +40,7 @@ cdef class {{ name }}:
 
     cpdef void Clear(self)
     cpdef void ClearField(self, field_name)
-    cpdef void CopyFrom(self, {{ name }} other_msg)
-    cpdef void MergeFrom(self, {{ name }} other_msg)
+    cpdef bytearray SerializePartialToString(self)
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size)
 

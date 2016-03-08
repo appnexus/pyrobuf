@@ -1,0 +1,14 @@
+message SubMessage {
+    required int32 req_field = 1;
+    optional int32 opt_field = 2;
+}
+
+message TestIsInitialized {
+    required int32 req_field = 1;
+    optional SubMessage sub_message = 2;
+    repeated SubMessage list_sub = 3;
+}
+
+message TestWithRequiredSubMessage {
+    required SubMessage req_sub = 1;
+}

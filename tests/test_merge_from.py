@@ -2,6 +2,8 @@ import os
 import sys
 import unittest
 
+import messages.test_message_pb2 as google_test
+
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, 'build')
@@ -139,3 +141,12 @@ class MergeFromTest(unittest.TestCase):
         self.assertEqual(len(dest.list_ref), 2)
         self.assertEqual(dest.list_ref[0].field1, 4)
         self.assertEqual(dest.list_ref[1].field1, 3)
+
+    def test_merge_from_with_google_protobuf_message_instance_is_successful(self):
+        source = google_test.Test.Ss3()
+        source.int_field = 3
+        source.substruct_ref.timestamp = 12345
+        dest = TestSs3()
+        dest.MergeFrom(source)
+        self.assertEqual(dest.int_field, 3)
+        self.assertEqual(dest.substruct_ref.timestamp, 12345)

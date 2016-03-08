@@ -1,3 +1,4 @@
+from libc.stdio cimport printf
 from libc.stdint cimport *
 from libc.string cimport *
 from cpython.ref cimport PyObject
@@ -17,6 +18,28 @@ from {{ import }}_proto cimport *
     {%- endfor %}
 {%- endmacro %}
 
+{%- macro find_initialization_errors(message) %}
+    {%- for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+        {%- if field.type == 'message' %}
+        if not self._{{ field.name }}.IsInitialized():
+        {%- else %}
+        if not self._{{ field.name }}_isSet:
+        {%- endif %}
+            raise Exception("required field '{{ field.name }}' not initialized and does not have default")
+    {%- endfor %}
+
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
+        if self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
+            raise Exception("Message {{ name }} is missing required field: {{ field.name }}")
+    {%- endfor %}
+
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+        for i, {{ field.name }}_msg in enumerate(self._{{ field.name }}):
+            if not {{ field.name }}_msg.IsInitialized():
+                raise Exception("Message {{ name }} is missing required field: {{ field.name }}[%d]" % i)
+    {%- endfor %}
+{%- endmacro %}
+
 {%- macro classdef(name, message) %}
 cdef class {{ name }}:
 
@@ -24,7 +47,7 @@ cdef class {{ name }}:
         self._listener = <PyObject *>null_listener
 
     {% if (message.fields|selectattr('type', 'equalto', 'message')|first is defined or
-           message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined) %}
+           message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined) -%}
     def __dealloc__(self):
         # Remove any references to self from child messages or repeated fields
     {%- for field in message.fields %}
@@ -35,8 +58,28 @@ cdef class {{ name }}:
     {%- endfor %}
     {%- endif %}
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.reset()
+        for field_name, field_value in kwargs.{%- if version_major == 2 -%} iter {%- endif -%} items():
+            try:
+            {%- if message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|first is defined %}
+                if field_name in ('{{ message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
+                    getattr(self, field_name).MergeFrom(field_value)
+            {%- endif %}
+            {%- if message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+                {% if message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|first is defined -%}el{%- endif -%}
+                if field_name in ('{{ message.fields|selectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
+                    getattr(self, field_name).extend(field_value)
+            {%- endif %}
+            {%- if (message.fields|selectattr('type', 'equalto', 'message')|first is defined or
+                    message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined) %}
+                else:
+                    setattr(self, field_name, field_value)
+            {%- else %}
+                setattr(self, field_name, field_value)
+            {%- endif %}
+            except AttributeError:
+                raise ValueError('Protocol message has no "%s" field.' % (field_name,))
         return
 
     def __str__(self):
@@ -62,7 +105,7 @@ cdef class {{ name }}:
         # reset values and populate defaults
     {% for field in message.fields %}
         {%- if field.type != 'message' and field.modifier != 'repeated' %}
-        self._{{ field.name }}_isDefault = True
+        self._{{ field.name }}_isSet = False
         {%- else %}
         if self._{{ field.name }} is not None:
             self._{{ field.name }}._SetListener(None)
@@ -93,9 +136,6 @@ cdef class {{ name }}:
         {%- else %}
         self._{{ field.name }} = 0
         {%- endif %}
-        {%- if field.modifier != 'repeated' and field.type != 'message' %}
-        self.__{{ field.name }}_set = 0
-        {%- endif %}
     {%- endfor %}
         return
 
@@ -106,7 +146,7 @@ cdef class {{ name }}:
 
         def __set__(self, value):
         {%- if field.type != 'message' and field.modifier != 'repeated' %}
-            self._{{ field.name }}_isDefault = False
+            self._{{ field.name }}_isSet = True
         {%- else %}
             if self._{{ field.name }} is not None:
                 self._{{ field.name }}._SetListener(None)
@@ -160,25 +200,18 @@ cdef class {{ name }}:
             self._{{ field.name }} = value
             {%- endif %}
         {%- endif %}
-        {%- if field.modifier != 'repeated' and field.type != 'message' %}
-            self.__{{ field.name }}_set = 1
-        {%- endif %}
-            if not self.__is_present_in_parent:
+            if not self._is_present_in_parent:
                 self._Modified()
     {% endfor %}
-
-    property _is_present_in_parent:
-        def __get__(self):
-            return self.__is_present_in_parent
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size):
         cdef int current_offset = 0
         cdef int key
         cdef int field_idx
-        cdef int wire_type
+        # cdef int wire_type
 
     {%- for field in message.fields|sort(attribute='index') %}
-        {%- if field.modifier == 'repeated' %}
+        {%- if field.modifier == 'repeated' and field.packed|default(false) == true %}
         cdef int {{ field.name }}_marker
             {%- if field.type == 'message' %}
         cdef int {{ field.name }}_elt_size
@@ -198,11 +231,11 @@ cdef class {{ name }}:
         {%- endif %}
     {%- endfor %}
 
-    {%- if message.fields|count > 0 %}
+    {% if message.fields|count > 0 %}
         while current_offset < size:
             key = get_varint64(memory, &current_offset)
             field_idx = (key >> 3)
-            wire_type = (key & 0x7)
+            # wire_type = (key & 0x7)
 
     {%- for field in message.fields|sort(attribute='index') %}
             # {{ field.name }}
@@ -213,33 +246,43 @@ cdef class {{ name }}:
         {%- endif %}
 
         {%- if field.modifier != 'repeated' and field.type != 'message' and field.type != 'enum' %}
-                self._{{field.name}}_isDefault = False
-        {% endif -%}
+                self._{{field.name}}_isSet = True
+        {%- endif %}
 
         {%- if field.modifier == 'repeated' %}
             {%- if field.packed|default(false) == true %}
                 {{ field.name }}_marker = get_varint64(memory, &current_offset)
                 {{ field.name }}_marker += current_offset
-            {%- else %}
-                {{ field.name }}_marker = 1 + current_offset
-            {%- endif %}
 
                 while current_offset < {{ field.name }}_marker:
-            {%- if field.type == 'message' %}
-                    {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
-                    {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
-                    current_offset += {{ field.name }}_elt._protobuf_deserialize(&memory[current_offset], {{ field.name }}_elt_size)
-            {%- elif field.type == 'string' %}
-                    {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
-                    {{ field.name }}_elt = str(memory[current_offset:current_offset + {{ field.name }}_elt_size])
-                    current_offset += {{ field.name }}_elt_size
-            {%- elif field.fixed_width == true %}
+                {%- if field.fixed_width == true %}
                     {{ field.name }}_elt = (<{{ field.c_type }} *>&memory[current_offset])[0]
                     current_offset += sizeof({{ field.c_type }})
-            {%- elif field.var_width == true %}
+                {%- elif field.var_width == true %}
                     {{ field.name }}_elt = {{ field.getter }}(memory, &current_offset)
+                {%- endif %}
+                    self._{{ field.name }}._append({{ field.name }}_elt)
+            {%- else %}
+                {%- if field.type == 'message' %}
+                {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
+                {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
+                current_offset += {{ field.name }}_elt._protobuf_deserialize(&memory[current_offset], {{ field.name }}_elt_size)
+                {%- elif field.type == 'string' %}
+                {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
+                {{ field.name }}_elt = str(memory[current_offset:current_offset + {{ field.name }}_elt_size])
+                current_offset += {{ field.name }}_elt_size
+                {%- elif field.fixed_width == true %}
+                {{ field.name }}_elt = (<{{ field.c_type }} *>&memory[current_offset])[0]
+                current_offset += sizeof({{ field.c_type }})
+                {%- elif field.var_width == true %}
+                {{ field.name }}_elt = {{ field.getter }}(memory, &current_offset)
+                {%- endif %}
+                {%- if field.type != 'message' and field.type != 'string' %}
+                self._{{ field.name }}._append({{ field.name }}_elt)
+                {%- else %}
+                list.append(self._{{ field.name }}, {{ field.name }}_elt)
+                {%- endif %}
             {%- endif %}
-                    self._{{ field.name }}.append({{ field.name }}_elt)
 
         {%- elif field.type == 'message' %}
                 {{ field.name }}_size = get_varint64(memory, &current_offset)
@@ -262,15 +305,10 @@ cdef class {{ name }}:
 
         {%- endif %}
 
-        {%- if field.modifier != 'repeated' and field.type != 'message' and field.type != 'enum' %}
-                self.__{{ field.name }}_set = 1
-        {%- endif %}
     {%- endfor %}
-            else:
-                continue
     {%- endif %}
 
-        self.__is_present_in_parent = True
+        self._is_present_in_parent = True
 
         return current_offset
 
@@ -288,7 +326,7 @@ cdef class {{ name }}:
         elif field_name == '{{ field.name }}':
         {%- endif %}
             {%- if field.type != 'message' and field.modifier != 'repeated' %}
-            self._{{ field.name }}_isDefault = True
+            self._{{ field.name }}_isSet = False
             {%- else %}
             self._{{ field.name }}._SetListener(None)
             {%- endif -%}
@@ -317,19 +355,16 @@ cdef class {{ name }}:
             {%- else %}
             self._{{ field.name }} = 0
             {%- endif %}
-            {%- if field.modifier != 'repeated' and field.type != 'message' %}
-            self.__{{ field.name }}_set = 0
-            {%- endif %}
     {%- endfor %}
 
         self._Modified()
 
-    cpdef void CopyFrom(self, {{ name }} other_msg):
+    def CopyFrom(self, other_msg):
         """
         Copies the content of the specified message into the current message.
 
         Params:
-            other_msg ({{ name }}): Message to copy into the current one.
+            other_msg: Message to copy into the current one.
         """
         if self is other_msg:
             return
@@ -339,13 +374,16 @@ cdef class {{ name }}:
     def HasField(self, field_name):
         """
         Checks if a certain field is set for the message.
+
+        Params:
+            field_name (str): The name of the field to check.
         """
     {%- for field in message.fields|rejectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
         if field_name == '{{ field.name }}':
         {%- if field.type == 'message' %}
             return self._{{ field.name }}._is_present_in_parent
         {%- else %}
-            return self.__{{ field.name }}_set != 0
+            return self._{{ field.name }}_isSet
         {%- endif %}
     {%- endfor %}
         raise ValueError('Protocol message has no singular "%s" field.' % field_name)
@@ -360,45 +398,84 @@ cdef class {{ name }}:
         """
     {%- for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         {%- if field.type == 'message' %}
-        if not self._{{ field.name }}._is_present_in_parent:
+        if not self._{{ field.name }}.IsInitialized():
         {%- else %}
-        if self.__{{ field.name }}_set == 0:
+        if not self._{{ field.name }}_isSet:
         {%- endif %}
             return False
     {%- endfor %}
 
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
+        if self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
+            return False
+    {%- endfor %}
+
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+        for {{ field.name }}_msg in self._{{ field.name }}:
+            if not {{ field.name }}_msg.IsInitialized():
+                return False
+    {%- endfor %}
+
         return True
 
-    cpdef void MergeFrom(self, {{ name }} other_msg):
+    def MergeFrom(self, other_msg):
         """
         Merges the contents of the specified message into the current message.
 
         Params:
-            other_msg ({{ name }}): Message to merge into the current message.
+            other_msg: Message to merge into the current message.
         """
-    {%- for field in message.fields|sort(attribute='index') %}
+        if not isinstance(other_msg, {{ name }}) and not hasattr(other_msg, 'HasField'):
+            raise TypeError("Parameter to MergeFrom() must be an instance of same message class: expected {{ name }} got %s" % type(other_msg).__name__)
+
+    {% for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
-        for {{ field.name }}_msg in other_msg.{{ field.name }}:
-            {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
-            {{ field.name }}_elt.MergeFrom({{ field.name }}_msg)
-            self.{{ field.name }}.append({{ field.name }}_elt)
+        if hasattr(other_msg, '{{ field.name }}'):
+            for {{ field.name }}_msg in other_msg.{{ field.name }}:
+                {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
+                {{ field.name }}_elt.MergeFrom({{ field.name }}_msg)
+                list.append(self.{{ field.name }}, {{ field.name }}_elt)
         {%- elif field.modifier == 'repeated' %}
-        self._{{ field.name }}.extend(other_msg.{{ field.name }})
+        if hasattr(other_msg, '{{ field.name }}'):
+            self._{{ field.name }}.extend(other_msg.{{ field.name }})
         {%- elif field.type == 'message' %}
-        if other_msg.{{ field.name }}._is_present_in_parent:
+        if other_msg.HasField('{{ field.name }}'):
             self._{{ field.name }}.MergeFrom(other_msg.{{ field.name }})
         {%- else %}
         if other_msg.HasField('{{ field.name }}'):
-            {%- if field.type == 'enum' %}
             self.{{ field.name }} = other_msg.{{ field.name }}
-            {%- else %}
-            self._{{ field.name }} = other_msg.{{ field.name }}
-            self.__{{ field.name }}_set = 1
-            {%- endif %}
+            self._{{ field.name }}_isSet = True
         {%- endif %}
     {%- endfor %}
 
-        self._Modified()
+        if not self._is_present_in_parent:
+            self._Modified()
+
+    def MergeFromString(self, data, size=None):
+        """
+        Merges serialized protocol buffer data into this message.
+
+        Params:
+            data (str): a string of binary data.
+            size (int): optional - the length of the data string
+
+        Returns:
+            int: the number of bytes processed during serialization
+        """
+        already_present_in_parent = self._is_present_in_parent
+
+        if size is None:
+            size = len(data)
+
+        buf = self._protobuf_deserialize(data, size)
+
+        if buf != size:
+            raise DecodeError("Truncated message")
+
+        if not already_present_in_parent:
+            self._Modified()
+
+        return buf
 
     def ParseFromString(self, data, size=None, reset=True):
         """
@@ -412,7 +489,9 @@ cdef class {{ name }}:
         Returns:
             int: the number of bytes processed during serialization
         """
-        if size == None:
+        already_present_in_parent = self._is_present_in_parent
+
+        if size is None:
             size = len(data)
 
         if reset:
@@ -423,41 +502,37 @@ cdef class {{ name }}:
         if buf != size:
             raise DecodeError("Truncated message")
 
-    {%- for field in message.fields|sort(attribute='index') %}
-        {%- if field.modifier == 'required' and field.default == None %}
-            {%- if field.type == 'message' %}
-        if not self._{{field.name}}._is_present_in_parent:
-            {%- else %}
-        if self.__{{ field.name }}_set == 0:
-            {%- endif %}
-            raise Exception("required field '{{ field.name }}' not parsed and does not have default")
-        {%- endif %}
-    {%- endfor %}
+        if not already_present_in_parent:
+            self._Modified()
 
-        self._Modified()
+        {{ find_initialization_errors(message) }}
 
         return buf
 
     @classmethod
     def FromString(cls, s):
         message = cls()
-        message.ParseFromString(s)
+        message.ParseFromString(s, reset=False)
         return message
 
     cdef void _protobuf_serialize(self, bytearray buf):
         cdef int key
         cdef int field_idx
         cdef int wire_type
+    {%- if message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+        cdef int i
+        cdef int length
+    {%- endif %}
 
-    {%- for field in message.fields|sort(attribute='index') %}
+    {% for field in message.fields|sort(attribute='index') %}
+
         # {{ field.name }}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
+        cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_elt
         cdef bytearray {{ field.name }}_elt_buf
             {%- elif field.type in ('string', 'bytes') %}
         cdef str {{ field.name }}_elt
-            {%- elif field.type == 'message' %}
-        cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_elt
             {%- elif field.type == 'enum' %}
         cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }} {{ field.name }}_elt
             {%- else %}
@@ -467,27 +542,17 @@ cdef class {{ name }}:
             {%- if field.packed == true and field.var_width == true %}
         cdef bytearray {{ field.name }}_buf = bytearray()
             {%- endif %}
-
-        if len(self._{{ field.name }}) > 0:
+        length = len(self._{{ field.name }})
+        if length:
 
         {%- elif field.type == 'message' %}
-        cdef bytearray {{ field.name }}_buf = bytearray()
-        self._{{ field.name }}._protobuf_serialize({{ field.name }}_buf)
-        if len({{ field.name }}_buf) > 0:
+        cdef bytearray {{ field.name }}_buf
+        if self._{{ field.name }}._is_present_in_parent:
 
-        {# !messages and !repeated fields can all have default values #}
-        {%- elif field.modifier != 'repeated'%}
-        if not self._{{ field.name }}_isDefault:
-
-        {%- elif field.modifier == 'required' and field.default == None %}
-        if self.__{{ field.name }}_set != 0:
-
-        {%- elif field.type == 'string' %}
-        if self._{{ field.name }} != "":
+        {#- !messages and !repeated fields can all have default values #}
         {%- else %}
-        if self._{{ field.name }} != 0:
+        if self._{{ field.name }}_isSet:
         {%- endif %}
-
             field_idx = {{ field.index }}
         {%- if field.modifier == 'repeated' and field.packed == true %}
             wire_type = 2
@@ -506,12 +571,14 @@ cdef class {{ name }}:
             {%- if field.packed == true %}
             set_varint64(key, buf)
                 {%- if field.fixed_width == true %}
-            set_varint64(len(self._{{ field.name }}) * sizeof({{ field.name }}_elt), buf)
-            for {{ field.name }}_elt in self._{{ field.name }}:
+            set_varint64(length * sizeof({{ field.name }}_elt), buf)
+            for i in range(length):
+                {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
                 buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.name }}_elt)]
 
                 {%- elif field.var_width == true %}
-            for {{ field.name }}_elt in self._{{ field.name }}:
+            for i in range(length):
+                {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
                 {{ field.setter }}({{ field.name }}_elt, {{ field.name }}_buf)
 
             set_varint64(len({{ field.name }}_buf), buf)
@@ -519,23 +586,30 @@ cdef class {{ name }}:
                 {%- endif %}
 
             {%- else %}
-            for {{ field.name }}_elt in self._{{ field.name }}:
+            for i in range(length):
                 set_varint64(key, buf)
                 {%- if field.type == 'string' %}
+                {{ field.name }}_elt = <str>self._{{ field.name }}[i]
                 set_varint64(len({{ field.name }}_elt), buf)
                 buf += {{ field.name }}_elt
                 {%- elif field.type == 'message' %}
-                {{ field.name }}_elt_buf = {{ field.name }}_elt.SerializeToString()
+                {{ field.name }}_elt = <{% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}>self._{{ field.name }}[i]
+                {{ field.name }}_elt_buf = bytearray()
+                {{ field.name }}_elt._protobuf_serialize({{ field.name }}_elt_buf)
                 set_varint64(len({{ field.name }}_elt_buf), buf)
                 buf += {{ field.name }}_elt_buf
                 {%- elif field.fixed_width == true %}
+                {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
                 buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.name }}_elt)]
                 {%- elif field.var_width == true %}
+                {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
                 {{ field.setter }}({{ field.name }}_elt, buf)
                 {%- endif %}
             {%- endif %}
 
         {%- elif field.type == 'message' %}
+            {{ field.name }}_buf = bytearray()
+            self._{{ field.name }}._protobuf_serialize({{ field.name }}_buf)
             set_varint64(key, buf)
             set_varint64(len({{ field.name }}_buf), buf)
             buf += {{ field.name }}_buf
@@ -557,8 +631,8 @@ cdef class {{ name }}:
     {%- endfor %}
 
     cpdef void _Modified(self):
-        if not self.__is_present_in_parent:
-            self.__is_present_in_parent = True
+        if not self._is_present_in_parent:
+            self._is_present_in_parent = True
             (<object> self._listener)._Modified()
 
     cpdef void _SetListener(self, listener):
@@ -574,17 +648,19 @@ cdef class {{ name }}:
         Returns:
             bytearray: a bytearray of binary data
         """
-    {%- for field in message.fields|sort(attribute='index') %}
-        {%- if field.modifier == 'required' and field.default == None %}
-            {%- if field.type == 'message' %}
-        if not self._{{ field.name }}._is_present_in_parent:
-            {%- else %}
-        if self.__{{ field.name }}_set == 0:
-            {%- endif %}
-            raise Exception("required field '{{ field.name }}' not initialized and does not have default")
-        {%- endif %}
-    {%- endfor %}
+        {{ find_initialization_errors(message) }}
 
+        buf = bytearray()
+        self._protobuf_serialize(buf)
+        return buf
+
+    cpdef bytearray SerializePartialToString(self):
+        """
+        Serialize the message class into a bytearray of protobuf encoded binary data.
+
+        Returns:
+            bytearray: a bytearray of binary data
+        """
         buf = bytearray()
         self._protobuf_serialize(buf)
         return buf
@@ -598,7 +674,7 @@ cdef class {{ name }}:
             size (int): optional - the length of the data string
             reset (bool): optional - whether to reset to default values before serializing
         """
-        if size == None:
+        if size is None:
             size = len(data)
         d = json.loads(data[:size])
         self.ParseFromDict(d, reset)
@@ -642,18 +718,13 @@ cdef class {{ name }}:
             pass
     {%- endfor %}
 
-    {%- for field in message.fields|sort(attribute='index') %}
-        {%- if field.modifier == 'required' and field.default == None %}
-            {%- if field.type == 'message' %}
-        if not self._{{ field.name }}._is_present_in_parent:
-            {%- else %}
-        if self.__{{ field.name }}_set == 0:
-            {%- endif %}
-            raise Exception("required field '{{ field.name }}' not parsed and does not have default")
-        {%- endif %}
-    {%- endfor %}
-
         self._Modified()
+
+    {#- The recursive calls to ParseFromDict will check required fields of sub-messages including repeated messages #}
+    {%- for field in message.fields|rejectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+        if not self._{{ field.name }}_isSet:
+            raise Exception("required field '{{ field.name }}' not initialized and does not have default")
+    {%- endfor %}
 
         return
 
@@ -666,15 +737,10 @@ cdef class {{ name }}:
         """
         out = {}
 
-    {%- for field in message.fields|sort(attribute='index') %}
-        {%- if field.modifier == 'required' and field.default == None %}
-            {%- if field.type == 'message' %}
-        if not self._{{ field.name }}._is_present_in_parent:
-            {%- else %}
-        if self.__{{ field.name }}_set == 0:
-            {%- endif %}
+    {#- The recursive calls to SerializeToDict will check required fields of sub-messages including repeated messages #}
+    {%- for field in message.fields|rejectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+        if not self._{{ field.name }}_isSet:
             raise Exception("required field '{{ field.name }}' not initialized and does not have default")
-        {%- endif %}
     {%- endfor %}
 
     {%- for field in message.fields|sort(attribute='index') %}
@@ -689,7 +755,7 @@ cdef class {{ name }}:
         if {{ field.name }}_dict != {}:
             out["{{ field.name }}"] = {{ field.name }}_dict
         {%- elif field.modifier == 'required' %}
-        if self.__{{ field.name }}_set != 0:
+        if self._{{ field.name }}_isSet:
             out["{{ field.name }}"] = self.{{ field.name }}
         {%- elif field.default != None %}
             {%- if field.type == 'string' %}

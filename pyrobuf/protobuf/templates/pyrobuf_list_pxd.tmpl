@@ -23,6 +23,7 @@ cdef class {{ name }}:
     cdef size_t _size
     cdef PyObject *_message_listener
 
+    cdef void _append(self, {{ type }} x)
     cpdef void _SetListener(self, listener)
 
     cpdef append(self, {{ type }} x)
