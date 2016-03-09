@@ -59,26 +59,27 @@ cdef class {{ name }}:
 
     def __init__(self, **kwargs):
         self.reset()
-        for field_name, field_value in kwargs.{%- if version_major == 2 -%} iter {%- endif -%} items():
-            try:
+        if kwargs:
+            for field_name, field_value in kwargs.{%- if version_major == 2 -%} iter {%- endif -%} items():
+                try:
             {%- if message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|first is defined %}
-                if field_name in ('{{ message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
-                    getattr(self, field_name).MergeFrom(field_value)
+                    if field_name in ('{{ message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
+                        getattr(self, field_name).MergeFrom(field_value)
             {%- endif %}
             {%- if message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
-                {% if message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|first is defined -%}el{%- endif -%}
-                if field_name in ('{{ message.fields|selectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
-                    getattr(self, field_name).extend(field_value)
+                    {% if message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|first is defined -%}el{%- endif -%}
+                    if field_name in ('{{ message.fields|selectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
+                        getattr(self, field_name).extend(field_value)
             {%- endif %}
             {%- if (message.fields|selectattr('type', 'equalto', 'message')|first is defined or
                     message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined) %}
-                else:
-                    setattr(self, field_name, field_value)
+                    else:
+                        setattr(self, field_name, field_value)
             {%- else %}
-                setattr(self, field_name, field_value)
+                    setattr(self, field_name, field_value)
             {%- endif %}
-            except AttributeError:
-                raise ValueError('Protocol message has no "%s" field.' % (field_name,))
+                except AttributeError:
+                    raise ValueError('Protocol message has no "%s" field.' % (field_name,))
         return
 
     def __str__(self):
@@ -100,7 +101,7 @@ cdef class {{ name }}:
             components.append('}')
         return '\n'.join(components)
 
-    cpdef reset(self):
+    cpdef void reset(self):
         # reset values and populate defaults
     {% for field in message.fields %}
         {%- if field.type != 'message' and field.modifier != 'repeated' %}
@@ -115,10 +116,11 @@ cdef class {{ name }}:
             {%- elif field.type == 'string' %}
         self._{{ field.name }} = TypedList(str, self)
             {%- else %}
-        self._{{ field.name }} = {{ field.list_type }}(message_listener=self)
+        self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }}, message_listener=self)
             {%- endif %}
         {%- elif field.type == 'message' %}
-        self._{{ field.name }} = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
+        self._{{ field.name }} = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}.__new__({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }})
+        self._{{ field.name }}.reset()
         self._{{ field.name }}._SetListener(self)
         {%- elif field.default != None %}
             {%- if field.type == 'string' %}
@@ -314,7 +316,8 @@ cdef class {{ name }}:
     cpdef void Clear(self):
         """Clears all data that was set in the message."""
         self.reset()
-        self._Modified()
+        if not self._is_present_in_parent:
+            self._Modified()
 
     cpdef void ClearField(self, field_name):
         """Clears the contents of a given field."""

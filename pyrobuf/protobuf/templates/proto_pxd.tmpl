@@ -36,7 +36,7 @@ cdef class {{ name }}:
 
     cdef PyObject *_listener
 
-    cpdef reset(self)
+    cpdef void reset(self)
 
     cpdef void Clear(self)
     cpdef void ClearField(self, field_name)
