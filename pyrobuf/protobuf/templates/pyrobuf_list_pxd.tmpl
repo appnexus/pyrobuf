@@ -1,4 +1,5 @@
 from libc.stdint cimport *
+from cpython cimport Py_buffer
 
 cdef class TypedList(list):
     
@@ -10,12 +11,15 @@ cdef class {{ name }}:
     cdef {{ type }} *_data
     cdef size_t _n_items
     cdef size_t _size
+    cdef Py_ssize_t shape[1]
+    cdef Py_ssize_t strides[1]
 
     cpdef append(self, {{ type }} x)
     cpdef extend(self, {{ name }} x)
     cpdef insert(self, int i, {{ type }} x)
     cpdef pop(self)
     cpdef remove(self, {{ type }} x)
+
 {% endmacro %}
 
 {% for name, type in def.items() %}

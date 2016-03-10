@@ -77,15 +77,32 @@ def _pre_install(command):
             'CharList':     'char'
     }
 
+    format_map = {
+        'double':     'd',
+        'float':      'f',
+        'int':        'i',
+        'int32_t':    'i',
+        'uint32_t':   'I',
+        'int64_t':    'L',
+        'uint64_t':   'K',
+        'char':       'c',
+    }
+
     path = os.path.join(HERE, 'pyrobuf', 'src', name_pyx)
     command.announce('    Generating {0}'.format(path), level=distutils.log.INFO)
     with open(path, 'w') as fp:
-        fp.write(templ_pyx.render({'def': listdict, 'version_major': sys.version_info.major}))
+        fp.write(templ_pyx.render({'def': listdict,
+                                   'version_major': sys.version_info.major,
+                                   'format_map': format_map,
+                                   }))
 
     path = os.path.join(HERE, 'pyrobuf', 'src', name_pxd)
     command.announce('    Generating {0}'.format(path), level=distutils.log.INFO)
     with open(path, 'w') as fp:
-        fp.write(templ_pxd.render({'def': listdict, 'version_major': sys.version_info.major}))
+        fp.write(templ_pxd.render({'def': listdict,
+                                   'version_major': sys.version_info.major,
+                                   'format_map': format_map,
+                                   }))
 
 
 setup(

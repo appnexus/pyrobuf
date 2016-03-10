@@ -60,7 +60,7 @@ cdef class TypedList(list):
         super(TypedList, self).insert(i, x)
 
 
-{% macro scalar_list(name, type) %}
+{% macro scalar_list(name, type, format) %}
 cdef class {{ name }}:
 
     def __cinit__(self, size_t size=16):
@@ -127,6 +127,27 @@ cdef class {{ name }}:
 
     def __str__(self):
         return str(list(self))
+
+    def __getbuffer__(self, Py_buffer *buffer, int flags):
+        
+        cdef Py_ssize_t itemsize = sizeof({{ type }})
+        self.shape[0] = self._n_items
+        self.strides[0] = 1
+
+        buffer.buf = <char *>(self._data)
+        buffer.format = '{{ format }}'
+        buffer.internal = NULL                  # see References
+        buffer.itemsize = itemsize
+        buffer.len = self._n_items
+        buffer.ndim = 1
+        buffer.obj = self
+        buffer.readonly = 1
+        buffer.shape = self.shape
+        buffer.strides = self.strides
+        buffer.suboffsets = NULL                # for pointer arrays only
+
+    def __releasebuffer__(self, Py_buffer *buffer):
+        pass
 
     cpdef append(self, {{ type }} x):
         cdef {{ type }} *mem
@@ -213,5 +234,5 @@ cdef class {{ name }}:
 {% endmacro %}
 
 {% for name, type in def.items() %}
-{{ scalar_list(name, type) }}
+{{ scalar_list(name, type, format_map[type]) }}
 {% endfor %}
