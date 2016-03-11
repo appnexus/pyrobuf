@@ -200,6 +200,9 @@ cdef class {{ name }}:
             {%- else %}
             self._{{ field.name }} = value
             {%- endif %}
+            {%- if field.type == 'message' %}
+            self._{{ field.name }}._SetListener(self)
+            {%- endif %}
         {%- endif %}
             if not self._is_present_in_parent:
                 self._Modified()
@@ -267,7 +270,7 @@ cdef class {{ name }}:
                 {%- if field.type == 'message' %}
                 {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
                 {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
-                current_offset += {{ field.name }}_elt._protobuf_deserialize(&memory[current_offset], {{ field.name }}_elt_size)
+                current_offset += {{ field.name }}_elt._protobuf_deserialize(memory+current_offset, {{ field.name }}_elt_size)
                 {%- elif field.type == 'string' %}
                 {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
                 {{ field.name }}_elt = str(memory[current_offset:current_offset + {{ field.name }}_elt_size])
@@ -287,7 +290,7 @@ cdef class {{ name }}:
 
         {%- elif field.type == 'message' %}
                 {{ field.name }}_size = get_varint64(memory, &current_offset)
-                current_offset += self._{{ field.name }}._protobuf_deserialize(&memory[current_offset], {{ field.name }}_size)
+                current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, {{ field.name }}_size)
 
         {%- elif field.type == 'string' %}
                 {{ field.name }}_size = get_varint64(memory, &current_offset)
@@ -338,10 +341,12 @@ cdef class {{ name }}:
                 {%- elif field.type == 'string' %}
             self._{{ field.name }} = TypedList(str, self)
                 {%- else %}
-            self._{{ field.name }} = {{ field.list_type }}(message_listener=self)
+            self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }}, message_listener=self)
                 {%- endif %}
             {%- elif field.type == 'message' %}
-            self._{{ field.name }} = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
+            self._{{ field.name }} = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}.__new__({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }})
+            self._{{ field.name }}.reset()
+            self._{{ field.name }}._SetListener(self)
             {%- elif field.default != None %}
                 {%- if field.type == 'string' %}
             self._{{ field.name }} = "{{ field.default }}"
@@ -359,7 +364,8 @@ cdef class {{ name }}:
             {%- endif %}
     {%- endfor %}
 
-        self._Modified()
+        if not self._is_present_in_parent:
+            self._Modified()
 
     def CopyFrom(self, other_msg):
         """
@@ -507,8 +513,6 @@ cdef class {{ name }}:
         if not already_present_in_parent:
             self._Modified()
 
-        {{ find_initialization_errors(message) }}
-
         return buf
 
     @classmethod
@@ -526,7 +530,7 @@ cdef class {{ name }}:
         cdef int length
     {%- endif %}
 
-    {% for field in message.fields|sort(attribute='index') %}
+    {%- for field in message.fields|sort(attribute='index') %}
 
         # {{ field.name }}
         {%- if field.modifier == 'repeated' %}
