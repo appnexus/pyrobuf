@@ -48,8 +48,6 @@ cdef class {{ name }}:
 
     cpdef void _Modified(self)
 
-    cpdef void _SetListener(self, listener)
-
     {%- for message_name, message_message in message.messages.items() %}
 {{ classdef(name + message_name, message_message) }}
     {%- endfor %}

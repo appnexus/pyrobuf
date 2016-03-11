@@ -293,7 +293,7 @@ class Parser(object):
 
     def add_cython_info(self, message):
         for field in message.fields:
-            field.list_type = self.list_type_map.get(field.type, 'list')
+            field.list_type = self.list_type_map.get(field.type, 'TypedList')
             field.fixed_width = (field.type in ('float', 'double', 'fixed32', 'sfixed32', 'fixed64', 'sfixed64'))
             field.var_width = (field.type in ('bool', 'enum', 'int32', 'sint32', 'uint32', 'int64', 'sint64', 'uint64'))
 
