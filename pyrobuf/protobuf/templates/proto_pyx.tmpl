@@ -17,35 +17,6 @@ from {{ import }}_proto cimport *
     {%- endfor %}
 {%- endmacro %}
 
-{%- macro find_initialization_errors(message) %}
-    {%- if message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
-        cdef int i
-    {%- endif %}
-    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
-        cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_msg
-    {%- endfor %}
-
-    {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
-        {%- if field.type == 'message' %}
-        if not self._{{ field.name }}.IsInitialized():
-        {%- else %}
-        if not self._{{ field.name }}_isSet:
-        {%- endif %}
-            raise Exception("required field '{{ field.name }}' not initialized and does not have default")
-    {%- endfor %}
-
-    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
-        if self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
-            raise Exception("Message {{ name }} is missing required field: {{ field.name }}")
-    {%- endfor %}
-
-    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
-        for i in len(self._{{ field.name }}):
-            {{ field.name }}_msg = <{% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}>self._{{ field.name }}[i]
-            if not {{ field.name }}_msg.IsInitialized():
-                raise Exception("Message {{ name }} is missing required field: {{ field.name }}[%d]" % i)
-    {%- endfor %}
-{%- endmacro %}
 
 {%- macro classdef(name, message) %}
 cdef class {{ name }}:
