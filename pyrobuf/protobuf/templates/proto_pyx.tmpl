@@ -18,7 +18,14 @@ from {{ import }}_proto cimport *
 {%- endmacro %}
 
 {%- macro find_initialization_errors(message) %}
-    {%- for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+    {%- if message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+        cdef int i
+    {%- endif %}
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+        cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_msg
+    {%- endfor %}
+
+    {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         {%- if field.type == 'message' %}
         if not self._{{ field.name }}.IsInitialized():
         {%- else %}
@@ -33,7 +40,8 @@ from {{ import }}_proto cimport *
     {%- endfor %}
 
     {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
-        for i, {{ field.name }}_msg in enumerate(self._{{ field.name }}):
+        for i in len(self._{{ field.name }}):
+            {{ field.name }}_msg = <{% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}>self._{{ field.name }}[i]
             if not {{ field.name }}_msg.IsInitialized():
                 raise Exception("Message {{ name }} is missing required field: {{ field.name }}[%d]" % i)
     {%- endfor %}
@@ -396,7 +404,7 @@ cdef class {{ name }}:
     {%- endfor %}
         raise ValueError('Protocol message has no singular "%s" field.' % field_name)
 
-    def IsInitialized(self):
+    cpdef bint IsInitialized(self):
         """
         Checks if the message is initialized.
 
@@ -404,7 +412,14 @@ cdef class {{ name }}:
             bool: True if the message is initialized (i.e. all of its required
                 fields are set).
         """
-    {%- for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+    {%- if message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+        cdef int i
+    {%- endif %}
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+        cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_msg
+    {%- endfor %}
+
+    {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         {%- if field.type == 'message' %}
         if not self._{{ field.name }}.IsInitialized():
         {%- else %}
@@ -419,7 +434,8 @@ cdef class {{ name }}:
     {%- endfor %}
 
     {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
-        for {{ field.name }}_msg in self._{{ field.name }}:
+        for i in range(len(self._{{ field.name }})):
+            {{ field.name }}_msg = <{% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}>self._{{ field.name }}[i]
             if not {{ field.name }}_msg.IsInitialized():
                 return False
     {%- endfor %}
@@ -485,7 +501,7 @@ cdef class {{ name }}:
 
         return buf
 
-    def ParseFromString(self, data, size=None, reset=True):
+    cpdef int ParseFromString(self, data, size=None, bint reset=True):
         """
         Populate the message class from a string of protobuf encoded binary data.
 
@@ -497,7 +513,14 @@ cdef class {{ name }}:
         Returns:
             int: the number of bytes processed during serialization
         """
-        already_present_in_parent = self._is_present_in_parent
+        cdef int buf
+        cdef bint already_present_in_parent = self._is_present_in_parent
+    {%- if message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+        cdef int i
+    {%- endif %}
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+        cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_msg
+    {%- endfor %}
 
         if size is None:
             size = len(data)
@@ -512,6 +535,27 @@ cdef class {{ name }}:
 
         if not already_present_in_parent:
             self._Modified()
+
+     {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+        {%- if field.type == 'message' %}
+        if not self._{{ field.name }}.IsInitialized():
+        {%- else %}
+        if not self._{{ field.name }}_isSet:
+        {%- endif %}
+            raise Exception("required field '{{ field.name }}' not initialized and does not have default")
+    {%- endfor %}
+
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
+        if self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
+            raise Exception("Message {{ name }} is missing required field: {{ field.name }}")
+    {%- endfor %}
+
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+        for i in range(len(self._{{ field.name }})):
+            {{ field.name }}_msg = <{% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}>self._{{ field.name }}[i]
+            if not {{ field.name }}_msg.IsInitialized():
+                raise Exception("Message {{ name }} is missing required field: {{ field.name }}[%d]" % i)
+    {%- endfor %}
 
         return buf
 
@@ -641,16 +685,42 @@ cdef class {{ name }}:
             self._is_present_in_parent = True
             (<object> self._listener)._Modified()
 
-    def SerializeToString(self):
+    cpdef bytearray SerializeToString(self):
         """
         Serialize the message class into a bytearray of protobuf encoded binary data.
 
         Returns:
             bytearray: a bytearray of binary data
         """
-        {{ find_initialization_errors(message) }}
+    {%- if message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+        cdef int i
+    {%- endif %}
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+        cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_msg
+    {%- endfor %}
 
-        buf = bytearray()
+    {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+        {%- if field.type == 'message' %}
+        if not self._{{ field.name }}.IsInitialized():
+        {%- else %}
+        if not self._{{ field.name }}_isSet:
+        {%- endif %}
+            raise Exception("required field '{{ field.name }}' not initialized and does not have default")
+    {%- endfor %}
+
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
+        if self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
+            raise Exception("Message {{ name }} is missing required field: {{ field.name }}")
+    {%- endfor %}
+
+    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+        for i in range(len(self._{{ field.name }})):
+            {{ field.name }}_msg = <{% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}>self._{{ field.name }}[i]
+            if not {{ field.name }}_msg.IsInitialized():
+                raise Exception("Message {{ name }} is missing required field: {{ field.name }}[%d]" % i)
+    {%- endfor %}
+
+        cdef bytearray buf = bytearray()
         self._protobuf_serialize(buf)
         return buf
 
@@ -661,7 +731,7 @@ cdef class {{ name }}:
         Returns:
             bytearray: a bytearray of binary data
         """
-        buf = bytearray()
+        cdef bytearray buf = bytearray()
         self._protobuf_serialize(buf)
         return buf
 
