@@ -39,10 +39,11 @@ cdef class {{ name }}:
     cpdef void reset(self)
 
     cpdef void Clear(self)
-    cpdef void ClearField(self, field_name)
+    cpdef void ClearField(self, str field_name)
+    cpdef bint HasField(self, str field_name) except -1
     cpdef bint IsInitialized(self)
-    cpdef int ParseFromString(self, data, size=?, bint reset=?)
-    cpdef bytearray SerializeToString(self)
+    cpdef int MergeFromString(self, data, size=*) except -1
+    cpdef int ParseFromString(self, data, size=*, bint reset=*) except -1
     cpdef bytearray SerializePartialToString(self)
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size)

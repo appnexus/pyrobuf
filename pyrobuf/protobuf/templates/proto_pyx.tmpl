@@ -189,28 +189,28 @@ cdef class {{ name }}:
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size):
         cdef int current_offset = 0
-        cdef int key
-        cdef int field_idx
+        cdef int64_t key
+        cdef int64_t field_idx
+    {%- if message.fields|selectattr('type', 'equalto', 'message')|first is defined or
+           message.fields|selectattr('type', 'equalto', 'string')|first is defined %}
+        cdef int64_t field_size
+    {%- endif %}
         # cdef int wire_type
 
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'repeated' and field.packed|default(false) == true %}
         cdef int {{ field.name }}_marker
+        {%- endif %}
+        {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
-        cdef int {{ field.name }}_elt_size
         cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_elt
             {%- elif field.type == 'string' %}
-        cdef int {{ field.name }}_elt_size
         cdef str {{ field.name }}_elt
             {%- elif field.type == 'enum' %}
         cdef int32_t {{ field.name }}_elt
             {%- else  %}
         cdef {{ field.c_type }} {{ field.name }}_elt
             {%- endif %}
-        {%- elif field.type == 'message' %}
-        cdef int {{ field.name }}_size
-        {%- elif field.type == 'string' %}
-        cdef int {{ field.name }}_size
         {%- endif %}
     {%- endfor %}
 
@@ -248,12 +248,12 @@ cdef class {{ name }}:
             {%- else %}
                 {%- if field.type == 'message' %}
                 {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
-                {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
-                current_offset += {{ field.name }}_elt._protobuf_deserialize(memory+current_offset, {{ field.name }}_elt_size)
+                field_size = get_varint64(memory, &current_offset)
+                current_offset += {{ field.name }}_elt._protobuf_deserialize(memory+current_offset, field_size)
                 {%- elif field.type == 'string' %}
-                {{ field.name }}_elt_size = get_varint64(memory, &current_offset)
-                {{ field.name }}_elt = str(memory[current_offset:current_offset + {{ field.name }}_elt_size])
-                current_offset += {{ field.name }}_elt_size
+                field_size = get_varint64(memory, &current_offset)
+                {{ field.name }}_elt = str(memory[current_offset:current_offset + field_size])
+                current_offset += field_size
                 {%- elif field.fixed_width == true %}
                 {{ field.name }}_elt = (<{{ field.c_type }} *>&memory[current_offset])[0]
                 current_offset += sizeof({{ field.c_type }})
@@ -268,13 +268,13 @@ cdef class {{ name }}:
             {%- endif %}
 
         {%- elif field.type == 'message' %}
-                {{ field.name }}_size = get_varint64(memory, &current_offset)
-                current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, {{ field.name }}_size)
+                field_size = get_varint64(memory, &current_offset)
+                current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, field_size)
 
         {%- elif field.type == 'string' %}
-                {{ field.name }}_size = get_varint64(memory, &current_offset)
-                self._{{ field.name }} = str(memory[current_offset:current_offset + {{ field.name }}_size])
-                current_offset += {{ field.name }}_size
+                field_size = get_varint64(memory, &current_offset)
+                self._{{ field.name }} = str(memory[current_offset:current_offset + field_size])
+                current_offset += field_size
 
         {%- elif field.type == 'enum' %}
                 self.{{ field.name }} = {{ field.getter }}(memory, &current_offset)
@@ -301,7 +301,7 @@ cdef class {{ name }}:
         if not self._is_present_in_parent:
             self._Modified()
 
-    cpdef void ClearField(self, field_name):
+    cpdef void ClearField(self, str field_name):
         """Clears the contents of a given field."""
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if loop.index == 1 %}
@@ -358,7 +358,7 @@ cdef class {{ name }}:
         self.reset()
         self.MergeFrom(other_msg)
 
-    def HasField(self, field_name):
+    cpdef bint HasField(self, str field_name) except -1:
         """
         Checks if a certain field is set for the message.
 
@@ -446,7 +446,7 @@ cdef class {{ name }}:
         if not self._is_present_in_parent:
             self._Modified()
 
-    def MergeFromString(self, data, size=None):
+    cpdef int MergeFromString(self, data, size=None) except -1:
         """
         Merges serialized protocol buffer data into this message.
 
@@ -457,7 +457,8 @@ cdef class {{ name }}:
         Returns:
             int: the number of bytes processed during serialization
         """
-        already_present_in_parent = self._is_present_in_parent
+        cdef int buf
+        cdef bint already_present_in_parent = self._is_present_in_parent
 
         if size is None:
             size = len(data)
@@ -472,7 +473,7 @@ cdef class {{ name }}:
 
         return buf
 
-    cpdef int ParseFromString(self, data, size=None, bint reset=True):
+    cpdef int ParseFromString(self, data, size=None, bint reset=True) except -1:
         """
         Populate the message class from a string of protobuf encoded binary data.
 
@@ -507,7 +508,7 @@ cdef class {{ name }}:
         if not already_present_in_parent:
             self._Modified()
 
-     {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+    {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         {%- if field.type == 'message' %}
         if not self._{{ field.name }}.IsInitialized():
         {%- else %}
@@ -533,7 +534,7 @@ cdef class {{ name }}:
     @classmethod
     def FromString(cls, s):
         message = cls()
-        message.ParseFromString(s, reset=False)
+        message.ParseFromString(s)
         return message
 
     cdef void _protobuf_serialize(self, bytearray buf):
@@ -656,7 +657,7 @@ cdef class {{ name }}:
             self._is_present_in_parent = True
             (<object> self._listener)._Modified()
 
-    cpdef bytearray SerializeToString(self):
+    def SerializeToString(self):
         """
         Serialize the message class into a bytearray of protobuf encoded binary data.
 
