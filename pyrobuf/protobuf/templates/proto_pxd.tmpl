@@ -39,9 +39,11 @@ cdef class {{ name }}:
     cpdef void reset(self)
 
     cpdef void Clear(self)
-    cpdef void ClearField(self, str field_name)
-    cpdef bint HasField(self, str field_name) except -1
+    cpdef void ClearField(self, field_name)
+    cpdef void CopyFrom(self, {{ name }} other_msg)
+    cpdef bint HasField(self, field_name) except -1
     cpdef bint IsInitialized(self)
+    cpdef void MergeFrom(self, {{ name }} other_msg)
     cpdef int MergeFromString(self, data, size=*) except -1
     cpdef int ParseFromString(self, data, size=*, bint reset=*) except -1
     cpdef bytearray SerializePartialToString(self)

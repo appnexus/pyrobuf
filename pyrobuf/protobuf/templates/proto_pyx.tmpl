@@ -92,7 +92,7 @@ cdef class {{ name }}:
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
         self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
-            {%- elif field.type == 'string' %}
+            {%- elif field.type in ('string', 'bytes') %}
         self._{{ field.name }} = TypedList(str, self)
             {%- else %}
         self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }}, listener=self)
@@ -102,14 +102,14 @@ cdef class {{ name }}:
         self._{{ field.name }}.reset()
         self._{{ field.name }}._listener = <PyObject *>self
         {%- elif field.default != None %}
-            {%- if field.type == 'string' %}
+            {%- if field.type in ('string', 'bytes') %}
         self._{{ field.name }} = "{{ field.default }}"
             {%- elif field.type == 'enum' %}
         self._{{ field.name }} = _{{ field.enum_default }}
             {%- else %}
         self._{{ field.name }} = {{ field.default }}
             {%- endif %}
-        {%- elif field.type == 'string' %}
+        {%- elif field.type in ('string', 'bytes') %}
         self._{{ field.name }} = ""
         {%- elif field.type == 'enum' and field.enum_def != None %}
         self._{{ field.name }} = _{{ field.enum_def.fields[0].name }}
@@ -134,7 +134,7 @@ cdef class {{ name }}:
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
             self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
-            {%- elif field.type == 'string' %}
+            {%- elif field.type in ('string', 'bytes') %}
             self._{{ field.name }} = TypedList(str, self)
             {%- else %}
             self._{{ field.name }} = {{ field.list_type }}(listener=self)
@@ -143,16 +143,16 @@ cdef class {{ name }}:
             {%- if field.type == 'enum' and field.enum_def != None %}
                 {%- for enum_field in field.enum_def.fields %}
                     {%- if loop.index == 1 %}
-                if value == {{ enum_field.value }}:
+                if val == {{ enum_field.value }}:
                     {%- else %}
-                elif value == {{ enum_field.value }}:
+                elif val == {{ enum_field.value }}:
                     {%- endif %}
                     self._{{ field.name }}.append(_{{ enum_field.name }})
                 {% endfor %}
                 else:
                     raise Exception("not a valid value for enum {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }}")
-            {%- elif field.type == 'string' %}
-                if type(val) == unicode:
+            {%- elif field.type in ('string', 'bytes') %}
+                if type(val) is unicode:
                     self._{{ field.name }}.append(str(val))
                 else:
                     self._{{ field.name }}.append(val)
@@ -171,8 +171,8 @@ cdef class {{ name }}:
                 {% endfor %}
             else:
                 raise Exception("not a valid value for enum {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }}")
-            {%- elif field.type == 'string' %}
-            if type(value) == unicode:
+            {%- elif field.type in ('string', 'bytes') %}
+            if type(value) is unicode:
                 self._{{ field.name }} = str(value)
             else:
                 self._{{ field.name }} = value
@@ -192,7 +192,8 @@ cdef class {{ name }}:
         cdef int64_t key
         cdef int64_t field_idx
     {%- if message.fields|selectattr('type', 'equalto', 'message')|first is defined or
-           message.fields|selectattr('type', 'equalto', 'string')|first is defined %}
+           message.fields|selectattr('type', 'equalto', 'string')|first is defined or
+           message.fields|selectattr('type', 'equalto', 'bytes')|first is defined %}
         cdef int64_t field_size
     {%- endif %}
         # cdef int wire_type
@@ -204,7 +205,7 @@ cdef class {{ name }}:
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
         cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_elt
-            {%- elif field.type == 'string' %}
+            {%- elif field.type in ('string', 'bytes') %}
         cdef str {{ field.name }}_elt
             {%- elif field.type == 'enum' %}
         cdef int32_t {{ field.name }}_elt
@@ -250,7 +251,7 @@ cdef class {{ name }}:
                 {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
                 field_size = get_varint64(memory, &current_offset)
                 current_offset += {{ field.name }}_elt._protobuf_deserialize(memory+current_offset, field_size)
-                {%- elif field.type == 'string' %}
+                {%- elif field.type in ('string', 'bytes') %}
                 field_size = get_varint64(memory, &current_offset)
                 {{ field.name }}_elt = str(memory[current_offset:current_offset + field_size])
                 current_offset += field_size
@@ -260,7 +261,7 @@ cdef class {{ name }}:
                 {%- elif field.var_width == true %}
                 {{ field.name }}_elt = {{ field.getter }}(memory, &current_offset)
                 {%- endif %}
-                {%- if field.type != 'message' and field.type != 'string' %}
+                {%- if field.type != 'message' and field.type not in ('string', 'bytes') %}
                 self._{{ field.name }}._append({{ field.name }}_elt)
                 {%- else %}
                 list.append(self._{{ field.name }}, {{ field.name }}_elt)
@@ -271,7 +272,7 @@ cdef class {{ name }}:
                 field_size = get_varint64(memory, &current_offset)
                 current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, field_size)
 
-        {%- elif field.type == 'string' %}
+        {%- elif field.type in ('string', 'bytes') %}
                 field_size = get_varint64(memory, &current_offset)
                 self._{{ field.name }} = str(memory[current_offset:current_offset + field_size])
                 current_offset += field_size
@@ -301,7 +302,7 @@ cdef class {{ name }}:
         if not self._is_present_in_parent:
             self._Modified()
 
-    cpdef void ClearField(self, str field_name):
+    cpdef void ClearField(self, field_name):
         """Clears the contents of a given field."""
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if loop.index == 1 %}
@@ -317,7 +318,7 @@ cdef class {{ name }}:
             {%- if field.modifier == 'repeated' %}
                 {%- if field.type == 'message' %}
             self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
-                {%- elif field.type == 'string' %}
+                {%- elif field.type in ('string', 'bytes') %}
             self._{{ field.name }} = TypedList(str, self)
                 {%- else %}
             self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }}, listener=self)
@@ -327,14 +328,14 @@ cdef class {{ name }}:
             self._{{ field.name }}.reset()
             self._{{ field.name }}._listener = <PyObject *>self
             {%- elif field.default != None %}
-                {%- if field.type == 'string' %}
+                {%- if field.type in ('string', 'bytes') %}
             self._{{ field.name }} = "{{ field.default }}"
                 {%- elif field.type == 'enum' %}
             self._{{ field.name }} = _{{ field.enum_default }}
                 {%- else %}
             self._{{ field.name }} = {{ field.default }}
                 {%- endif %}
-            {%- elif field.type == 'string' %}
+            {%- elif field.type in ('string', 'bytes') %}
             self._{{ field.name }} = ""
             {%- elif field.type == 'enum' and field.enum_def != None %}
             self._{{ field.name }} = _{{ field.enum_def.fields[0].name }}
@@ -342,23 +343,29 @@ cdef class {{ name }}:
             self._{{ field.name }} = 0
             {%- endif %}
     {%- endfor %}
+    {%- if message.fields|first is defined %}
+        else:
+            raise ValueError('Protocol message has no "%s" field.' % field_name)
 
         if not self._is_present_in_parent:
             self._Modified()
+    {%- else %}
+        raise ValueError('Protocol message has no "%s" field.' % field_name)
+    {%- endif %}
 
-    def CopyFrom(self, other_msg):
+    cpdef void CopyFrom(self, {{ name }} other_msg):
         """
         Copies the content of the specified message into the current message.
 
         Params:
-            other_msg: Message to copy into the current one.
+            other_msg ({{ name }}): Message to copy into the current one.
         """
         if self is other_msg:
             return
         self.reset()
         self.MergeFrom(other_msg)
 
-    cpdef bint HasField(self, str field_name) except -1:
+    cpdef bint HasField(self, field_name) except -1:
         """
         Checks if a certain field is set for the message.
 
@@ -413,32 +420,41 @@ cdef class {{ name }}:
 
         return True
 
-    def MergeFrom(self, other_msg):
+    cpdef void MergeFrom(self, {{ name }} other_msg):
         """
         Merges the contents of the specified message into the current message.
 
         Params:
             other_msg: Message to merge into the current message.
         """
-        if not isinstance(other_msg, {{ name }}) and not hasattr(other_msg, 'HasField'):
-            raise TypeError("Parameter to MergeFrom() must be an instance of same message class: expected {{ name }} got %s" % type(other_msg).__name__)
+    {%- if message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+        cdef int i
+    {%- endif %}
+    {%- for field in message.fields|sort(attribute='index') %}
+        {%- if field.modifier == 'repeated' and field.type == 'message' %}
+        cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_elt
+        {%- endif %}
+    {%- endfor %}
+
+        if self is other_msg:
+            return
 
     {% for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
-        if hasattr(other_msg, '{{ field.name }}'):
-            for {{ field.name }}_msg in other_msg.{{ field.name }}:
-                {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
-                {{ field.name }}_elt.MergeFrom({{ field.name }}_msg)
-                list.append(self.{{ field.name }}, {{ field.name }}_elt)
+        for i in range(len(other_msg._{{ field.name }})):
+            {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
+            {{ field.name }}_elt.MergeFrom(other_msg._{{ field.name }}[i])
+            list.append(self._{{ field.name }}, {{ field.name }}_elt)
+        {%- elif field.modifier == 'repeated' and field.type in ('string', 'bytes') %}
+        self._{{ field.name }} += other_msg._{{ field.name }}
         {%- elif field.modifier == 'repeated' %}
-        if hasattr(other_msg, '{{ field.name }}'):
-            self._{{ field.name }}.extend(other_msg.{{ field.name }})
+        self._{{ field.name }}.extend(other_msg._{{ field.name }})
         {%- elif field.type == 'message' %}
-        if other_msg.HasField('{{ field.name }}'):
-            self._{{ field.name }}.MergeFrom(other_msg.{{ field.name }})
+        if other_msg._{{ field.name }}._is_present_in_parent:
+            self._{{ field.name }}.MergeFrom(other_msg._{{ field.name }})
         {%- else %}
-        if other_msg.HasField('{{ field.name }}'):
-            self.{{ field.name }} = other_msg.{{ field.name }}
+        if other_msg._{{ field.name }}_isSet:
+            self._{{ field.name }} = other_msg._{{ field.name }}
             self._{{ field.name }}_isSet = True
         {%- endif %}
     {%- endfor %}
@@ -578,7 +594,7 @@ cdef class {{ name }}:
             field_idx = {{ field.index }}
         {%- if field.modifier == 'repeated' and field.packed == true %}
             wire_type = 2
-        {%- elif field.type in ('message', 'string') %}
+        {%- elif field.type in ('message', 'string', 'bytes') %}
             wire_type = 2
         {%- elif field.type in ('fixed64', 'sfixed64', 'double') %}
             wire_type = 1
@@ -610,7 +626,7 @@ cdef class {{ name }}:
             {%- else %}
             for i in range(length):
                 set_varint64(key, buf)
-                {%- if field.type == 'string' %}
+                {%- if field.type in ('string', 'bytes') %}
                 {{ field.name }}_elt = <str>self._{{ field.name }}[i]
                 set_varint64(len({{ field.name }}_elt), buf)
                 buf += {{ field.name }}_elt
@@ -636,7 +652,7 @@ cdef class {{ name }}:
             set_varint64(len({{ field.name }}_buf), buf)
             buf += {{ field.name }}_buf
 
-        {%- elif field.type == 'string' %}
+        {%- elif field.type in ('string', 'bytes') %}
             set_varint64(key, buf)
             set_varint64(len(self._{{ field.name }}), buf)
             buf += self._{{ field.name }}
@@ -706,6 +722,13 @@ cdef class {{ name }}:
         cdef bytearray buf = bytearray()
         self._protobuf_serialize(buf)
         return buf
+
+    def SetInParent(self):
+        """
+        Mark this an present in the parent.
+        """
+        if not self._is_present_in_parent:
+            self._Modified()
 
     def ParseFromJson(self, data, size=None, reset=True):
         """
@@ -800,7 +823,7 @@ cdef class {{ name }}:
         if self._{{ field.name }}_isSet:
             out["{{ field.name }}"] = self.{{ field.name }}
         {%- elif field.default != None %}
-            {%- if field.type == 'string' %}
+            {%- if field.type in ('string', 'bytes') %}
         if self.{{ field.name }} != "{{ field.default }}":
             out["{{ field.name }}"] = self.{{ field.name }}
             {%- else %}
@@ -808,7 +831,7 @@ cdef class {{ name }}:
             out["{{ field.name }}"] = self.{{ field.name }}
             {%- endif %}
         {%- else %}
-            {%- if field.type == 'string' %}
+            {%- if field.type in ('string', 'bytes') %}
         if self.{{ field.name }} != "":
             out["{{ field.name }}"] = self.{{ field.name }}
             {%- else %}

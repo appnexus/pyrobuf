@@ -253,11 +253,11 @@ class Parser(object):
                     token.enum_name = token.type
                     token.type = 'enum'
 
-                elif (token.type == 'string') and token.default is not None and (len(token.default) > 1):
+                elif (token.type in ('string', 'bytes')) and token.default is not None and (len(token.default) > 1):
                     if token.default.startswith(('"', "'")) and token.default.endswith(('"', "'")):
                         token.default = token.default[1:-1]
 
-                elif (token.type not in self.scalars) and (token.type != 'string'):
+                elif (token.type not in self.scalars) and (token.type not in ('string', 'bytes')):
                     token.message_name = token.type
                     token.type = 'message'
                     token.is_nested = False
