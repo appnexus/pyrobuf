@@ -550,7 +550,7 @@ cdef class {{ name }}:
     @classmethod
     def FromString(cls, s):
         message = cls()
-        message.ParseFromString(s)
+        message.MergeFromString(s)
         return message
 
     cdef void _protobuf_serialize(self, bytearray buf):
