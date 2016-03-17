@@ -253,11 +253,11 @@ class Parser(object):
                     token.enum_name = token.type
                     token.type = 'enum'
 
-                elif (token.type == 'string') and token.default is not None and (len(token.default) > 1):
+                elif (token.type in ('string', 'bytes')) and token.default is not None and (len(token.default) > 1):
                     if token.default.startswith(('"', "'")) and token.default.endswith(('"', "'")):
                         token.default = token.default[1:-1]
 
-                elif (token.type not in self.scalars) and (token.type != 'string'):
+                elif (token.type not in self.scalars) and (token.type not in ('string', 'bytes')):
                     token.message_name = token.type
                     token.type = 'message'
                     token.is_nested = False
@@ -293,7 +293,7 @@ class Parser(object):
 
     def add_cython_info(self, message):
         for field in message.fields:
-            field.list_type = self.list_type_map.get(field.type, 'list')
+            field.list_type = self.list_type_map.get(field.type, 'TypedList')
             field.fixed_width = (field.type in ('float', 'double', 'fixed32', 'sfixed32', 'fixed64', 'sfixed64'))
             field.var_width = (field.type in ('bool', 'enum', 'int32', 'sint32', 'uint32', 'int64', 'sint64', 'uint64'))
 

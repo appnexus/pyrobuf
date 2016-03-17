@@ -1,8 +1,18 @@
 from libc.stdint cimport *
+from cpython.ref cimport PyObject
+
+
+cdef class NullListener:
+    cpdef void _Modified(self)
+
+cdef public NullListener null_listener
+
 
 cdef class TypedList(list):
     
     cdef type _list_type
+    cdef PyObject *_listener
+
 
 {% macro scalar_list(name, type) %}
 cdef class {{ name }}:
@@ -10,6 +20,9 @@ cdef class {{ name }}:
     cdef {{ type }} *_data
     cdef size_t _n_items
     cdef size_t _size
+    cdef PyObject *_listener
+
+    cdef void _append(self, {{ type }} x)
 
     cpdef append(self, {{ type }} x)
     cpdef extend(self, {{ name }} x)

@@ -194,9 +194,8 @@ trying to make it as easy as possible for you to help make pyrobuf better.
 
 For the most part, Pyrobuf should be a drag-and-drop replacement for the Google
 protobuf library. There are a few differences, though. First, Pyrobuf does not
-currently implement the `MergeFrom` and `MergeFromString` methods that allow you
-to populate a message class from multiple protobuf messages. We may add these
-methods later.
+currently implement the `ListFields`, `WhichOneOf`, `HasExtension`,
+`ClearExtension` and `ByteSize` methods.
 
 Second, Pyrobuf simply assumes that the schema being used for a given message
 is the same on the send and receive ends, so changing the type of a field on
