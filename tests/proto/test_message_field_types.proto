@@ -1,0 +1,10 @@
+message TestFieldTypes {
+    // Tests for fields of the bytes type
+    optional bytes payload = 1;
+    optional bytes payload_with_default = 2 [default = 'Hello World'];
+
+    // Tests for packed repeated fields and repeated bytes type fields
+    repeated int32 packed_var_width_list = 3 [packed=true];
+    repeated sfixed32 packed_fixed_width_list = 4 [packed=true];
+    repeated bytes list_bytes = 5;
+}
