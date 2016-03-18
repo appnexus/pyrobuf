@@ -103,6 +103,6 @@ setup(
     long_description=open(os.path.join(HERE, 'README.md')).read(),
     url='https://github.com/appnexus/pyrobuf',
     author='AppNexus',
-    setup_requires=['jinja2', 'cython'],
-    install_requires=['jinja2', 'cython'],
+    setup_requires=['jinja2', 'cython >= 0.23'],
+    install_requires=['jinja2', 'cython >= 0.23'],
 )
