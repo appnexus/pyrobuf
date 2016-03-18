@@ -4,8 +4,6 @@ import distutils.log
 
 from setuptools import setup, find_packages, Command
 from setuptools.command.install import install as _install
-from jinja2 import Environment, PackageLoader
-from Cython.Build import cythonize
 
 
 VERSION = "0.5.5"
@@ -50,6 +48,7 @@ class install(_install):
         self.execute(_post_install, (self, ), msg="Running post install task")
 
 def _post_install(command):
+    from Cython.Build import cythonize
     command.announce('Building & installing pyrobuf_util and pyrobuf_list', level=distutils.log.INFO)
     setup(name="pyrobuf_list_and_util",
           version=VERSION,
@@ -58,6 +57,7 @@ def _post_install(command):
           script_args=['build', 'install'])
 
 def _pre_install(command):
+    from jinja2 import Environment, PackageLoader
     env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
 
     name_pyx = 'pyrobuf_list.pyx'
@@ -103,4 +103,5 @@ setup(
     long_description=open(os.path.join(HERE, 'README.md')).read(),
     url='https://github.com/appnexus/pyrobuf',
     author='AppNexus',
+    setup_requires=['jinja2', 'cython'],
 )
