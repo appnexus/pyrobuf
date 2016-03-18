@@ -104,4 +104,5 @@ setup(
     url='https://github.com/appnexus/pyrobuf',
     author='AppNexus',
     setup_requires=['jinja2', 'cython'],
+    install_requires=['jinja2', 'cython'],
 )
