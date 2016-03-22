@@ -6,6 +6,7 @@ from pyrobuf_list cimport *
 from pyrobuf_util cimport *
 
 import json
+import warnings
 
 {%- for import in imports %}
 from {{ import }}_proto cimport *
@@ -122,9 +123,15 @@ cdef class {{ name }}:
     {% for field in message.fields|sort(attribute='index') %}
     property {{ field.name }}:
         def __get__(self):
+        {%- if field.deprecated|default(false) == true %}
+            warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
+        {%- endif %}
             return self._{{ field.name }}
 
         def __set__(self, value):
+        {%- if field.deprecated|default(false) == true %}
+            warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
+        {%- endif %}
         {%- if field.type != 'message' and field.modifier != 'repeated' %}
             self._{{ field.name }}_isSet = True
         {%- else %}

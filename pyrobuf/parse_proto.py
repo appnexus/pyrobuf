@@ -13,6 +13,7 @@ class Parser(object):
         'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
         'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')\s*\];',
         'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[packed\s*=\s*true\];',
+        'FIELD_DEPRECATED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[deprecated\s*=\s*true\];',
         'ENUM': r'enum\s+([A-Za-z_][0-9A-Za-z_]*)',
         'ENUM_FIELD': r'([A-Za-z_][0-9A-Za-z_]*);',
         'ENUM_FIELD_WITH_VALUE': r'([A-Za-z_][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x[0-9A-Fa-f]+);',
@@ -114,6 +115,9 @@ class Parser(object):
 
             elif token_type == 'FIELD_PACKED':
                 yield ParserFieldPacked(pos, *vals)
+
+            elif token_type == 'FIELD_DEPRECATED':
+                yield ParserFieldDeprecated(pos, *vals)
 
             elif token_type == 'ENUM':
                 yield ParserEnum(pos, *vals)
@@ -342,6 +346,8 @@ class ParserField(object):
         self.index = int(index)
         self.default = process_default(default)
         self.packed = False
+        self.deprecated = False
+
 
 def process_default(default):
     if default == 'true':
@@ -350,6 +356,7 @@ def process_default(default):
         return False
     else:
         return default
+
 
 class ParserFieldPacked(object):
     def __init__(self, pos, modifier, ftype, name, index):
@@ -361,6 +368,20 @@ class ParserFieldPacked(object):
         self.index = int(index)
         self.default = None
         self.packed = True
+        self.deprecated = False
+
+
+class ParserFieldDeprecated(object):
+    def __init__(self, pos, modifier, ftype, name, index):
+        self.token_type = 'FIELD'
+        self.pos = pos
+        self.modifier = modifier
+        self.type = ftype
+        self.name = name
+        self.index = int(index)
+        self.default = None
+        self.packed = False
+        self.deprecated = True
 
 
 class ParserEnum(object):
