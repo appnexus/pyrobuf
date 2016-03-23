@@ -92,6 +92,9 @@ setup(
               'list_and_util': ListAndUtil},
     entry_points={
         'console_scripts': ['pyrobuf = pyrobuf.__main__:main'],
+        'distutils.setup_keywords': [
+                'pyrobuf_modules = pyrobuf.setuptools_ext:pyrobuf_modules',
+        ],
     },
     description='A Cython based protobuf compiler',
     long_description=open(os.path.join(HERE, 'README.md')).read(),
