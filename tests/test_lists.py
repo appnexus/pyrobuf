@@ -11,11 +11,11 @@ class DoubleListTest(unittest.TestCase):
             x.append(i)
 
         for i in range(40):
-            self.failUnlessEqual(x[i], i)
+            self.assertEqual(x[i], i)
             x[i] *= 2
 
         for i in range(40):
-            self.failUnlessEqual(x[i], 2 * i)
+            self.assertEqual(x[i], 2 * i)
 
         with self.assertRaises(IndexError):
             x[40]
@@ -23,10 +23,10 @@ class DoubleListTest(unittest.TestCase):
         with self.assertRaises(IndexError):
             x[-41] = 1
 
-        self.failUnlessEqual(x[-1], x[39])
-        self.failUnlessEqual(x[-5], x[35])
+        self.assertEqual(x[-1], x[39])
+        self.assertEqual(x[-5], x[35])
 
-        self.failUnlessEqual(len(x), 40)
+        self.assertEqual(len(x), 40)
 
     def test_extend(self):
         x1 = DoubleList()
@@ -39,7 +39,7 @@ class DoubleListTest(unittest.TestCase):
         x1.extend(x2)
 
         for i in range(10):
-            self.failUnlessEqual(x1[i], i)
+            self.assertEqual(x1[i], i)
 
     def test_insert(self):
         x = DoubleList()
@@ -51,7 +51,7 @@ class DoubleListTest(unittest.TestCase):
             x.insert(8 + i, 10 * i)
 
         for i in range(16):
-            self.failUnlessEqual(x[8 + i], 10 * i)
+            self.assertEqual(x[8 + i], 10 * i)
 
     def test_pop(self):
         x = DoubleList()
@@ -61,8 +61,8 @@ class DoubleListTest(unittest.TestCase):
 
         for i in range(5):
             a = x.pop()
-            self.failUnlessEqual(a, 5 - i - 1)
-            self.failUnlessEqual(len(x), 5 - i - 1)
+            self.assertEqual(a, 5 - i - 1)
+            self.assertEqual(len(x), 5 - i - 1)
 
         with self.assertRaises(IndexError):
             x.pop()
