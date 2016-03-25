@@ -5,7 +5,7 @@ import os
 import sys
 
 
-VERSION = "0.5.5"
+VERSION = "0.5.6a"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -13,7 +13,7 @@ class install(_install):
     def run(self):
         # By now the setup_requires deps have been fetched.
         self.distribution.ext_modules = self.pyrobufize_builtins()
-        super(_install, self).run()
+        _install.run(self)
 
     @staticmethod
     def pyrobufize_builtins():
