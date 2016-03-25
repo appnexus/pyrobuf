@@ -1,5 +1,6 @@
 from libc.stdint cimport *
 from libc.string cimport *
+from cpython.ref cimport PyObject
 
 from pyrobuf_list cimport *
 from pyrobuf_util cimport *
@@ -12,6 +13,7 @@ from {{ import }}_proto cimport *
 
 {%- macro classdef(name, message) %}
 cdef class {{ name }}:
+
 {% for field in message.fields|sort(attribute='index') -%}
     {%- if field.modifier == 'repeated' %}
     cdef {{ field.list_type }} _{{ field.name }}
@@ -25,16 +27,32 @@ cdef class {{ name }}:
     cdef {{ field.c_type }} _{{ field.name }}
     {%- endif %}
 
-    {%- if field.modifier == 'required' and field.default == None %}
-    cdef bint __{{ field.name }}_set
-    {%- endif %}
+    {%- if field.modifier != 'repeated' and field.type != 'message' %}
+    cdef bint _{{ field.name}}_isSet
+    {%endif%}
 {%- endfor %}
 
-    cpdef reset(self)
+    cdef public bint _is_present_in_parent
+
+    cdef PyObject *_listener
+
+    cpdef void reset(self)
+
+    cpdef void Clear(self)
+    cpdef void ClearField(self, field_name)
+    cpdef void CopyFrom(self, {{ name }} other_msg)
+    cpdef bint HasField(self, field_name) except -1
+    cpdef bint IsInitialized(self)
+    cpdef void MergeFrom(self, {{ name }} other_msg)
+    cpdef int MergeFromString(self, data, size=*) except -1
+    cpdef int ParseFromString(self, data, size=*, bint reset=*) except -1
+    cpdef bytearray SerializePartialToString(self)
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size)
 
     cdef void _protobuf_serialize(self, bytearray buf)
+
+    cpdef void _Modified(self)
 
     {%- for message_name, message_message in message.messages.items() %}
 {{ classdef(name + message_name, message_message) }}
@@ -48,7 +66,7 @@ cdef class {{ name }}:
 {%- macro enumdef(name, enum) %}
 cdef enum {{ name }}:
     {%- for field in enum.fields %}
-    {{ field.name }} = {{ field.value }}
+    _{{ field.name }} = {{ field.value }}
     {%- endfor %}
 {%- endmacro %}
 

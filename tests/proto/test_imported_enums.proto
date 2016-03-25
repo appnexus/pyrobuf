@@ -1,0 +1,17 @@
+package i_am_a_package;
+
+import "test_multi_messages_toplevel_enums.proto";
+
+message UsesImportedEnumsMessage {
+    required MessageID message_id = 1 [default = MSG_ONE];
+    optional Status status = 2 [default = CLOSE];
+}
+
+message ExposesInternalEnumConstantsMessage {
+    enum internal_enum {
+        INTERNAL = 0;
+        EXTERNAL = 1;
+    }
+
+    required internal_enum is_internal = 1 [default = INTERNAL];
+}

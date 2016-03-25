@@ -5,18 +5,18 @@ message Test {
     optional int64 field = 2;
 	optional string string_field = 3;
 	repeated int64 list_fieldx = 4;
-	    
+
     message Ss1 {
-    	optional int64 field1 = 1;
+    	optional int64 field1 = 1 [default = 12345];
     	optional string field2 = 2;
-    	    
+
         message Ss2 {
         	optional double field1 = 1;
         	optional string ss2_field2 = 2;
         }
     	optional Ss2 field3 = 3;
     	repeated double list = 4;
-    	    
+
         message Thing {
         	optional double field1 = 1;
         	optional string ss2_field2 = 2;
@@ -26,7 +26,7 @@ message Test {
     }
 	optional Ss1 substruct = 5;
     optional TestRef test_ref = 6;
-	    
+
     enum EnumField {
         TEST_ENUM_FIELD_0 = 0;
         TEST_ENUM_FIELD_1 = 1;
@@ -34,7 +34,7 @@ message Test {
     }
 	optional EnumField enum_field = 7 [default = TEST_ENUM_FIELD_0];
 	repeated TestRef list_ref = 8;
-	    
+
     message Ss3 {
     	optional string string_field = 1;
     	optional string fixed_string_field = 2;
@@ -44,4 +44,5 @@ message Test {
     }
 	optional Ss3 another_substruct = 9;
 	required int64 req_field = 10;
+    optional int32 negative_32 = 11;
 }
