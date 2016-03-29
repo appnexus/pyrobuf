@@ -1,13 +1,27 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Command
 from setuptools.command.install import install as _install
 
 import os
 import sys
 
 
-VERSION = "0.5.6a"
+VERSION = "0.5.6"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+class GenerateList(Command):
+
+    description = "generate pyrobuf_list pxd and pyd (for development)"
+    user_options = []
+
+    def initialize_options(self):
+        self.cwd = None
+
+    def finalize_options(self):
+        self.cwd = os.getcwd()
+
+    def run(self):
+        assert os.getcwd() == self.cwd, 'Must be in package root: %s' % self.cwd
+        self.execute(install.pyrobufize_builtins, (), msg="Running pre install task")
 
 class install(_install):
     def run(self):
@@ -55,7 +69,7 @@ setup(
     version=VERSION,
     packages=find_packages(),
     include_package_data=True,
-    cmdclass={'install': install},
+    cmdclass={'install': install, 'generate_list': GenerateList},
     entry_points={
         'console_scripts': ['pyrobuf = pyrobuf.__main__:main'],
         'distutils.setup_keywords': [
