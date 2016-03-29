@@ -5,7 +5,7 @@ import os
 import sys
 
 
-VERSION = "0.5.6a"
+VERSION = "0.5.6"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 class GenerateList(Command):
