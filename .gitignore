@@ -1,6 +1,8 @@
 *.swp
 *.c
 *.pyc
+*.so
+*.pyd
 build/
 out/
 messages/*.proto
