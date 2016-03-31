@@ -54,8 +54,10 @@ class clean(_clean):
         self.__remove_file(os.path.join(HERE, 'pyrobuf', 'src', PYROBUF_LIST_PXD))
         self.__remove_file(os.path.join(HERE, 'pyrobuf', 'src', PYROBUF_LIST_PYX))
 
-        self.__remove_file(os.path.join(HERE, 'pyrobuf_list.so'))
-        self.__remove_file(os.path.join(HERE, 'pyrobuf_util.so'))
+        for suffix in (".so", ".pyd"):
+            self.__remove_file(os.path.join(HERE, 'pyrobuf_list' + suffix))
+            self.__remove_file(os.path.join(HERE, 'pyrobuf_util' + suffix))
+
 
 class test(_test):
 
@@ -67,6 +69,7 @@ class test(_test):
         import pytest
         errno = pytest.main(self.pytest_args)
         sys.exit(errno)
+
 
 class PyrobufDistribution(Distribution):
 
