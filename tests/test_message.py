@@ -1,7 +1,11 @@
 import unittest
 
+import pytest
+
 from create_message import *
 
+
+@pytest.mark.usefixtures('lib')
 class MessageTest(unittest.TestCase):
 
     def test_ser_deser(self):
