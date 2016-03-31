@@ -40,11 +40,19 @@ Fork and clone the repository, then run:
 It will generate the platform specific pyrobuf_list them compile
 the pyrobuf_list and pyrobuf_util modules.
 
-You can then run the test suite (a work in progress) using py.test:
+You can then run the test suite (a work in progress) using py.test directly:
 
     $ PYTHONPATH=build/lib.<platform>-<python version> py.test
 
-`test_gen_message` will attempt to process all the proto files in
+Or using the `test` command (which installs pytest if not already available):
+
+    $ python setup.py test
+
+The `clean` command does the house keeping for you:
+
+    $ python setup.py clean
+
+`test__gen_message` will attempt to process all the proto files in
 `tests/proto`.
 
 If you find that pyrobuf does not work for one of your proto files, add a minimal
