@@ -35,18 +35,21 @@ You can help make it so!
 
 Fork and clone the repository, then run:
 
-    $ python setup.py build
+    $ python setup.py develop
 
-It will generate the platform specific pyrobuf_list them compile
+It will generate the platform specific pyrobuf_list then compile
 the pyrobuf_list and pyrobuf_util modules.
 
 You can then run the test suite (a work in progress) using py.test directly:
 
-    $ PYTHONPATH=build/lib.<platform>-<python version> py.test
+    $ PYTHONPATH=. py.test
 
 Or using the `test` command (which installs pytest if not already available):
 
     $ python setup.py test
+
+Re-running the `develop` or `test` commands will automatically re-build the
+pyrobuf_list and pyrobuf_util modules if necessary.
 
 The `clean` command does the house keeping for you:
 
