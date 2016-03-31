@@ -37,7 +37,7 @@ Fork and clone the repository, then run:
 
     $ python setup.py build
 
-It will generate the platform specific pyrobuf_list them compile and install
+It will generate the platform specific pyrobuf_list them compile
 the pyrobuf_list and pyrobuf_util modules.
 
 You can then run the test suite (a work in progress) using py.test:
