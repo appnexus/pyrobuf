@@ -3,6 +3,7 @@ from distutils.dir_util import remove_tree
 from distutils import log
 
 from setuptools import setup, find_packages, Command, Distribution
+from setuptools.command.test import test as _test
 
 import os
 import os.path
@@ -53,24 +54,22 @@ class clean(_clean):
         self.__remove_file(os.path.join(HERE, 'pyrobuf', 'src', PYROBUF_LIST_PXD))
         self.__remove_file(os.path.join(HERE, 'pyrobuf', 'src', PYROBUF_LIST_PYX))
 
+        self.__remove_file(os.path.join(HERE, 'pyrobuf_list.so'))
+        self.__remove_file(os.path.join(HERE, 'pyrobuf_util.so'))
 
-class GenerateList(Command):
-
-    description = "generate pyrobuf_list pxd and pyx (for development)"
-    user_options = []
+class test(_test):
 
     def initialize_options(self):
-        self.cwd = None
+        _test.initialize_options(self)
+        self.pytest_args = []
 
-    def finalize_options(self):
-        self.cwd = os.getcwd()
-
-    def run(self):
-        # This command remains for backward compatibility
-        self.distribution.run_command('build')
-
+    def run_tests(self):
+        import pytest
+        errno = pytest.main(self.pytest_args)
+        sys.exit(errno)
 
 class PyrobufDistribution(Distribution):
+
     def run_commands(self):
         # By now the setup_requires deps have been fetched.
         if not self.ext_modules:
@@ -123,7 +122,7 @@ setup(
     version=VERSION,
     packages=find_packages(),
     include_package_data=True,
-    cmdclass={'clean': clean, 'generate_list': GenerateList},
+    cmdclass={'clean': clean, 'test': test},
     entry_points={
         'console_scripts': ['pyrobuf = pyrobuf.__main__:main'],
         'distutils.setup_keywords': [
@@ -134,6 +133,7 @@ setup(
     long_description=open(os.path.join(HERE, 'README.md')).read(),
     url='https://github.com/appnexus/pyrobuf',
     author='AppNexus',
+    tests_require=['pytest'],
     setup_requires=['jinja2', 'cython >= 0.23'],
     install_requires=['jinja2', 'cython >= 0.23'],
     zip_safe=False,
