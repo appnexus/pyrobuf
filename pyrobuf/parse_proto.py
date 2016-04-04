@@ -13,6 +13,7 @@ class Parser(object):
         'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
         'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')\s*\];',
         'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[packed\s*=\s*true\];',
+        'FIELD_DEPRECATED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[deprecated\s*=\s*true\];',
         'ENUM': r'enum\s+([A-Za-z_][0-9A-Za-z_]*)',
         'ENUM_FIELD': r'([A-Za-z_][0-9A-Za-z_]*);',
         'ENUM_FIELD_WITH_VALUE': r'([A-Za-z_][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x[0-9A-Fa-f]+);',
@@ -114,6 +115,9 @@ class Parser(object):
 
             elif token_type == 'FIELD_PACKED':
                 yield ParserFieldPacked(pos, *vals)
+
+            elif token_type == 'FIELD_DEPRECATED':
+                yield ParserFieldDeprecated(pos, *vals)
 
             elif token_type == 'ENUM':
                 yield ParserEnum(pos, *vals)
@@ -253,11 +257,11 @@ class Parser(object):
                     token.enum_name = token.type
                     token.type = 'enum'
 
-                elif (token.type == 'string') and token.default is not None and (len(token.default) > 1):
+                elif (token.type in ('string', 'bytes')) and token.default is not None and (len(token.default) > 1):
                     if token.default.startswith(('"', "'")) and token.default.endswith(('"', "'")):
                         token.default = token.default[1:-1]
 
-                elif (token.type not in self.scalars) and (token.type != 'string'):
+                elif (token.type not in self.scalars) and (token.type not in ('string', 'bytes')):
                     token.message_name = token.type
                     token.type = 'message'
                     token.is_nested = False
@@ -293,7 +297,7 @@ class Parser(object):
 
     def add_cython_info(self, message):
         for field in message.fields:
-            field.list_type = self.list_type_map.get(field.type, 'list')
+            field.list_type = self.list_type_map.get(field.type, 'TypedList')
             field.fixed_width = (field.type in ('float', 'double', 'fixed32', 'sfixed32', 'fixed64', 'sfixed64'))
             field.var_width = (field.type in ('bool', 'enum', 'int32', 'sint32', 'uint32', 'int64', 'sint64', 'uint64'))
 
@@ -342,6 +346,8 @@ class ParserField(object):
         self.index = int(index)
         self.default = process_default(default)
         self.packed = False
+        self.deprecated = False
+
 
 def process_default(default):
     if default == 'true':
@@ -350,6 +356,7 @@ def process_default(default):
         return False
     else:
         return default
+
 
 class ParserFieldPacked(object):
     def __init__(self, pos, modifier, ftype, name, index):
@@ -361,6 +368,20 @@ class ParserFieldPacked(object):
         self.index = int(index)
         self.default = None
         self.packed = True
+        self.deprecated = False
+
+
+class ParserFieldDeprecated(object):
+    def __init__(self, pos, modifier, ftype, name, index):
+        self.token_type = 'FIELD'
+        self.pos = pos
+        self.modifier = modifier
+        self.type = ftype
+        self.name = name
+        self.index = int(index)
+        self.default = None
+        self.packed = False
+        self.deprecated = True
 
 
 class ParserEnum(object):

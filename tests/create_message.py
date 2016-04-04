@@ -1,17 +1,25 @@
 import os
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-BUILD = os.path.join(HERE, 'build')
-LIB = os.path.join(BUILD, [name for name in os.listdir(BUILD)
-                           if name.startswith('lib')].pop())
-
-sys.path.insert(0, LIB)
+import pytest
 
 import messages.test_message_pb2 as google_test
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+BUILD = os.path.join(HERE, 'build')
+
+
+@pytest.fixture(scope='module')
+def lib():
+    lib_path = os.path.join(BUILD, [name for name in os.listdir(BUILD)
+                                    if name.startswith('lib')].pop())
+    if lib not in sys.path:
+        sys.path.insert(0, lib)
+    return lib_path
+
+
 def create_an_test():
-    print LIB
+    # print LIB
     import test_message_proto as an_test
     test = an_test.Test()
     test.timestamp = 539395200

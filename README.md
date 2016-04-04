@@ -35,16 +35,27 @@ You can help make it so!
 
 Fork and clone the repository, then run:
 
-    $ python setup.py generate_list list_and_util
+    $ python setup.py develop
 
-It will generate the platform specific pyrobuf_list them compile and install
+It will generate the platform specific pyrobuf_list then compile
 the pyrobuf_list and pyrobuf_util modules.
 
-You can then run the test suite (a work in progress) using py.test:
+You can then run the test suite (a work in progress) using py.test directly:
 
     $ PYTHONPATH=. py.test
 
-`test_gen_message` will attempt to process all the proto files in
+Or using the `test` command (which installs pytest if not already available):
+
+    $ python setup.py test
+
+Re-running the `develop` or `test` commands will automatically re-build the
+pyrobuf_list and pyrobuf_util modules if necessary.
+
+The `clean` command does the house keeping for you:
+
+    $ python setup.py clean
+
+`test__gen_message` will attempt to process all the proto files in
 `tests/proto`.
 
 If you find that pyrobuf does not work for one of your proto files, add a minimal
@@ -59,7 +70,6 @@ Improving testing is on the cards.
 
 You may very well be able to just use pyrobuf as is ... just pip it!
 
-**You need `jinja2` and `cython` installed prior to installing pyrobuf.**
 ```
 $ pip install pyrobuf
 ```
@@ -70,8 +80,7 @@ exception:
 
     $ python -c "import pyrobuf_list"
 
-If it does raise an exception (are you sure you had jinja2 and cython installed
-prior to trying `pip install pyrobuf`?), try:
+If it does raise an exception try:
 
 ```
 $ pip install pyrobuf -v -v -v --upgrade --force --no-cache
@@ -194,9 +203,8 @@ trying to make it as easy as possible for you to help make pyrobuf better.
 
 For the most part, Pyrobuf should be a drag-and-drop replacement for the Google
 protobuf library. There are a few differences, though. First, Pyrobuf does not
-currently implement the `MergeFrom` and `MergeFromString` methods that allow you
-to populate a message class from multiple protobuf messages. We may add these
-methods later.
+currently implement the `ListFields`, `WhichOneOf`, `HasExtension`,
+`ClearExtension` and `ByteSize` methods.
 
 Second, Pyrobuf simply assumes that the schema being used for a given message
 is the same on the send and receive ends, so changing the type of a field on
