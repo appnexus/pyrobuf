@@ -1,9 +1,20 @@
+import os
+import sys
 import time
+
+from create_message import *
+
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+BUILD = os.path.join(HERE, 'build')
+lib_path = os.path.join(BUILD, [name for name in os.listdir(BUILD)
+                                if name.startswith('lib')].pop())
+if lib_path not in sys.path:
+    sys.path.insert(0, lib_path)
 
 import messages.test_message_pb2 as google_test
 import test_message_proto as an_test
 
-from create_message import *
 
 def main():
     t1 = create_google_test()

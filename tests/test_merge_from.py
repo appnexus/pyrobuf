@@ -1,12 +1,7 @@
-import os
-import sys
 import unittest
 
-import messages.test_message_pb2 as google_test
-
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-BUILD = os.path.join(HERE, 'build')
+import pytest
+from proto_lib_fixture import proto_lib
 
 
 Test = None
@@ -14,15 +9,10 @@ TestSs1 = None
 TestSs3 = None
 
 
+@pytest.mark.usefixtures('proto_lib')
 class MergeFromTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        lib = os.path.join(BUILD, [name for name in os.listdir(BUILD)
-                                   if name.startswith('lib')].pop())
-
-        if lib not in sys.path:
-            sys.path.insert(0, lib)
-
         global Test, TestSs1, TestSs3
         from test_message_proto import Test, TestSs1, TestSs3
 

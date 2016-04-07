@@ -158,9 +158,14 @@ cdef class {{ name }}:
                 {% endfor %}
                 else:
                     raise Exception("not a valid value for enum {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }}")
-            {%- elif field.type in ('string', 'bytes') %}
+            {%- elif field.type in ('string', 'bytes') and version_major == 2 %}
                 if type(val) is unicode:
                     self._{{ field.name }}.append(str(val))
+                else:
+                    self._{{ field.name }}.append(val)
+            {%- elif field.type in ('string', 'bytes') and version_major != 2 %}
+                if isinstance(val, bytes):
+                    self._{{ field.name }}.append(str(val, encoding='iso-8859-1'))
                 else:
                     self._{{ field.name }}.append(val)
             {%- else %}
@@ -178,9 +183,14 @@ cdef class {{ name }}:
                 {% endfor %}
             else:
                 raise Exception("not a valid value for enum {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }}")
-            {%- elif field.type in ('string', 'bytes') %}
+            {%- elif field.type in ('string', 'bytes') and version_major == 2 %}
             if type(value) is unicode:
                 self._{{ field.name }} = str(value)
+            else:
+                self._{{ field.name }} = value
+            {%- elif field.type in ('string', 'bytes') and version_major != 2 %}
+            if isinstance(value, bytes):
+                self._{{ field.name }} = str(value, encoding='iso-8859-1')
             else:
                 self._{{ field.name }} = value
             {%- else %}
@@ -260,7 +270,11 @@ cdef class {{ name }}:
                 current_offset += {{ field.name }}_elt._protobuf_deserialize(memory+current_offset, field_size)
                 {%- elif field.type in ('string', 'bytes') %}
                 field_size = get_varint64(memory, &current_offset)
+                    {%- if version_major == 2 %}
                 {{ field.name }}_elt = str(memory[current_offset:current_offset + field_size])
+                    {%- else %}
+                {{ field.name }}_elt = str(memory[current_offset:current_offset + field_size], encoding='iso-8859-1')
+                    {%- endif %}
                 current_offset += field_size
                 {%- elif field.fixed_width == true %}
                 {{ field.name }}_elt = (<{{ field.c_type }} *>&memory[current_offset])[0]
@@ -281,7 +295,11 @@ cdef class {{ name }}:
 
         {%- elif field.type in ('string', 'bytes') %}
                 field_size = get_varint64(memory, &current_offset)
+            {%- if version_major == 2 %}
                 self._{{ field.name }} = str(memory[current_offset:current_offset + field_size])
+            {%- else %}
+                self._{{ field.name }} = str(memory[current_offset:current_offset + field_size], encoding='iso-8859-1')
+            {%- endif %}
                 current_offset += field_size
 
         {%- elif field.type == 'enum' %}
@@ -483,6 +501,11 @@ cdef class {{ name }}:
         cdef int buf
         cdef bint already_present_in_parent = self._is_present_in_parent
 
+        {%- if version_major != 2 %}
+        if isinstance(data, str):
+            data = data.encode('iso-8859-1')
+        {%- endif %}
+
         if size is None:
             size = len(data)
 
@@ -510,6 +533,11 @@ cdef class {{ name }}:
         """
         cdef int buf
         cdef bint already_present_in_parent = self._is_present_in_parent
+
+        {%- if version_major != 2 %}
+        if isinstance(data, str):
+            data = data.encode('iso-8859-1')
+        {%- endif %}
 
         if size is None:
             size = len(data)
@@ -549,8 +577,10 @@ cdef class {{ name }}:
             {%- if field.type == 'message' %}
         cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} {{ field.name }}_elt
         cdef bytearray {{ field.name }}_elt_buf
-            {%- elif field.type in ('string', 'bytes') %}
+            {%- elif field.type in ('string', 'bytes') and version_major == 2 %}
         cdef str {{ field.name }}_elt
+            {%- elif field.type in ('string', 'bytes') and version_major != 2 %}
+        cdef bytes {{ field.name }}_elt
             {%- elif field.type == 'enum' %}
         cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }} {{ field.name }}_elt
             {%- else %}
@@ -567,6 +597,9 @@ cdef class {{ name }}:
         cdef bytearray {{ field.name }}_buf
         if self._{{ field.name }}._is_present_in_parent:
 
+        {%- elif field.type in ('string', 'bytes') and version_major != 2 %}
+        cdef bytes {{ field.name }}_bytes
+        if self._{{ field.name }}_isSet:
         {#- !messages and !repeated fields can all have default values #}
         {%- else %}
         if self._{{ field.name }}_isSet:
@@ -607,7 +640,11 @@ cdef class {{ name }}:
             for i in range(length):
                 set_varint64(key, buf)
                 {%- if field.type in ('string', 'bytes') %}
+                    {%- if version_major == 2 %}
                 {{ field.name }}_elt = <str>self._{{ field.name }}[i]
+                    {%- else %}
+                {{ field.name }}_elt = self._{{ field.name }}[i].encode('iso-8859-1')
+                    {%- endif %}
                 set_varint64(len({{ field.name }}_elt), buf)
                 buf += {{ field.name }}_elt
                 {%- elif field.type == 'message' %}
@@ -632,10 +669,16 @@ cdef class {{ name }}:
             set_varint64(len({{ field.name }}_buf), buf)
             buf += {{ field.name }}_buf
 
-        {%- elif field.type in ('string', 'bytes') %}
+        {%- elif field.type in ('string', 'bytes') and version_major == 2 %}
             set_varint64(key, buf)
             set_varint64(len(self._{{ field.name }}), buf)
             buf += self._{{ field.name }}
+
+        {%- elif field.type in ('string', 'bytes') and version_major != 2 %}
+            set_varint64(key, buf)
+            {{ field.name }}_bytes = self._{{ field.name }}.encode('iso-8859-1')
+            set_varint64(len({{ field.name }}_bytes), buf)
+            buf += {{ field.name }}_bytes
 
         {%- elif field.fixed_width == true %}
             set_varint64(key, buf)
@@ -690,7 +733,11 @@ cdef class {{ name }}:
 
         cdef bytearray buf = bytearray()
         self._protobuf_serialize(buf)
-        return buf
+    {%- if version_major == 2 %}
+        return str(buf)
+    {%- else %}
+        return str(buf, encoding='iso-8859-1')
+    {%- endif %}
 
     cpdef bytearray SerializePartialToString(self):
         """
@@ -701,7 +748,11 @@ cdef class {{ name }}:
         """
         cdef bytearray buf = bytearray()
         self._protobuf_serialize(buf)
-        return buf
+    {%- if version_major == 2 %}
+        return str(buf)
+    {%- else %}
+        return str(buf, encoding='iso-8859-1')
+    {%- endif %}
 
     def SetInParent(self):
         """

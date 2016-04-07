@@ -1,24 +1,16 @@
-import os
-import sys
 import unittest
 
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-BUILD = os.path.join(HERE, 'build')
+import pytest
+from proto_lib_fixture import proto_lib
 
 
 TestStringDefaultsMessage = None
 
 
+@pytest.mark.usefixtures('proto_lib')
 class StringDefaultsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        lib = os.path.join(BUILD, [name for name in os.listdir(BUILD)
-                                   if name.startswith('lib')].pop())
-
-        if lib not in sys.path:
-            sys.path.insert(0, lib)
-
         global TestStringDefaultsMessage
         from test_string_defaults_proto import TestStringDefaultsMessage
 
