@@ -1,7 +1,11 @@
 import unittest
 
+import pytest
+
 from create_message import *
 
+
+@pytest.mark.usefixtures('lib')
 class MessageTest(unittest.TestCase):
 
     def test_ser_deser(self):
@@ -10,28 +14,28 @@ class MessageTest(unittest.TestCase):
         buf1 = t1.SerializeToString()
         buf2 = t2.SerializeToString()
 
-        self.failUnlessEqual(buf1, str(buf2))
+        self.assertEqual(buf1, str(buf2))
 
         t1.ParseFromString(buf1)
         t2.ParseFromString(buf1)
         buf1 = t1.SerializeToString()
         buf2 = t2.SerializeToString()
 
-        self.failUnlessEqual(buf1, str(buf2))
+        self.assertEqual(buf1, str(buf2))
 
     def test_json(self):
         test = create_an_test()
         json = test.SerializeToJson()
 
         test.ParseFromJson(json)
-        self.failUnlessEqual(json, test.SerializeToJson())
+        self.assertEqual(json, test.SerializeToJson())
 
     def test_dict(self):
         test = create_an_test()
         json = test.SerializeToDict()
 
         test.ParseFromDict(json)
-        self.failUnlessEqual(json, test.SerializeToDict())
+        self.assertEqual(json, test.SerializeToDict())
 
 if __name__ == "__main__":
     unittest.main()

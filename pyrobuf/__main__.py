@@ -80,10 +80,10 @@ def generate(fname, out, parser, templ_pxd, templ_pyx):
     msgdef = parser.parse_from_filename(fname)
 
     with open(os.path.join(out, name_pxd), 'w') as fp:
-        fp.write(templ_pxd.render(msgdef))
+        fp.write(templ_pxd.render(msgdef, version_major=sys.version_info.major))
 
     with open(os.path.join(out, name_pyx), 'w') as fp:
-        fp.write(templ_pyx.render(msgdef))
+        fp.write(templ_pyx.render(msgdef, version_major=sys.version_info.major))
 
 
 if __name__ == "__main__":
