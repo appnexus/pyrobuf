@@ -698,10 +698,10 @@ cdef class {{ name }}:
 
     def SerializeToString(self):
         """
-        Serialize the message class into a bytearray of protobuf encoded binary data.
+        Serialize the message class into a string of protobuf encoded binary data.
 
         Returns:
-            bytearray: a bytearray of binary data
+            str: a string of binary data
         """
     {%- if message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
         cdef int i
@@ -739,12 +739,12 @@ cdef class {{ name }}:
         return str(buf, encoding='iso-8859-1')
     {%- endif %}
 
-    cpdef bytearray SerializePartialToString(self):
+    cpdef str SerializePartialToString(self):
         """
-        Serialize the message class into a bytearray of protobuf encoded binary data.
+        Serialize the message class into a string of protobuf encoded binary data.
 
         Returns:
-            bytearray: a bytearray of binary data
+            str: a bytearray of binary data
         """
         cdef bytearray buf = bytearray()
         self._protobuf_serialize(buf)
