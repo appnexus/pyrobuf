@@ -144,6 +144,19 @@ cdef class {{ name }}:
             {%- elif field.type in ('string', 'bytes') %}
             self._{{ field.name }} = TypedList(str, self)
             {%- else %}
+            cdef {{ field.c_type }}[:] memview
+            cdef int memview_available = 0
+            try:
+                memview = value
+                memview_available = 1
+            except (TypeError, NameError):
+                pass
+            cdef int i
+            if memview_available == 1:
+                self._{{ field.name }} = {{ field.list_type }}(memview.size, listener=self)
+                for i in range(memview.size):
+                    self._{{ field.name }}.append(memview[i])
+                return
             self._{{ field.name }} = {{ field.list_type }}(listener=self)
             {%- endif %}
             for val in value:
