@@ -10,3 +10,7 @@ dist/
 *.egg-info
 pyrobuf/src/pyrobuf_list.*
 .cache/
+.eggs/
+tests/out/
+tests/build/
+/.tox

@@ -1,9 +1,7 @@
-import os
-import sys
 import unittest
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-BUILD = os.path.join(HERE, 'build')
+import pytest
+from proto_lib_fixture import proto_lib
 
 
 # These can't be imported until the test_imported_enums_proto module has been built.
@@ -13,17 +11,11 @@ ExposesInternalEnumConstantsMessage = None
 UsesImportedEnumsMessage = None
 
 
+@pytest.mark.usefixtures('proto_lib')
 class ImportedEnumsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        lib = os.path.join(BUILD, [name for name in os.listdir(BUILD)
-                                   if name.startswith('lib')].pop())
-        if lib not in sys.path:
-            sys.path.insert(0, lib)
-
-        # At this point the test_imported_enums_proto will have been built and can be imported
-        global CLOSE, MSG_ONE, UsesImportedEnumsMessage, ExposesInternalEnumConstantsMessage
-
+        global CLOSE, MSG_ONE, ExposesInternalEnumConstantsMessage, UsesImportedEnumsMessage
         from test_multi_messages_toplevel_enums_proto import MSG_ONE, CLOSE
         from test_imported_enums_proto import UsesImportedEnumsMessage, ExposesInternalEnumConstantsMessage
 

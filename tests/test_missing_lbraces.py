@@ -16,7 +16,7 @@ class TestMissingLBraces(unittest.TestCase):
 
         try:
             parser.parse(s)
-        except Exception, e:
+        except Exception as e:
             self.assertEqual("missing opening paren at pos 22: 'NO = 0;   '", str(e))
 
     def test_message_with_missing_lbrace_raises_exception(self):
@@ -31,5 +31,5 @@ class TestMissingLBraces(unittest.TestCase):
 
         try:
             parser.parse(s)
-        except Exception, e:
+        except Exception as e:
             self.assertEqual("missing opening paren at pos 25: 'required i'", str(e))

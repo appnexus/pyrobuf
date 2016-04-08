@@ -74,7 +74,7 @@ class DoubleListTest(unittest.TestCase):
             x.append(i)
 
         x.remove(3)
-        self.assertEquals(x[3], 4)
+        self.assertEqual(x[3], 4)
 
         with self.assertRaises(ValueError):
             x.remove(7)

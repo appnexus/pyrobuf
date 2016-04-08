@@ -2,7 +2,7 @@ from distutils.command.clean import clean as _clean
 from distutils.dir_util import remove_tree
 from distutils import log
 
-from setuptools import setup, find_packages, Command, Distribution
+from setuptools import setup, find_packages, Distribution
 from setuptools.command.test import test as _test
 
 import os
@@ -10,7 +10,7 @@ import os.path
 import sys
 
 
-VERSION = "0.5.7"
+VERSION = "0.5.8"
 HERE = os.path.dirname(os.path.abspath(__file__))
 PYROBUF_LIST_PXD = "pyrobuf_list.pxd"
 PYROBUF_LIST_PYX = "pyrobuf_list.pyx"
@@ -54,9 +54,11 @@ class clean(_clean):
         self.__remove_file(os.path.join(HERE, 'pyrobuf', 'src', PYROBUF_LIST_PXD))
         self.__remove_file(os.path.join(HERE, 'pyrobuf', 'src', PYROBUF_LIST_PYX))
 
-        for suffix in (".so", ".pyd"):
-            self.__remove_file(os.path.join(HERE, 'pyrobuf_list' + suffix))
-            self.__remove_file(os.path.join(HERE, 'pyrobuf_util' + suffix))
+        for filename in os.listdir(HERE):
+            for prefix in ("pyrobuf_list", "pyrobuf_util"):
+                for suffix in (".so", ".pyd"):
+                    if filename.startswith(prefix) and filename.endswith(suffix):
+                        self.__remove_file(os.path.join(HERE, filename))
 
 
 class test(_test):
@@ -110,25 +112,25 @@ class PyrobufDistribution(Distribution):
             'char': 'c',
         }
 
+        # Even if PYROBUF_LIST_PYX and PYROBUF_LIST_PXD already exist they should be re-built because
+        # we don't know whether they were built using *this* version of Python.
         path = os.path.join(HERE, 'pyrobuf', 'src', PYROBUF_LIST_PYX)
-        if not os.path.exists(path) or os.path.getmtime(path) < os.path.getmtime(templ_pyx.filename):
-            if not self.dry_run:
-                with open(path, 'w') as fp:
-                    fp.write(templ_pyx.render(
-                        {'def': listdict, 'version_major': sys.version_info.major, 'format_map': format_map}
-                    ))
-            if self.verbose >= 1:
-                log.info("rendering '%s' from '%s'" % (PYROBUF_LIST_PYX, templ_pyx.filename))
+        if not self.dry_run:
+            with open(path, 'w') as fp:
+                fp.write(templ_pyx.render(
+                    {'def': listdict, 'version_major': sys.version_info.major, 'format_map': format_map}
+                ))
+        if self.verbose >= 1:
+            log.info("rendering '%s' from '%s'" % (PYROBUF_LIST_PYX, templ_pyx.filename))
 
         path = os.path.join(HERE, 'pyrobuf', 'src', PYROBUF_LIST_PXD)
-        if not os.path.exists(path) or os.path.getmtime(path) < os.path.getmtime(templ_pxd.filename):
-            if not self.dry_run:
-                with open(path, 'w') as fp:
-                    fp.write(templ_pxd.render(
-                        {'def': listdict, 'version_major': sys.version_info.major, 'format_map': format_map}
-                    ))
-            if self.verbose >= 1:
-                log.info("rendering '%s' from '%s'" % (PYROBUF_LIST_PXD, templ_pxd.filename))
+        if not self.dry_run:
+            with open(path, 'w') as fp:
+                fp.write(templ_pxd.render(
+                    {'def': listdict, 'version_major': sys.version_info.major, 'format_map': format_map}
+                ))
+        if self.verbose >= 1:
+            log.info("rendering '%s' from '%s'" % (PYROBUF_LIST_PXD, templ_pxd.filename))
 
         return cythonize(['pyrobuf/src/*.pyx'],
                          include_path=['pyrobuf/src'])
@@ -151,7 +153,7 @@ setup(
     long_description=open(os.path.join(HERE, 'README.md')).read(),
     url='https://github.com/appnexus/pyrobuf',
     author='AppNexus',
-    tests_require=['pytest', 'protobuf >= 2.6.0, <3'],
+    tests_require=['pytest'] + (['protobuf >= 2.6.0, <3'] if sys.version_info.major == 2 else []),
     setup_requires=['jinja2', 'cython >= 0.23'],
     install_requires=['jinja2', 'cython >= 0.23'],
     zip_safe=False,
