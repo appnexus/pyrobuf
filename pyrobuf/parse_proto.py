@@ -43,7 +43,9 @@ class Parser(object):
         'sint64':   'Int64List',
         'sfixed64': 'Int64List',
         'uint64':   'Uint64List',
-        'fixed64':  'Uint64List'
+        'fixed64':  'Uint64List',
+        'string':   'StringList',
+        'bytes':    'BytesList'
     }
 
     c_type_map = {
@@ -256,10 +258,6 @@ class Parser(object):
                     token.enum_def = imported_enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
-
-                elif (token.type in ('string', 'bytes')) and token.default is not None and (len(token.default) > 1):
-                    if token.default.startswith(('"', "'")) and token.default.endswith(('"', "'")):
-                        token.default = token.default[1:-1]
 
                 elif (token.type not in self.scalars) and (token.type not in ('string', 'bytes')):
                     token.message_name = token.type
