@@ -86,37 +86,45 @@ def get_varint(data, offset=0):
     return get_varint64(data, &_offset)
 
 
-cdef int32_t get_signed_varint32(const unsigned char *memory, int *offset):
+cdef int32_t get_signed_varint32(const unsigned char *varint, int *offset):
     """
     Deserialize a signed protobuf varint starting from give offset in memory;
     update offset based on number of bytes consumed.
     """
-    cdef int32_t varint = 0
-    cdef int idx = 0
-    while memory[offset[0] + idx] >> 7:
-        varint += ((memory[offset[0] + idx] ^ 0x80) << (7 * idx))
-        idx += 1
+    cdef uint32_t value = 0
+    cdef int32_t base = 1
+    cdef int index = 0
+    cdef int val_byte
 
-    varint += (memory[offset[0] + idx] << (7 * idx))
-    offset[0] += (idx + 1)
-    return (varint >> 1) ^ (varint << 31)
+    while True:
+        val_byte = varint[offset[0] + index]
+        value += (val_byte & 0x7F) * base
+        if (val_byte & 0x80):
+            base *= 128
+            index += 1
+        else:
+            offset[0] += (index + 1)
+            return <int32_t>((value >> 1) ^ (-(value & 1))) # zigzag decoding
 
-
-cdef int64_t get_signed_varint64(const unsigned char *memory, int *offset):
+cdef int64_t get_signed_varint64(const unsigned char *varint, int *offset):
     """
     Deserialize a signed protobuf varint starting from give offset in memory;
     update offset based on number of bytes consumed.
     """
-    cdef int64_t varint = 0
-    cdef int idx = 0
-    while memory[offset[0] + idx] >> 7:
-        varint += ((memory[offset[0] + idx] ^ 0x80) << (7 * idx))
-        idx += 1
+    cdef uint64_t value = 0
+    cdef int64_t base = 1
+    cdef int index = 0
+    cdef int val_byte
 
-    varint += (memory[offset[0] + idx] << (7 * idx))
-    offset[0] += (idx + 1)
-    return (varint >> 1) ^ (varint << 63)
-
+    while True:
+        val_byte = varint[offset[0] + index]
+        value += (val_byte & 0x7F) * base
+        if (val_byte & 0x80):
+            base *= 128
+            index += 1
+        else:
+            offset[0] += (index + 1)
+            return <int64_t>((value >> 1) ^ (-(value & 1))) # zigzag decoding
 
 def get_signed_varint(data, offset=0):
     cdef int _offset = offset
@@ -174,14 +182,19 @@ cdef int set_signed_varint32(int32_t varint, bytearray buf):
     Serialize an integer into a signed protobuf varint; return the number of
     bytes serialized.
     """
-    varint = (varint << 1) ^ (varint >> 31)
+    cdef uint32_t enc
     cdef int idx = 1
-    while varint >> 7:
-        buf.append(<unsigned char>(varint | 0x80))
-        varint >>= 7
+
+    enc = (varint << 1) ^ (varint >> 31) # zigzag encoding
+    bits = enc & 0x7f
+    enc >>= 7
+    while enc:
+        buf.append(<unsigned char>(bits | 0x80))
+        bits = enc & 0x7f
+        enc >>= 7
         idx += 1
 
-    buf.append(<unsigned char>varint)
+    buf.append(<unsigned char>bits)
     return idx + 1
 
 
@@ -190,14 +203,19 @@ cdef int set_signed_varint64(int64_t varint, bytearray buf):
     Serialize an integer into a signed protobuf varint; return the number of
     bytes serialized.
     """
-    varint = (varint << 1) ^ (varint >> 63)
+    cdef uint64_t enc
     cdef int idx = 1
-    while varint >> 7:
-        buf.append(<unsigned char>(varint | 0x80))
-        varint = varint >> 7
+
+    enc = (varint << 1) ^ (varint >> 63) # zigzag encoding
+    bits = enc & 0x7f
+    enc >>= 7
+    while enc:
+        buf.append(<unsigned char>(bits | 0x80))
+        bits = enc & 0x7f
+        enc >>= 7
         idx += 1
 
-    buf.append(<unsigned char>varint)
+    buf.append(<unsigned char>bits)
     return idx + 1
 
 
