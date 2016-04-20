@@ -1,4 +1,0 @@
-message TestDeprecatedField {
-    optional int32 old_field = 1 [deprecated=true];
-    optional int32 new_field = 2;
-}
