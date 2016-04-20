@@ -1,6 +1,6 @@
 message Int {
-    optional sint64 Int64 = 1;
-    optional sint32 Int32 = 2;
+    optional int64 Int64 = 1;
+    optional int32 Int32 = 2;
     optional uint64 UInt64 = 3;
     optional uint32 UInt32 = 4;
     optional sint64 SInt64 = 5;
