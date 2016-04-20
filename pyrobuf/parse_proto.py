@@ -219,8 +219,8 @@ class Parser(object):
 
                         token.default = default
                         token.enum_default = enum_default
-                        token.is_nested = True
 
+                    token.is_nested = True
                     token.enum_def = current.enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
@@ -235,8 +235,8 @@ class Parser(object):
 
                         token.default = default
                         token.enum_default = enum_default
-                        token.is_nested = True
 
+                    token.is_nested = False
                     token.enum_def = enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
@@ -251,8 +251,8 @@ class Parser(object):
 
                         token.default = default
                         token.enum_default = enum_default
-                        token.is_nested = False
 
+                    token.is_nested = False
                     token.enum_def = imported_enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
