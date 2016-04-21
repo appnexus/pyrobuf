@@ -92,13 +92,19 @@ cdef class {{ name }}:
         {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
-        self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
+        # self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
+        self._{{ field.name }} = TypedList.__new__(TypedList)
+        self._{{ field.name }}._list_type = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}
+        self._{{ field.name }}._listener = <PyObject *>self
             {%- elif field.type == 'string' %}
-        self._{{ field.name }} = StringList(self)
+        self._{{ field.name }} = StringList.__new__(StringList)
+        self._{{ field.name }}._listener = <PyObject *>self
             {%- elif field.type == 'bytes' %}
-        self._{{ field.name }} = BytesList(self)
+        self._{{ field.name }} = BytesList.__new__(BytesList)
+        self._{{ field.name }}._listener = <PyObject *>self
             {%- else %}
-        self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }}, listener=self)
+        self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }})
+        self._{{ field.name }}._listener = <PyObject *>self
             {%- endif %}
         {%- elif field.type == 'message' %}
         self._{{ field.name }} = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}.__new__({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }})
@@ -146,11 +152,16 @@ cdef class {{ name }}:
         {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
-            self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
+            # self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
+            self._{{ field.name }} = TypedList.__new__(TypedList)
+            self._{{ field.name }}._list_type = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}
+            self._{{ field.name }}._listener = <PyObject *>self
             {%- elif field.type == 'string' %}
-            self._{{ field.name }} = StringList(self)
+            self._{{ field.name }} = StringList.__new__(StringList)
+            self._{{ field.name }}._listener = <PyObject *>self
             {%- elif field.type == 'bytes' %}
-            self._{{ field.name }} = BytesList(self)
+            self._{{ field.name }} = BytesList.__new__(BytesList)
+            self._{{ field.name }}._listener = <PyObject *>self
             {%- else %}
             cdef {{ field.c_type }}[:] memview
             cdef int memview_available = 0
@@ -183,7 +194,7 @@ cdef class {{ name }}:
                 if isinstance(val, unicode):
                     list.append(self._{{ field.name }}, val)
                 elif isinstance(val, str):
-                    list.append(self._{{ field.name }}, val.decode('utf-8'))
+                    list.append(self._{{ field.name }}, unicode(val, 'utf-8'))
                 else:
                     raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), str, unicode))
             {%- elif field.type == 'string' and version_major != 2 %}
@@ -219,7 +230,7 @@ cdef class {{ name }}:
             if isinstance(value, unicode):
                 self._{{ field.name }} = value
             elif isinstance(value, str):
-                self._{{ field.name }} = value.decode('utf-8')
+                self._{{ field.name }} = unicode(value, 'utf-8')
             else:
                 raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (value, type(value), unicode, str))
             {%- elif field.type == 'string' and version_major != 2 %}
@@ -258,7 +269,7 @@ cdef class {{ name }}:
 
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'repeated' and field.packed|default(false) == true %}
-        cdef int {{ field.name }}_marker
+        cdef int64_t {{ field.name }}_marker
         {%- endif %}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
@@ -298,7 +309,7 @@ cdef class {{ name }}:
                 {{ field.name }}_marker = get_varint64(memory, &current_offset)
                 {{ field.name }}_marker += current_offset
 
-                while current_offset < {{ field.name }}_marker:
+                while current_offset < <int>{{ field.name }}_marker:
                 {%- if field.fixed_width == true %}
                     {{ field.name }}_elt = (<{{ field.c_type }} *>&memory[current_offset])[0]
                     current_offset += sizeof({{ field.c_type }})
@@ -308,21 +319,22 @@ cdef class {{ name }}:
                     self._{{ field.name }}._append({{ field.name }}_elt)
             {%- else %}
                 {%- if field.type == 'message' %}
-                {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
+                {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}.__new__({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }})
+                {{ field.name }}_elt.reset()
                 field_size = get_varint64(memory, &current_offset)
-                current_offset += {{ field.name }}_elt._protobuf_deserialize(memory+current_offset, field_size)
+                current_offset += {{ field.name }}_elt._protobuf_deserialize(memory+current_offset, <int>field_size)
                 {%- elif field.type == 'string' %}
                 field_size = get_varint64(memory, &current_offset)
                     {%- if version_major == 2 %}
-                {{ field.name }}_elt = unicode(memory[current_offset:current_offset + field_size], encoding='utf-8')
+                {{ field.name }}_elt = unicode(memory[current_offset:current_offset + field_size], 'utf-8')
                     {%- else %}
-                {{ field.name }}_elt = str(memory[current_offset:current_offset + field_size], encoding='utf-8')
+                {{ field.name }}_elt = str(memory[current_offset:current_offset + field_size], 'utf-8')
                     {%- endif %}
-                current_offset += field_size
+                current_offset += <int>field_size
                 {%- elif field.type == 'bytes' %}
                 field_size = get_varint64(memory, &current_offset)
                 {{ field.name }}_elt = memory[current_offset:current_offset + field_size]
-                current_offset += field_size
+                current_offset += <int>field_size
                 {%- elif field.fixed_width == true %}
                 {{ field.name }}_elt = (<{{ field.c_type }} *>&memory[current_offset])[0]
                 current_offset += sizeof({{ field.c_type }})
@@ -338,21 +350,21 @@ cdef class {{ name }}:
 
         {%- elif field.type == 'message' %}
                 field_size = get_varint64(memory, &current_offset)
-                current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, field_size)
+                current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, <int>field_size)
 
         {%- elif field.type == 'string' %}
                 field_size = get_varint64(memory, &current_offset)
             {%- if version_major == 2 %}
-                self._{{ field.name }} = unicode(memory[current_offset:current_offset + field_size], encoding='utf-8')
+                self._{{ field.name }} = unicode(memory[current_offset:current_offset + field_size], 'utf-8')
             {%- else %}
-                self._{{ field.name }} = str(memory[current_offset:current_offset + field_size], encoding='utf-8')
+                self._{{ field.name }} = str(memory[current_offset:current_offset + field_size], 'utf-8')
             {%- endif %}
-                current_offset += field_size
+                current_offset += <int>field_size
 
         {%- elif field.type == 'bytes' %}
                 field_size = get_varint64(memory, &current_offset)
                 self._{{ field.name }} = memory[current_offset:current_offset + field_size]
-                current_offset += field_size
+                current_offset += <int>field_size
 
         {%- elif field.type == 'enum' %}
                 self.{{ field.name }} = {{ field.getter }}(memory, &current_offset)
@@ -394,13 +406,19 @@ cdef class {{ name }}:
             {%- endif -%}
             {%- if field.modifier == 'repeated' %}
                 {%- if field.type == 'message' %}
-            self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
+            # self._{{ field.name }} = TypedList({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}, self)
+            self._{{ field.name }} = TypedList.__new__(TypedList)
+            self._{{ field.name }}._list_type = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}
+            self._{{ field.name }}._listener = <PyObject *>self
                 {%- elif field.type == 'string' %}
-            self._{{ field.name }} = StringList(self)
+            self._{{ field.name }} = StringList.__new__(StringList)
+            self._{{ field.name }}._listener = <PyObject *>self
                 {%- elif field.type == 'bytes' %}
-            self._{{ field.name }} = BytesList(self)
+            self._{{ field.name }} = BytesList.__new__(BytesList)
+            self._{{ field.name }}._listener = <PyObject *>self
                 {%- else %}
-            self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }}, listener=self)
+            self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }})
+            self._{{ field.name }}._listener = <PyObject *>self
                 {%- endif %}
             {%- elif field.type == 'message' %}
             self._{{ field.name }} = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}.__new__({% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }})
@@ -615,7 +633,7 @@ cdef class {{ name }}:
         cdef int wire_type
     {%- if message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
         cdef int i
-        cdef int length
+        cdef ssize_t length
     {%- endif %}
 
     {%- for field in message.fields|sort(attribute='index') %}
@@ -668,10 +686,10 @@ cdef class {{ name }}:
             {%- if field.packed == true %}
             set_varint64(key, buf)
                 {%- if field.fixed_width == true %}
-            set_varint64(length * sizeof({{ field.name }}_elt), buf)
+            set_varint64(length * sizeof({{ field.c_type }}), buf)
             for i in range(length):
                 {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
-                buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.name }}_elt)]
+                buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.c_type }})]
 
                 {%- elif field.var_width == true %}
             for i in range(length):
@@ -700,7 +718,7 @@ cdef class {{ name }}:
                 buf += {{ field.name }}_elt_buf
                 {%- elif field.fixed_width == true %}
                 {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
-                buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.name }}_elt)]
+                buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.c_type }})]
                 {%- elif field.var_width == true %}
                 {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
                 {{ field.setter }}({{ field.name }}_elt, buf)
@@ -718,7 +736,7 @@ cdef class {{ name }}:
             set_varint64(key, buf)
             {{ field.name }}_bytes = self._{{ field.name }}.encode('utf-8')
             set_varint64(len({{ field.name }}_bytes), buf)
-            buf += self._{{ field.name }}.encode('utf-8')
+            buf += {{ field.name }}_bytes
 
         {%- elif field.type == 'bytes' %}
             set_varint64(key, buf)

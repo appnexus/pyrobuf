@@ -352,7 +352,7 @@ cdef class {{ name }}:
 
     def __delitem__(self, int i):
         if i < 0:
-            i += self._n_items
+            i += <int>self._n_items
 
         if i < 0 or <size_t>i >= self._n_items:
             raise IndexError("list index out of range")
@@ -368,7 +368,7 @@ cdef class {{ name }}:
 
     def __getitem__(self, int i):
         if i < 0:
-            i += self._n_items
+            i += <int>self._n_items
 
         if i < 0 or <size_t>i >= self._n_items or i < 0:
             raise IndexError("list index out of range")
@@ -389,7 +389,7 @@ cdef class {{ name }}:
 
     def __setitem__(self, int i, {{ type }} x):
         if i < 0:
-            i += self._n_items
+            i += <int>self._n_items
 
         if i < 0 or <size_t>i >= self._n_items:
             raise IndexError("list index out of range")
@@ -455,10 +455,10 @@ cdef class {{ name }}:
 
     cpdef insert(self, int i, {{ type }} x):
         cdef {{ type }} *mem
-        cdef int j
+        cdef size_t j
 
         if i < 0:
-            i += self._n_items
+            i += <int>self._n_items
 
         if i < 0 or <size_t>i > self._n_items:
             raise IndexError("list index out of range")
