@@ -471,7 +471,7 @@ cdef class {{ name }}:
             self._data = mem
             self._size *= 2
 
-        for j in range(self._n_items, i, -1):
+        for j in range(self._n_items, <size_t>i, -1):
             self._data[j] = self._data[j - 1]
 
         self._data[i] = x
