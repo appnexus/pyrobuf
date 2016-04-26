@@ -575,14 +575,14 @@ cdef class {{ name }}:
             int: the number of bytes processed during serialization
         """
         cdef int buf
+        cdef int length
         cdef bint already_present_in_parent = self._is_present_in_parent
 
-        if size is None:
-            size = len(data)
+        length = size if size is not None else len(data)
 
-        buf = self._protobuf_deserialize(data, size)
+        buf = self._protobuf_deserialize(data, length)
 
-        if buf != size:
+        if buf != length:
             raise DecodeError("Truncated message: got %s expected %s" % (buf, size))
 
         if not already_present_in_parent:
@@ -603,17 +603,17 @@ cdef class {{ name }}:
             int: the number of bytes processed during serialization
         """
         cdef int buf
+        cdef int length
         cdef bint already_present_in_parent = self._is_present_in_parent
 
-        if size is None:
-            size = len(data)
+        length = size if size is not None else len(data)
 
         if reset:
             self.reset()
 
-        buf = self._protobuf_deserialize(data, size)
+        buf = self._protobuf_deserialize(data, length)
 
-        if buf != size:
+        if buf != length:
             raise DecodeError("Truncated message")
 
         if not already_present_in_parent:
@@ -840,6 +840,16 @@ cdef class {{ name }}:
         d = self.SerializeToDict()
         return json.dumps(d, **kwargs)
 
+    def SerializePartialToJson(self, **kwargs):
+        """
+        Serialize the message class into a json string.
+
+        Returns:
+            str: a json formatted string
+        """
+        d = self.SerializePartialToDict()
+        return json.dumps(d, **kwargs)
+
     def ParseFromDict(self, d, reset=True):
         """
         Populate the message class from a Python dictionary.
@@ -856,14 +866,12 @@ cdef class {{ name }}:
     {%- for field in message.fields|sort(attribute='index') %}
         try:
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
-            for {{ field.name }}_json in d["{{ field.name }}"]:
+            for {{ field.name }}_dict in d["{{ field.name }}"]:
                 {{ field.name }}_elt = {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }}()
-                {{ field.name }}_elt.ParseFromDict({{ field.name }}_json)
+                {{ field.name }}_elt.ParseFromDict({{ field.name }}_dict)
                 self.{{ field.name }}.append({{ field.name }}_elt)
         {%- elif field.type == 'message' %}
             self.{{ field.name }}.ParseFromDict(d["{{ field.name }}"])
-        {%- elif field.type == 'string' %}
-            self.{{ field.name }} = d["{{ field.name }}"]
         {%- elif field.type == 'bytes' %}
             self.{{ field.name }} = d["{{ field.name }}"].encode('utf-8')
         {%- else %}
@@ -901,39 +909,51 @@ cdef class {{ name }}:
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
         if len(self.{{ field.name }}) > 0:
-            out["{{ field.name }}"] = [{{ field.name }}_elt.SerializeToDict() for {{ field.name }}_elt in self.{{ field.name }}]
+            out["{{ field.name }}"] = [m.SerializeToDict() for m in self.{{ field.name }}]
         {%- elif field.modifier == 'repeated' %}
         if len(self.{{ field.name }}) > 0:
-            out["{{ field.name }}"] = [x for x in self.{{ field.name }}]
+            out["{{ field.name }}"] = list(self.{{ field.name }})
         {%- elif field.type == 'message' %}
         {{ field.name }}_dict = self.{{ field.name }}.SerializeToDict()
         if {{ field.name }}_dict != {}:
             out["{{ field.name }}"] = {{ field.name }}_dict
-        {%- elif field.modifier == 'required' %}
+        {%- elif field.type == 'bytes' %}
+        if self._{{ field.name }}_isSet:
+            out["{{ field.name }}"] = self.{{ field.name }}.decode('utf-8')
+        {%- else %}
         if self._{{ field.name }}_isSet:
             out["{{ field.name }}"] = self.{{ field.name }}
-        {%- elif field.default != None %}
-            {%- if field.type == 'string' %}
-        if self.{{ field.name }} != {% if version_major == 2 %}u{% endif %}{{ field.default }}:
-            out["{{ field.name }}"] = self.{{ field.name }}
-            {%- elif field.type == 'bytes' %}
-        if self.{{ field.name }} != b{{ field.default }}:
+        {%- endif %}
+    {%- endfor %}
+
+        return out
+
+    def SerializePartialToDict(self):
+        """
+        Translate the message into a Python dictionary.
+
+        Returns:
+            dict: a Python dictionary representing the message
+        """
+        out = {}
+
+    {%- for field in message.fields|sort(attribute='index') %}
+        {%- if field.modifier == 'repeated' and field.type == 'message' %}
+        if len(self.{{ field.name }}) > 0:
+            out["{{ field.name }}"] = [m.SerializePartialToDict() for m in self.{{ field.name }}]
+        {%- elif field.modifier == 'repeated' %}
+        if len(self.{{ field.name }}) > 0:
+            out["{{ field.name }}"] = list(self.{{ field.name }})
+        {%- elif field.type == 'message' %}
+        {{ field.name }}_dict = self.{{ field.name }}.SerializePartialToDict()
+        if {{ field.name }}_dict != {}:
+            out["{{ field.name }}"] = {{ field.name }}_dict
+        {%- elif field.type == 'bytes' %}
+        if self._{{ field.name }}_isSet:
             out["{{ field.name }}"] = self.{{ field.name }}.decode('utf-8')
-            {%- else %}
-        if self.{{ field.name }} != {{ field.default }}:
-            out["{{ field.name }}"] = self.{{ field.name }}
-            {%- endif %}
         {%- else %}
-            {%- if field.type == 'string' %}
-        if self.{{ field.name }} != {% if version_major == 2 %}u{% endif %}"":
+        if self._{{ field.name }}_isSet:
             out["{{ field.name }}"] = self.{{ field.name }}
-            {%- elif field.type == 'bytes' %}
-        if self.{{ field.name }} != b"":
-            out["{{ field.name }}"] = self.{{ field.name }}.decode('utf-8')
-            {%- else %}
-        if self.{{ field.name }} != 0:
-            out["{{ field.name }}"] = self.{{ field.name }}
-            {%- endif %}
         {%- endif %}
     {%- endfor %}
 
