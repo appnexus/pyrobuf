@@ -17,8 +17,12 @@ cdef class {{ name }}:
 {% for field in message.fields|sort(attribute='index') -%}
     {%- if field.modifier == 'repeated' %}
     cdef {{ field.list_type }} _{{ field.name }}
-    {%- elif field.type in ('string', 'bytes') %}
+    {%- elif field.type == 'string' and version_major == 2 %}
+    cdef unicode _{{ field.name }}
+    {%- elif field.type == 'string' and version_major != 2 %}
     cdef str _{{ field.name }}
+    {%- elif field.type == 'bytes' %}
+    cdef bytes _{{ field.name }}
     {%- elif field.type == 'message' %}
     cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} _{{ field.name }}
     {%- elif field.type == 'enum' %}
@@ -46,7 +50,7 @@ cdef class {{ name }}:
     cpdef void MergeFrom(self, {{ name }} other_msg)
     cpdef int MergeFromString(self, data, size=*) except -1
     cpdef int ParseFromString(self, data, size=*, bint reset=*) except -1
-    cpdef str SerializePartialToString(self)
+    cpdef bytes SerializePartialToString(self)
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size)
 

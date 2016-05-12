@@ -95,6 +95,235 @@ cdef class TypedList(list):
             listener._Modified()
 
 
+cdef class BytesList(list):
+
+    def __init__(self, object listener=None):
+        if listener is None:
+            self._listener = <PyObject *>null_listener
+        else:
+            self._listener = <PyObject *>listener
+
+    def __setitem__(self, i, x):
+        cdef list values
+
+        if isinstance(i, {% if version_major == 2 %}(int, long){% else %}int{% endif %}):
+            if not isinstance(x, {% if version_major == 2 %}str{% else %}bytes{% endif %}):
+                raise TypeError("%r has type %s, but expected one of: (%s,)" % (x, type(x), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
+
+            list.__setitem__(self, i, x)
+        elif isinstance(i, slice):
+            values = list()
+
+            for val in x:
+                if isinstance(val, {% if version_major == 2 %}str{% else %}bytes{% endif %}):
+                    values.append(val)
+                else:
+                    raise TypeError("%r has type %s, but expected one of: (%s,)" % (val, type(val), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
+
+            list.__setitem__(self, i, values)
+        else:
+            raise TypeError("list indices must be integers, not %s" % type(i).__name__)
+
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+
+{% if version_major == 2 %}
+    def __setslice__(self, i, j, x):
+        cdef list values = list()
+
+        for val in x:
+            if isinstance(val, str):
+                values.append(val)
+            else:
+                raise TypeError("%r has type %s, but expected one of: (%s,)" % (val, type(val), str))
+
+        list.__setslice__(self, i, j, values)
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+{%- endif %}
+
+    def append(self, x):
+        if not isinstance(x, {% if version_major == 2 %}str{% else %}bytes{% endif %}):
+            raise TypeError("%r has type %s, but expected one of: (%s,)" % (x, type(x), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
+
+        list.append(self, x)
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+
+    def extend(self, x):
+        for val in x:
+            if not isinstance(val, {% if version_major == 2 %}str{% else %}bytes{% endif %}):
+                raise TypeError("%r has type %s, but expected one of: (%s,)" % (val, type(val), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
+            list.append(self, val)
+
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+
+    def insert(self, i, x):
+
+        if not isinstance(x, {% if version_major == 2 %}str{% else %}bytes{% endif %}):
+            raise TypeError("%r has type %s, but expected one of: (%s,)" % (x, type(x), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
+
+        list.insert(self, i, x)
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+
+
+cdef class StringList(list):
+
+    def __init__(self, object listener=None):
+        if listener is None:
+            self._listener = <PyObject *>null_listener
+        else:
+            self._listener = <PyObject *>listener
+
+    def __setitem__(self, i, x):
+        cdef list values
+        cdef {% if version_major == 2 %}unicode{% else %}str{% endif %} value
+
+        if isinstance(i, {% if version_major == 2 %}(int, long){% else %}int{% endif %}):
+            {%- if version_major == 2 %}
+            if isinstance(x, str):
+                value = x.decode('utf-8')
+            elif isinstance(x, unicode):
+                value = x
+            else:
+                raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (x, type(x), str, unicode))
+            {%- else %}
+            if isinstance(x, str):
+                value = x
+            elif isinstance(x, bytes):
+                value = x.decode('utf-8')
+            else:
+                raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (x, type(x), bytes, str))
+            {%- endif %}
+
+            list.__setitem__(self, i, value)
+        elif isinstance(i, slice):
+            values = list()
+
+            for val in x:
+                {%- if version_major == 2 %}
+                if isinstance(val, str):
+                    values.append(val.decode('utf-8'))
+                elif isinstance(val, unicode):
+                    values.append(val)
+                else:
+                    raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), str, unicode))
+                {%- else %}
+                if isinstance(val, str):
+                    values.append(val)
+                elif isinstance(val, bytes):
+                    values.append(val.decode('utf-8'))
+                else:
+                    raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), bytes, str))
+                {%- endif %}
+
+            list.__setitem__(self, i, values)
+        else:
+            raise TypeError("list indices must be integers, not %s" % type(i).__name__)
+
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+
+{% if version_major == 2 %}
+    def __setslice__(self, i, j, x):
+        cdef list values = list()
+
+        for val in x:
+            if isinstance(val, str):
+                values.append(val.decode('utf-8'))
+            elif isinstance(val, unicode):
+                values.append(val)
+            else:
+                raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), str, unicode))
+
+        list.__setslice__(self, i, j, values)
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+{%- endif %}
+
+    def append(self, x):
+        cdef {% if version_major == 2 %}unicode{% else %}str{% endif %} value
+
+        {%- if version_major == 2 %}
+        if isinstance(x, unicode):
+            value = x
+        elif isinstance(x, str):
+            value = x.decode('utf-8')
+        else:
+            raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (x, type(x), str, unicode))
+        {%- else %}
+        if isinstance(x, str):
+            value = x
+        elif isinstance(x, bytes):
+            value = x.decode('utf-8')
+        else:
+            raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (x, type(x), bytes, str))
+        {%- endif %}
+
+        list.append(self, value)
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+
+    def extend(self, x):
+        cdef {% if version_major == 2 %}unicode{% else %}str{% endif %} value
+
+        for val in x:
+            {%- if version_major == 2 %}
+            if isinstance(val, str):
+                value = val.decode('utf-8')
+            elif isinstance(val, unicode):
+                value = val
+            else:
+                raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), str, unicode))
+            {%- else %}
+            if isinstance(val, bytes):
+                value = val.decode('utf-8')
+            elif isinstance(val, str):
+                value = val
+            else:
+                raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), bytes, str))
+            {%- endif %}
+            list.append(self, value)
+
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+
+    def insert(self, i, x):
+        cdef {% if version_major == 2 %}unicode{% else %}str{% endif %} value
+
+        {%- if version_major == 2 %}
+        if isinstance(x, str):
+            value = x.decode('utf-8')
+        elif isinstance(x, unicode):
+            value = x
+        else:
+            raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (x, type(x), str, unicode))
+        {%- else %}
+        if isinstance(x, bytes):
+            value = x.decode('utf-8')
+        elif isinstance(x, str):
+            value = x
+        else:
+            raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (x, type(x), bytes, str))
+        {%- endif %}
+
+        list.insert(self, i, value)
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
+
+
 {% macro scalar_list(name, type, format) %}
 cdef class {{ name }}:
 
@@ -114,7 +343,7 @@ cdef class {{ name }}:
         PyMem_Free(self._data)
 
     def __contains__(self, {{ type }} x):
-        cdef int i
+        cdef size_t i
         for i in range(self._n_items):
             if self._data[i] == x:
                 return True
@@ -123,12 +352,12 @@ cdef class {{ name }}:
 
     def __delitem__(self, int i):
         if i < 0:
-            i += self._n_items
+            i += <int>self._n_items
 
-        if i >= self._n_items or i < 0:
+        if i < 0 or <size_t>i >= self._n_items:
             raise IndexError("list index out of range")
 
-        cdef int j
+        cdef size_t j
         for j in range(i, self._n_items):
             self._data[j] = self._data[j + 1]
 
@@ -139,9 +368,9 @@ cdef class {{ name }}:
 
     def __getitem__(self, int i):
         if i < 0:
-            i += self._n_items
+            i += <int>self._n_items
 
-        if i >= self._n_items or i < 0:
+        if i < 0 or <size_t>i >= self._n_items or i < 0:
             raise IndexError("list index out of range")
 
         return self._data[i]
@@ -160,9 +389,9 @@ cdef class {{ name }}:
 
     def __setitem__(self, int i, {{ type }} x):
         if i < 0:
-            i += self._n_items
+            i += <int>self._n_items
 
-        if i >= self._n_items or i < 0:
+        if i < 0 or <size_t>i >= self._n_items:
             raise IndexError("list index out of range")
 
         self._data[i] = x
@@ -204,7 +433,7 @@ cdef class {{ name }}:
         cdef {{ type }} *mem
         cdef size_t new_len = self._n_items + len(x)
         cdef size_t new_size
-        cdef size_t i
+        cdef int i
 
         if new_len > self._size:
             new_size = max(new_len, 2 * self._size)
@@ -226,12 +455,12 @@ cdef class {{ name }}:
 
     cpdef insert(self, int i, {{ type }} x):
         cdef {{ type }} *mem
-        cdef int j
+        cdef size_t j
 
         if i < 0:
-            i += self._n_items
+            i += <int>self._n_items
 
-        if i > self._n_items or i < 0:
+        if i < 0 or <size_t>i > self._n_items:
             raise IndexError("list index out of range")
 
         if self._n_items == self._size:
@@ -242,7 +471,7 @@ cdef class {{ name }}:
             self._data = mem
             self._size *= 2
 
-        for j in range(self._n_items, i, -1):
+        for j in range(self._n_items, <size_t>i, -1):
             self._data[j] = self._data[j - 1]
 
         self._data[i] = x
@@ -262,8 +491,8 @@ cdef class {{ name }}:
         return self._data[self._n_items]
 
     cpdef remove(self, {{ type }} x):
-        cdef int i
-        cdef int j
+        cdef size_t i
+        cdef size_t j
         cdef bint found = 0
 
         for i in range(self._n_items):

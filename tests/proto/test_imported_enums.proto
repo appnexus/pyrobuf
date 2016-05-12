@@ -5,6 +5,7 @@ import "test_multi_messages_toplevel_enums.proto";
 message UsesImportedEnumsMessage {
     required MessageID message_id = 1 [default = MSG_ONE];
     optional Status status = 2 [default = CLOSE];
+    optional Status status_without_default = 3;
 }
 
 message ExposesInternalEnumConstantsMessage {
@@ -14,4 +15,5 @@ message ExposesInternalEnumConstantsMessage {
     }
 
     required internal_enum is_internal = 1 [default = INTERNAL];
+    optional internal_enum without_default = 2;
 }

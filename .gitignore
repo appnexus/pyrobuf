@@ -14,3 +14,4 @@ pyrobuf/src/pyrobuf_list.*
 tests/out/
 tests/build/
 /.tox
+pyrobuf/src/pyrobuf_defs.pxi

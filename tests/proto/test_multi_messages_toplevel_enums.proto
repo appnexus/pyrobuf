@@ -16,6 +16,7 @@ message One
 {
     required fixed64 some_id = 1;
     required Status status = 2;
+    optional Status status_with_default = 3 [default=OPEN];
 }
 
 message Two

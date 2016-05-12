@@ -1,7 +1,10 @@
 from libc.stdint cimport *
 from libc.string cimport *
 
-IF UNAME_SYSNAME == "Windows":
+include "pyrobuf_defs.pxi"
+
+
+IF PYROBUF_UNAME_SYSNAME == "Windows":
     cdef extern from "strndup.c":
         char * strndup (const char *s, size_t n)
 

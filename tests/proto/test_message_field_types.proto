@@ -7,4 +7,19 @@ message TestFieldTypes {
     repeated int32 packed_var_width_list = 3 [packed=true];
     repeated sfixed32 packed_fixed_width_list = 4 [packed=true];
     repeated bytes list_bytes = 5;
+
+    optional sint32 signed_int = 6;
+}
+
+message RepeatedFieldsSameType {
+    repeated uint32 foo = 1;
+    repeated uint32 bar = 2;
+}
+
+message TestDeprecatedField {
+    optional int32 old_field = 1 [deprecated=true];
+    optional int32 new_field = 2;
+}
+
+message EmptyMessageWithNoFields {
 }

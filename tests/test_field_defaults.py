@@ -5,6 +5,7 @@ from proto_lib_fixture import proto_lib
 
 
 TestDecimalDefaultsMessage = None
+TestStringDefaultsMessage = None
 
 
 @pytest.mark.usefixtures('proto_lib')
@@ -12,7 +13,7 @@ class DecimalDefaultsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global TestDecimalDefaultsMessage
-        from test_decimal_defaults_proto import TestDecimalDefaultsMessage
+        from test_field_defaults_proto import TestDecimalDefaultsMessage
 
     def setUp(self):
         self.message = TestDecimalDefaultsMessage()
@@ -58,3 +59,29 @@ class DecimalDefaultsTest(unittest.TestCase):
 
     def test_default_of_one_e_minus_6(self):
         self.assertEqual(self.message.one_e_minus_6, 1e-6)
+
+
+@pytest.mark.usefixtures('proto_lib')
+class StringDefaultsTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        global TestStringDefaultsMessage
+        from test_field_defaults_proto import TestStringDefaultsMessage
+
+    def setUp(self):
+        self.message = TestStringDefaultsMessage()
+
+    def test_string_message_field_with_default_of_hello_world(self):
+        self.assertEqual("Hello World!", self.message.hello)
+
+    def test_string_message_field_with_default_of_empty_string(self):
+        self.assertEqual("", self.message.empty)
+
+    def test_string_message_field_with_default_of_three_spaces(self):
+        self.assertEqual("   ", self.message.spaces)
+
+    def test_string_message_field_with_default_using_single_quotes(self):
+        self.assertEqual("Single quotes", self.message.single_quotes)
+
+    def test_string_message_field_with_default_containing_escaped_chars(self):
+        self.assertEqual("Escaped \" quote\n", self.message.escaped_quote)
