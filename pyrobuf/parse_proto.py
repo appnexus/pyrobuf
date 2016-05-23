@@ -21,7 +21,8 @@ class Parser(object):
         'RBRACE': r'\}',
         'SKIP': r'[ \t]',
         'NEWLINE': r'[\r\n]',
-        'PACKAGE': r'package\s.*;'
+        'PACKAGE': r'package\s.*;',
+        'SYNTAX': r'(syntax\s+.*?);'
     }
 
     scalars = (
@@ -106,6 +107,9 @@ class Parser(object):
             if token_type == 'OPTION':
                 yield ParserOption(pos, *vals)
 
+            elif token_type == 'SYNTAX':
+                yield ParserSyntax(pos, *vals)
+
             elif token_type == 'IMPORT':
                 yield ParserImport(pos, *vals)
 
@@ -150,6 +154,12 @@ class Parser(object):
 
         for token in tokens:
             if token.token_type == 'OPTION':
+                continue
+
+            elif token.token_type == 'SYNTAX':
+                if 'proto2' not in token.value:
+                    raise Exception(
+                        'Only proto2 is currently supported')
                 continue
 
             elif token.token_type == 'IMPORT':
@@ -315,6 +325,13 @@ class ParserOption(object):
         self.token_type = 'OPTION'
         self.pos = pos
         self.option = option
+
+
+class ParserSyntax(object):
+    def __init__(self, pos, value):
+        self.token_type = 'SYNTAX'
+        self.pos = pos
+        self.value = value
 
 
 class ParserImport(object):
