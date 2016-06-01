@@ -174,6 +174,23 @@ Python dictionaries:
 >>> test.ParseFromDict({'field': 5, 'list_fieldx': [12], 'req_field': 2, 'string_field': 'hello!', 'test_ref': {'field2': 3.14}})
 ```
 
+Finally, the `pyrobuf_util` module contains functions for encoding and decoding integers.
+
+```
+>>> import pyrobuf_util
+>>> pyrobuf_util.to_varint(2**16-1)
+bytearray(b'\xff\xff\x03')
+>>> pyrobuf_util.from_varint(b'\xff\xff\x03', offset=0)
+(65535L, 3)
+>>> pyrobuf_util.to_signed_varint(-2**16)
+bytearray(b'\xff\xff\x07')
+>>> pyrobuf_util.from_signed_varint(b'\xff\xff\x07', offset=0)
+(-65536L, 3)
+```
+
+The `from_varint` and `from_signed_varint` functions return both the decoded integer and
+the offset of the first byte after the encoded integer in the source data.
+
 ### Performance
 
 On my development machine (Ubuntu 14.04), Pyrobuf is roughly 2.0x as fast as

@@ -85,6 +85,10 @@ cdef int64_t get_varint64(const unsigned char *varint, int *offset):
             return value
 
 def get_varint(data, offset=0):
+    """
+    Return an integer value obtained by decoding varint data from the given
+    byte string beginning at the specified offset.
+    """
     cdef int _offset = offset
     return get_varint64(data, &_offset)
 
@@ -130,8 +134,12 @@ cdef int64_t get_signed_varint64(const unsigned char *varint, int *offset):
             return <int64_t>((value >> 1) ^ (-(value & 1))) # zigzag decoding
 
 def get_signed_varint(data, offset=0):
+    """
+    Return an integer value obtained by decoding signed-varint data from the
+    given byte string beginning at the specified offset.
+    """
     cdef int _offset = offset
-    return get_varint64(data, &_offset)
+    return get_signed_varint64(data, &_offset)
 
 
 cdef int set_varint32(int32_t varint, bytearray buf):
@@ -175,6 +183,10 @@ cdef int set_varint64(int64_t varint, bytearray buf):
     return idx + 1
 
 def to_varint(varint):
+    """
+    Return a byte string containing the varint encoded form of the specified
+    varint.
+    """
     buf = bytearray()
     set_varint64(varint, buf)
     return buf
@@ -223,6 +235,30 @@ cdef int set_signed_varint64(int64_t varint, bytearray buf):
 
 
 def to_signed_varint(varint):
+    """
+    Return a byte string containing the signed-varint encoded form of the
+    specified varint.
+    """
     buf = bytearray()
     set_signed_varint64(varint, buf)
     return buf
+
+
+def from_varint(data, offset=0):
+    """
+    Return a (integer value, new_offset) pair obtained by decoding varint data
+    from the given byte string beginning at the specified offset.
+    """
+    cdef int _offset = offset
+    result = get_varint64(data, &_offset)
+    return result, _offset
+
+
+def from_signed_varint(data, offset=0):
+    """
+    Return a (integer value, new_offset) pair obtained by decoding signed varint
+    data from the given byte string beginning at the specified offset.
+    """
+    cdef int _offset = offset
+    result = get_signed_varint64(data, &_offset)
+    return result, _offset
