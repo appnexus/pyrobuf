@@ -1,6 +1,7 @@
 """Setuptools integration."""
 import glob
 import os
+import os.path
 
 from Cython.Build import cythonize
 from jinja2 import Environment, PackageLoader
@@ -23,7 +24,8 @@ def add_pyrobuf_module(dist, pyrobuf_module):
 
     dir_name = "pyrobuf/_" + pyrobuf_module
 
-    os.makedirs(dir_name, exist_ok=True)
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
 
     if os.path.isdir(pyrobuf_module):
         for spec in glob.glob(os.path.join(pyrobuf_module, '*.proto')):
