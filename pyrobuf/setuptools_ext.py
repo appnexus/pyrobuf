@@ -16,7 +16,6 @@ except NameError:
 
 
 def add_pyrobuf_module(dist, pyrobuf_module):
-    print "ADD_PYROBUF_MODULE CALLED WITH", pyrobuf_module
     parser = Parser()
 
     env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
