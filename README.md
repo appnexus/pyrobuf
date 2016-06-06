@@ -191,6 +191,44 @@ bytearray(b'\xff\xff\x07')
 The `from_varint` and `from_signed_varint` functions return both the decoded integer and
 the offset of the first byte after the encoded integer in the source data.
 
+### Distributing a Python Package with Pyrobuf Modules
+
+Suppose you have a Python package called 'sample' arranged on disk as follows:
+
+```
+sample/
+    proto/
+        my_message.proto
+    sample/
+        __init__.py
+    setup.py
+```
+
+Pyrobuf adds a new setup keyword `pyrobuf_modules` which can be used to specify either
+individual protobuf files or folders containing protobuf files. For example, the `setup.py`
+file could look like this:
+ 
+```
+from setuptools import setup, find_packages
+
+setup(
+    name="sample",
+    version="0.1",
+    packages=find_packages(),
+    description="A sample package",
+    install_requires=['pyrobuf'],
+    setup_requires=['pyrobuf'],
+    pyrobuf_modules="proto"
+)
+```
+
+Once installed this sample package can be used as follows:
+
+```
+>>> import sample
+>>> import my_message_proto
+```
+
 ### Performance
 
 On my development machine (Ubuntu 14.04), Pyrobuf is roughly 2.0x as fast as
