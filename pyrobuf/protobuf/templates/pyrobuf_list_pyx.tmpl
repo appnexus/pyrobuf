@@ -72,13 +72,11 @@ cdef class TypedList(list):
             listener._Modified()
 
     def extend(self, x):
-        try:
-            assert isinstance(x, TypedList)
-            assert self._list_type == x.list_type
-        except AssertionError:
-            raise Exception("type mismatch")
+        for i in x:
+            elt = self._list_type()
+            elt.MergeFrom(i)
+            super(TypedList, self).append(elt)
 
-        super(TypedList, self).extend(x)
         listener = <object>self._listener
         if not listener._is_present_in_parent:
             listener._Modified()
@@ -429,29 +427,13 @@ cdef class {{ name }}:
         if not listener._is_present_in_parent:
             listener._Modified()
 
-    cpdef extend(self, {{ name }} x):
-        cdef {{ type }} *mem
-        cdef size_t new_len = self._n_items + len(x)
-        cdef size_t new_size
-        cdef int i
+    cpdef extend(self, x):
+        for i in x:
+            self._append(i)
 
-        if new_len > self._size:
-            new_size = max(new_len, 2 * self._size)
-            mem = <{{ type }} *>PyMem_Realloc(self._data, new_size * sizeof({{ type }}))
-            if not mem:
-                raise MemoryError()
-
-            self._data = mem
-            self._size = new_size
-
-        for i in range(len(x)):
-            self._data[self._n_items + i] = x[i]
-
-        if new_len != self._n_items:
-            listener = <object>self._listener
-            if not listener._is_present_in_parent:
-                listener._Modified()
-        self._n_items = new_len
+        listener = <object>self._listener
+        if not listener._is_present_in_parent:
+            listener._Modified()
 
     cpdef insert(self, int i, {{ type }} x):
         cdef {{ type }} *mem
