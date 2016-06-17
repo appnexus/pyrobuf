@@ -278,8 +278,6 @@ cdef class {{ name }}:
         cdef {% if version_major == 2 %}unicode{% else %}str{% endif %} {{ field.name }}_elt
             {%- elif field.type == 'bytes' %}
         cdef bytes {{ field.name }}_elt
-            {%- elif field.type == 'enum' %}
-        cdef int32_t {{ field.name }}_elt
             {%- else  %}
         cdef {{ field.c_type }} {{ field.name }}_elt
             {%- endif %}
@@ -645,8 +643,6 @@ cdef class {{ name }}:
         cdef bytearray {{ field.name }}_elt_buf
             {%- elif field.type == 'string' %}
         cdef bytes {{ field.name }}_elt
-            {%- elif field.type == 'enum' %}
-        cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }} {{ field.name }}_elt
             {%- else %}
         cdef {{ field.c_type }} {{ field.name }}_elt
             {%- endif %}

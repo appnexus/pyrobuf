@@ -1,0 +1,8 @@
+message TestRepeatedEnum {
+    enum EnumField {
+        TEST_ENUM_FIELD_0 = 0;
+        TEST_ENUM_FIELD_1 = 1;
+        TEST_ENUM_FIELD_2 = 2;
+    }
+    repeated EnumField list_enum = 1;
+}
