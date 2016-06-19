@@ -2,6 +2,7 @@ import unittest
 
 from pyrobuf_list import *
 
+
 class DoubleListTest(unittest.TestCase):
 
     def test_append_get_set_len(self):
@@ -78,6 +79,16 @@ class DoubleListTest(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             x.remove(7)
+
+    def test_extend_with_generic_list(self):
+        x1 = DoubleList()
+        x2 = [1.0, 2.0, 3.0, 4.0, 5.0]
+
+        x1.extend(x2)
+
+        for i in range(5):
+            self.assertEqual(x1[i], x2[i])
+
 
 if __name__ == "__main__":
     unittest.main()
