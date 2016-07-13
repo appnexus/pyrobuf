@@ -20,7 +20,7 @@ Pyrobuf *does not* require protoc.
 
 Pyrobuf has been tested with Python 2.7 and Python 3.5.
 
-Pyrobuf appears to be workin on OSX, Linux and Windows (for the latter getting
+Pyrobuf appears to be working on OSX, Linux and Windows (for the latter getting
 Cython to work properly is the trickiest bit especially if you are still using
 2.7).
 
