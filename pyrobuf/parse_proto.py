@@ -4,6 +4,8 @@ import re
 
 class Parser(object):
 
+    syntax = 2
+
     tokens = {
         'COMMENT_OL': r'\/\/.*?\n',
         'COMMENT_ML': r'\/\*(?:.|[\r\n])*?\*\/',
@@ -157,9 +159,8 @@ class Parser(object):
                 continue
 
             elif token.token_type == 'SYNTAX':
-                if 'proto2' not in token.value:
-                    raise Exception(
-                        'Only proto2 is currently supported')
+                if 'proto3' in token.value:
+                    assert(self.syntax == 3)
                 continue
 
             elif token.token_type == 'IMPORT':
@@ -195,7 +196,7 @@ class Parser(object):
         return self.parse(s, fname=fname)
 
     def _parse_import(self, fname, parent_fname):
-        i_parser = Parser()
+        i_parser = self.__class__()
         actual_fname = fname if os.path.isabs(fname) else os.path.join(os.path.dirname(parent_fname), fname)
         rep = i_parser.parse_from_filename(actual_fname)
         return rep
@@ -428,3 +429,4 @@ class ParserRBrace(object):
     def __init__(self, pos):
         self.token_type = 'RBRACE'
         self.pos = pos
+

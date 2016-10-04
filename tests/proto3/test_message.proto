@@ -1,0 +1,48 @@
+import "test_ref_message.proto";
+
+message Test {
+    uint32 timestamp = 1;
+    int64 field = 2;
+	string string_field = 3;
+	repeated int64 list_fieldx = 4;
+
+    message Ss1 {
+    	int64 field1 = 1;
+    	string field2 = 2;
+
+        message Ss2 {
+        	double field1 = 1;
+        	string ss2_field2 = 2;
+        }
+    	Ss2 field3 = 3;
+    	repeated double list = 4;
+
+        message Thing {
+        	double field1 = 1;
+        	string ss2_field2 = 2;
+        }
+    	repeated Thing list_object = 5;
+    	repeated string list_string = 6;
+    }
+	Ss1 substruct = 5;
+    TestRef test_ref = 6;
+
+    enum EnumField {
+        TEST_ENUM_FIELD_0 = 0;
+        TEST_ENUM_FIELD_1 = 1;
+        TEST_ENUM_FIELD_2 = 2;
+    }
+	EnumField enum_field = 7;
+	repeated TestRef list_ref = 8;
+
+    message Ss3 {
+    	string string_field = 1;
+    	string fixed_string_field = 2;
+    	uint32 int_field = 3;
+    	uint32 another_int_field = 4;
+    	TestRef substruct_ref = 5;
+    }
+	Ss3 another_substruct = 9;
+	int64 req_field = 10;
+    int32 negative_32 = 11;
+}

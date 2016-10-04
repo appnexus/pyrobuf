@@ -9,13 +9,15 @@ from Cython.Build import cythonize
 from jinja2 import Environment, PackageLoader
 
 from .parse_proto import Parser
+from .parse_proto3 import Proto3Parser
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 def main():
     args = cli_argument_parser()
-    gen_message(args.source, out=args.out_dir, build=args.build_dir, install=args.install)
+    gen_message(args.source, out=args.out_dir, build=args.build_dir,
+                install=args.install, proto3=args.proto3)
 
 def cli_argument_parser():
     parser = argparse.ArgumentParser("pyrobuf", description="a Cython based protobuf compiler")
@@ -27,11 +29,16 @@ def cli_argument_parser():
                         help="C compiler build directory [default: build]")
     parser.add_argument('--install', action='store_true',
                         help="install the extension [default: False]")
+    parser.add_argument('--proto3', action='store_true',
+                        help="compile proto3 syntax [default: False]")
     return parser.parse_args()
 
-def gen_message(fname, out="out", build="build", install=False):
+def gen_message(fname, out="out", build="build", install=False, proto3=False):
 
-    parser = Parser()
+    if proto3:
+        parser = Proto3Parser()
+    else:
+        parser = Parser()
 
     env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
     templ_pxd = env.get_template('proto_pxd.tmpl')
