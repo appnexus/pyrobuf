@@ -151,7 +151,7 @@ cdef int set_varint32(int32_t varint, bytearray buf):
 	# Negative numbers are always 10 bytes, so we need a uint64_t to
     # facilitate encoding
     cdef uint64_t enc = varint
-    bits = enc & 0x7f
+    cdef uint8_t bits = enc & 0x7f
     enc >>= 7
     cdef int idx = 1
     while enc:
@@ -171,7 +171,7 @@ cdef int set_varint64(int64_t varint, bytearray buf):
     # Negative numbers are always 10 bytes, so we need a uint64_t to
     # facilitate encoding
     cdef uint64_t enc = varint
-    bits = enc & 0x7f
+    cdef uint8_t bits = enc & 0x7f
     enc >>= 7
     cdef int idx = 1
     while enc:
@@ -198,6 +198,7 @@ cdef int set_signed_varint32(int32_t varint, bytearray buf):
     bytes serialized.
     """
     cdef uint32_t enc
+    cdef uint8_t bits
     cdef int idx = 1
 
     enc = (varint << 1) ^ (varint >> 31) # zigzag encoding
@@ -219,6 +220,7 @@ cdef int set_signed_varint64(int64_t varint, bytearray buf):
     bytes serialized.
     """
     cdef uint64_t enc
+    cdef uint8_t bits
     cdef int idx = 1
 
     enc = (varint << 1) ^ (varint >> 63) # zigzag encoding
