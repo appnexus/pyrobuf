@@ -180,7 +180,7 @@ class Parser(object):
                 enums[token.name] = token
 
             else:
-                raise Exception("unexpected %s token at character %d: '%s'" % (token.typ, token.pos, s[token.pos:token.pos+10]))
+                raise Exception("unexpected %s token at character %d: '%s'" % (token.type, token.pos, s[token.pos:token.pos+10]))
 
         if cython_info:
             for message in rep['messages']:
