@@ -216,7 +216,6 @@ class Parser(object):
 
             elif token.token_type == 'FIELD':
                 if current.messages.get(token.type) is not None:
-                    token.message_def = current.messages[token.type]
                     token.message_name = token.type
                     token.type = 'message'
 
