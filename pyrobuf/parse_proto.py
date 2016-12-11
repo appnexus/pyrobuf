@@ -219,7 +219,6 @@ class Parser(object):
                     token.message_def = current.messages[token.type]
                     token.message_name = token.type
                     token.type = 'message'
-                    token.is_nested = True
 
                 elif current.enums.get(token.type) is not None:
                     if token.default is not None:
@@ -232,7 +231,6 @@ class Parser(object):
                         token.default = default
                         token.enum_default = enum_default
 
-                    token.is_nested = True
                     token.enum_def = current.enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
@@ -248,7 +246,6 @@ class Parser(object):
                         token.default = default
                         token.enum_default = enum_default
 
-                    token.is_nested = False
                     token.enum_def = enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
@@ -264,7 +261,6 @@ class Parser(object):
                         token.default = default
                         token.enum_default = enum_default
 
-                    token.is_nested = False
                     token.enum_def = imported_enums[token.type]
                     token.enum_name = token.type
                     token.type = 'enum'
@@ -272,7 +268,6 @@ class Parser(object):
                 elif (token.type not in self.scalars) and (token.type not in ('string', 'bytes')):
                     token.message_name = token.type
                     token.type = 'message'
-                    token.is_nested = False
 
                 current.fields.append(token)
 
