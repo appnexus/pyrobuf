@@ -11,8 +11,8 @@ import json
 from {{ import }}_proto cimport *
 {%- endfor %}
 
-{%- macro classdef(name, message) %}
-cdef class {{ name }}:
+{%- macro classdef(message) %}
+cdef class {{ message.full_name }}:
 
 {% for field in message.fields|sort(attribute='index') -%}
     {%- if field.modifier == 'repeated' %}
@@ -44,10 +44,10 @@ cdef class {{ name }}:
 
     cpdef void Clear(self)
     cpdef void ClearField(self, field_name)
-    cpdef void CopyFrom(self, {{ name }} other_msg)
+    cpdef void CopyFrom(self, {{ message.full_name }} other_msg)
     cpdef bint HasField(self, field_name) except -1
     cpdef bint IsInitialized(self)
-    cpdef void MergeFrom(self, {{ name }} other_msg)
+    cpdef void MergeFrom(self, {{ message.full_name }} other_msg)
     cpdef int MergeFromString(self, data, size=*) except -1
     cpdef int ParseFromString(self, data, size=*, bint reset=*) except -1
     cpdef bytes SerializePartialToString(self)
@@ -58,13 +58,14 @@ cdef class {{ name }}:
 
     cpdef void _Modified(self)
 
-    {%- for message_name, message_message in message.messages.items() %}
-{{ classdef(message_name, message_message) }}
-    {%- endfor %}
-
     {%- for enum_name, enum in message.enums.items() %}
 {{ enumdef(enum_name, enum) }}
     {%- endfor %}
+
+    {%- for submessage_name, submessage in message.messages.items() %}
+{{ classdef(submessage) }}
+    {%- endfor %}
+
 {%- endmacro %}
 
 {%- macro enumdef(name, enum) %}
@@ -79,5 +80,5 @@ cdef enum {{ name }}:
 {%- endfor %}
 
 {%- for message in messages %}
-{{ classdef(message.name, message) }}
+{{ classdef(message) }}
 {%- endfor %}
