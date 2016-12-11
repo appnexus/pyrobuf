@@ -151,6 +151,7 @@ class Parser(object):
         rep = {'imports': [], 'messages': [], 'enums': []}
         enums = {}
         imported = {'messages': {}, 'enums': {}}
+        messages = {}
 
         for token in tokens:
             if token.token_type == 'OPTION':
@@ -172,7 +173,7 @@ class Parser(object):
                 imported['enums'].update((e.name, e) for e in imported_rep['enums'])
 
             elif token.token_type == 'MESSAGE':
-                rep['messages'].append(self._parse_message(s, token, tokens, enums, imported['enums']))
+                rep['messages'].append(self._parse_message(s, token, tokens, messages, enums, imported['enums']))
 
             elif token.token_type == 'ENUM':
                 ret = self._parse_enum(s, token, tokens)
@@ -200,7 +201,19 @@ class Parser(object):
         rep = i_parser.parse_from_filename(actual_fname)
         return rep
 
-    def _parse_message(self, s, current, tokens, enums, imported_enums):
+    def _parse_message(self, s, current, tokens, messages, enums, imported_enums):
+        """
+        Recursive parsing of messages.
+        Args:
+	    s: the proto content string.
+	    current: the current ParserMessage object we are working on.
+	    tokens: a generator of Parser*.
+	    messages: a dictionary of all ParserMessage objects already known/parsed.
+	    enums: a dictionary of ParserEnum objects.
+	    imported_enums: a dictionary of ParserEnum objects.
+	Returns:
+	    a list/hiearchy of ParserMessage objects.
+        """
         token = next(tokens)
         try:
             assert token.token_type == 'LBRACE'
@@ -209,14 +222,18 @@ class Parser(object):
 
         for token in tokens:
             if token.token_type == 'MESSAGE':
-                current.messages[token.name] = self._parse_message(s, token, tokens, enums, imported_enums)
+                token.full_name = current.full_name + token.name
+                current.messages[token.name] = self._parse_message(s, token, tokens, messages, enums, imported_enums)
+                # updates the dictionary of known/parsed messages.
+                messages.update(current.messages)
 
             elif token.token_type == 'ENUM':
                 current.enums[token.name] = self._parse_enum(s, token, tokens)
 
             elif token.token_type == 'FIELD':
-                if current.messages.get(token.type) is not None:
-                    token.message_name = token.type
+                if messages.get(token.type) is not None:
+                    # retrieves the type "full_name"
+                    token.message_name = messages.get(token.type).full_name
                     token.type = 'message'
 
                 elif current.enums.get(token.type) is not None:
@@ -340,6 +357,8 @@ class ParserMessage(object):
         self.token_type = 'MESSAGE'
         self.pos = pos
         self.name = name
+        # full_name may later be overriden with parent hierarchy when relevant
+        self.full_name = name
         self.messages = {}
         self.enums = {}
         self.fields = []
