@@ -205,14 +205,14 @@ class Parser(object):
         """
         Recursive parsing of messages.
         Args:
-	    s: the proto content string.
-	    current: the current ParserMessage object we are working on.
-	    tokens: a generator of Parser*.
-	    messages: a dictionary of all ParserMessage objects already known/parsed.
-	    enums: a dictionary of ParserEnum objects.
-	    imported_enums: a dictionary of ParserEnum objects.
-	Returns:
-	    a list/hiearchy of ParserMessage objects.
+            s: the proto content string.
+            current: the current ParserMessage object we are working on.
+            tokens: a generator of Parser*.
+            messages: a dictionary of all ParserMessage objects already known/parsed.
+            enums: a dictionary of ParserEnum objects.
+            imported_enums: a dictionary of ParserEnum objects.
+        Returns:
+            a list/hiearchy of ParserMessage objects.
         """
         token = next(tokens)
         try:
