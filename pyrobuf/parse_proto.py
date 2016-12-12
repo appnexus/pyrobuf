@@ -225,7 +225,7 @@ class Parser(object):
                 token.full_name = current.full_name + token.name
                 current.messages[token.name] = self._parse_message(s, token, tokens, messages, enums, imported_enums)
                 # updates the dictionary of known/parsed messages.
-                messages.update(current.messages)
+                messages[token.name] = current.messages[token.name]
 
             elif token.token_type == 'ENUM':
                 current.enums[token.name] = self._parse_enum(s, token, tokens)
