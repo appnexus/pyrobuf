@@ -229,6 +229,8 @@ class Parser(object):
 
             elif token.token_type == 'ENUM':
                 current.enums[token.name] = self._parse_enum(s, token, tokens)
+                # updates the dictionary of known/parsed enums
+                enums[token.name] = current.enums[token.name]
 
             elif token.token_type == 'FIELD':
                 if messages.get(token.type) is not None:
