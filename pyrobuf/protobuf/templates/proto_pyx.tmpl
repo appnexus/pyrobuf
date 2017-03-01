@@ -106,9 +106,7 @@ cdef class {{ message.full_name }}:
         self._{{ field.name }}._listener = <PyObject *>self
             {%- endif %}
         {%- elif field.type == 'message' %}
-        self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
-        self._{{ field.name }}.reset()
-        self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }} = None
         {%- elif field.default != None %}
             {%- if field.type == 'string' %}
         self._{{ field.name }} = {% if version_major == 2 %}u{% endif %}{{ field.default }}
@@ -136,6 +134,13 @@ cdef class {{ message.full_name }}:
         def __get__(self):
         {%- if field.deprecated|default(false) == true %}
             warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
+        {%- endif %}
+        {%- if field.type == 'message' %}
+            # lazy init sub messages
+            if self._{{ field.name }} is None:
+                self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
+                self._{{ field.name }}.reset()
+                self._{{ field.name }}._listener = <PyObject *>self
         {%- endif %}
             return self._{{ field.name }}
 
