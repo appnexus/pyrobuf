@@ -1,0 +1,29 @@
+enum TestEnum {
+    TEST_VALUE0 = 0;
+    TEST_VALUE1 = 1;
+    TEST_VALUE2 = 2;
+}
+
+message TestMessage {
+    enum TestEnum {
+        TEST_VALUE1 = 3;
+        TEST_VALUE2 = 4;
+        TEST_VALUE3 = 5;
+    }
+
+    message TestNestedMessage {
+        enum TestEnum {
+            TEST_VALUE1 = 6;
+            TEST_VALUE2 = 7;
+            TEST_VALUE4 = 9;
+        }
+
+        optional TestEnum test_field = 1 [default=TEST_VALUE4];
+    }
+
+    optional TestEnum test_field = 1 [default=TEST_VALUE3];
+}
+
+message TestMessage2 {
+    optional TestEnum test_field = 1 [default=TEST_VALUE0];
+}

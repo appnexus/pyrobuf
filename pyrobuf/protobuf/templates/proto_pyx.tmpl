@@ -14,7 +14,7 @@ from {{ import }}_proto cimport *
 
 {%- macro message_enum_fields_def(enum) %}
     {%- for field in enum.fields %}
-    {{ field.name }} = _{{ field.name }}
+    {{ field.name }} = _{{ field.full_name }}
     {%- endfor %}
 {%- endmacro %}
 
@@ -124,7 +124,7 @@ cdef class {{ message.full_name }}:
         {%- elif field.type == 'bytes' %}
         self._{{ field.name }} = b""
         {%- elif field.type == 'enum' and field.enum_def != None %}
-        self._{{ field.name }} = _{{ field.enum_def.fields[0].name }}
+        self._{{ field.name }} = _{{ field.enum_def.fields[0].full_name }}
         {%- else %}
         self._{{ field.name }} = 0
         {%- endif %}
@@ -184,7 +184,7 @@ cdef class {{ message.full_name }}:
                     {%- else %}
                 elif val == {{ enum_field.value }}:
                     {%- endif %}
-                    self._{{ field.name }}.append(_{{ enum_field.name }})
+                    self._{{ field.name }}.append(_{{ enum_field.full_name }})
                 {% endfor %}
                 else:
                     raise ValueError("not a valid value for enum {{ field.enum_name }}")
@@ -220,7 +220,7 @@ cdef class {{ message.full_name }}:
                     {%- else %}
             elif value == {{ enum_field.value }}:
                     {%- endif %}
-                self._{{ field.name }} = _{{ enum_field.name }}
+                self._{{ field.name }} = _{{ enum_field.full_name }}
                 {% endfor %}
             else:
                 raise ValueError("not a valid value for enum {{ field.enum_name }}")
@@ -434,7 +434,7 @@ cdef class {{ message.full_name }}:
             {%- elif field.type == 'bytes' %}
             self._{{ field.name }} = b""
             {%- elif field.type == 'enum' and field.enum_def != None %}
-            self._{{ field.name }} = _{{ field.enum_def.fields[0].name }}
+            self._{{ field.name }} = _{{ field.enum_def.fields[0].full_name }}
             {%- else %}
             self._{{ field.name }} = 0
             {%- endif %}
@@ -971,7 +971,7 @@ class DecodeError(Exception):
 
 {%- macro enum_fields_def(enum) %}
 {%- for field in enum.fields %}
-{{ field.name }} = _{{ field.name }}
+{{ field.name }} = _{{ field.full_name }}
 {%- endfor %}
 {%- endmacro %}
 
