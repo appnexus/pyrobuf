@@ -1,4 +1,3 @@
-import re
 import os
 import sys
 import glob
@@ -8,16 +7,18 @@ from distutils.core import setup
 from Cython.Build import cythonize
 from jinja2 import Environment, PackageLoader
 
-from .parse_proto import Parser
-from .parse_proto3 import Proto3Parser
+from pyrobuf.parse_proto import Parser
+from pyrobuf.parse_proto3 import Proto3Parser
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
 
 def main():
     args = cli_argument_parser()
     gen_message(args.source, out=args.out_dir, build=args.build_dir,
                 install=args.install, proto3=args.proto3)
+
 
 def cli_argument_parser():
     parser = argparse.ArgumentParser("pyrobuf", description="a Cython based protobuf compiler")
@@ -32,6 +33,7 @@ def cli_argument_parser():
     parser.add_argument('--proto3', action='store_true',
                         help="compile proto3 syntax [default: False]")
     return parser.parse_args()
+
 
 def gen_message(fname, out="out", build="build", install=False, proto3=False):
 
@@ -74,6 +76,7 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False):
           ext_modules=cythonize([pyx],
                                 include_path=[os.path.join(HERE, 'src'), out]),
           script_args=script_args)
+
 
 def generate(fname, out, parser, templ_pxd, templ_pyx):
 

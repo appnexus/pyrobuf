@@ -1,4 +1,5 @@
-from parse_proto import *
+from pyrobuf.parse_proto import *
+
 
 class Proto3Parser(Parser):
 
@@ -33,7 +34,7 @@ class ParserField(object):
         self.name = name
         self.index = int(index)
         self.default = None
-        self.packed = ftype in scalars
+        self.packed = ftype in Parser.scalars
         self.deprecated = False
 
 
@@ -46,6 +47,6 @@ class ParserFieldDeprecated(object):
         self.name = name
         self.index = int(index)
         self.default = None
-        self.packed = ftype in scalars
+        self.packed = ftype in Parser.scalars
         self.deprecated = True
 
