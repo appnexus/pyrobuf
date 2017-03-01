@@ -202,6 +202,31 @@ class Parser(object):
         rep = i_parser.parse_from_filename(actual_fname)
         return rep
 
+    def _process_token_enum(self, token, enums):
+        """
+        Helper method for processing a token using known enums.
+            * replaces token.default enum string value
+              by its equivalent enum int value
+            * sets token.enum_default attribute to enum default string value
+            * sets few other token attributes
+        Args:
+            token: a ParserField.
+            enums: {string: ParserEnum} dictionary.
+        """
+        if token.default is not None:
+            for entry in enums[token.type].fields:
+                if token.default == entry.name:
+                    default = entry.value
+                    enum_default = entry.name
+                    break
+
+            token.default = default
+            token.enum_default = enum_default
+
+        token.enum_def = enums[token.type]
+        token.enum_name = token.type
+        token.type = 'enum'
+
     def _parse_message(self, s, current, tokens, messages, enums, imported_enums):
         """
         Recursive parsing of messages.
@@ -238,49 +263,13 @@ class Parser(object):
                     token.type = 'message'
 
                 elif current.enums.get(token.type) is not None:
-                    if token.default is not None:
-                        for entry in current.enums[token.type].fields:
-                            if token.default == entry.name:
-                                default = entry.value
-                                enum_default = entry.name
-                                break
-
-                        token.default = default
-                        token.enum_default = enum_default
-
-                    token.enum_def = current.enums[token.type]
-                    token.enum_name = token.type
-                    token.type = 'enum'
+                    self._process_token_enum(token, current.enums)
 
                 elif enums.get(token.type) is not None:
-                    if token.default is not None:
-                        for entry in enums[token.type].fields:
-                            if token.default == entry.name:
-                                default = entry.value
-                                enum_default = entry.name
-                                break
-
-                        token.default = default
-                        token.enum_default = enum_default
-
-                    token.enum_def = enums[token.type]
-                    token.enum_name = token.type
-                    token.type = 'enum'
+                    self._process_token_enum(token, enums)
 
                 elif imported_enums.get(token.type) is not None:
-                    if token.default is not None:
-                        for entry in imported_enums[token.type].fields:
-                            if token.default == entry.name:
-                                default = entry.value
-                                enum_default = entry.name
-                                break
-
-                        token.default = default
-                        token.enum_default = enum_default
-
-                    token.enum_def = imported_enums[token.type]
-                    token.enum_name = token.type
-                    token.type = 'enum'
+                    self._process_token_enum(token, imported_enums)
 
                 elif (token.type not in self.scalars) and (token.type not in ('string', 'bytes')):
                     token.message_name = token.type
