@@ -351,6 +351,9 @@ cdef class {{ message.full_name }}:
 
         {%- elif field.type == 'message' %}
                 field_size = get_varint64(memory, &current_offset)
+                if self._{{ field.name }} is None:
+                    self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
+                    self._{{ field.name }}._listener = <PyObject *>self
                 current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, <int>field_size)
 
         {%- elif field.type == 'string' %}
@@ -421,9 +424,7 @@ cdef class {{ message.full_name }}:
             self._{{ field.name }}._listener = <PyObject *>self
                 {%- endif %}
             {%- elif field.type == 'message' %}
-            self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
-            self._{{ field.name }}.reset()
-            self._{{ field.name }}._listener = <PyObject *>self
+            self._{{ field.name }} = None
             {%- elif field.default != None %}
                 {%- if field.type == 'string' %}
             self._{{ field.name }} = {% if version_major == 2 %}u{% endif %}{{ field.default }}
@@ -476,7 +477,7 @@ cdef class {{ message.full_name }}:
     {%- for field in message.fields|rejectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
         if field_name == '{{ field.name }}':
         {%- if field.type == 'message' %}
-            return self._{{ field.name }}._is_present_in_parent
+            return self._{{ field.name }} is not None and self._{{ field.name }}._is_present_in_parent
         {%- else %}
             return self._{{ field.name }}_isSet
         {%- endif %}
@@ -500,7 +501,7 @@ cdef class {{ message.full_name }}:
 
     {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         {%- if field.type == 'message' %}
-        if not self._{{ field.name }}.IsInitialized():
+        if self._{{ field.name }} is None or not self._{{ field.name }}.IsInitialized():
         {%- else %}
         if not self._{{ field.name }}_isSet:
         {%- endif %}
@@ -508,7 +509,7 @@ cdef class {{ message.full_name }}:
     {%- endfor %}
 
     {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
-        if self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
+        if self._{{ field.name }} is not None and self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
             return False
     {%- endfor %}
 
@@ -551,7 +552,10 @@ cdef class {{ message.full_name }}:
         {%- elif field.modifier == 'repeated' %}
         self._{{ field.name }}.extend(other_msg._{{ field.name }})
         {%- elif field.type == 'message' %}
-        if other_msg._{{ field.name }}._is_present_in_parent:
+        if other_msg._{{ field.name }} is not None and other_msg._{{ field.name }}._is_present_in_parent:
+            if self._{{ field.name }} is None:
+                self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
+                self._{{ field.name }}._listener = <PyObject *>self
             self._{{ field.name }}.MergeFrom(other_msg._{{ field.name }})
         {%- else %}
         if other_msg._{{ field.name }}_isSet:
@@ -657,7 +661,7 @@ cdef class {{ message.full_name }}:
 
         {%- elif field.type == 'message' %}
         cdef bytearray {{ field.name }}_buf
-        if self._{{ field.name }}._is_present_in_parent:
+        if self._{{ field.name }} is not None and self._{{ field.name }}._is_present_in_parent:
 
         {%- elif field.type == 'string' %}
         cdef bytes {{ field.name }}_bytes
@@ -773,7 +777,7 @@ cdef class {{ message.full_name }}:
 
     {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         {%- if field.type == 'message' %}
-        if not self._{{ field.name }}.IsInitialized():
+        if self._{{ field.name }} is None or not self._{{ field.name }}.IsInitialized():
         {%- else %}
         if not self._{{ field.name }}_isSet:
         {%- endif %}
@@ -781,7 +785,7 @@ cdef class {{ message.full_name }}:
     {%- endfor %}
 
     {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
-        if self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
+        if self._{{ field.name }} is not None and self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
             raise Exception("Message {{ message.full_name }} is missing required field: {{ field.name }}")
     {%- endfor %}
 
