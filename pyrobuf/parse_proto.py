@@ -12,8 +12,8 @@ class Parser(object):
         'MESSAGE': r'message\s+([A-Z][0-9A-Za-z]*)',
         'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
         'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')\s*\];',
-        'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[packed\s*=\s*true\];',
-        'FIELD_DEPRECATED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[deprecated\s*=\s*true\];',
+        'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*packed\s*=\s*true\s*\];',
+        'FIELD_DEPRECATED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*deprecated\s*=\s*true\s*\];',
         'ENUM': r'enum\s+([A-Za-z_][0-9A-Za-z_]*)',
         'ENUM_FIELD': r'([A-Za-z_][0-9A-Za-z_]*);',
         'ENUM_FIELD_WITH_VALUE': r'([A-Za-z_][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x[0-9A-Fa-f]+);',
@@ -22,7 +22,8 @@ class Parser(object):
         'SKIP': r'[ \t]',
         'NEWLINE': r'[\r\n]',
         'PACKAGE': r'package\s.*;',
-        'SYNTAX': r'(syntax\s+.*?);'
+        'SYNTAX': r'(syntax\s+.*?);',
+        'EXTENSION': r'extensions (\d+) to (\d+|max);'
     }
 
     scalars = (
