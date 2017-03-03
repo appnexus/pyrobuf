@@ -353,6 +353,7 @@ cdef class {{ message.full_name }}:
                 field_size = get_varint64(memory, &current_offset)
                 if self._{{ field.name }} is None:
                     self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
+                    self._{{ field.name }}.reset()
                     self._{{ field.name }}._listener = <PyObject *>self
                 current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, <int>field_size)
 
@@ -405,6 +406,9 @@ cdef class {{ message.full_name }}:
         {%- endif %}
             {%- if field.type != 'message' and field.modifier != 'repeated' %}
             self._{{ field.name }}_isSet = False
+            {%- elif field.type == 'message' %}
+            if self._{{ field.name }} is not None:
+                self._{{ field.name }}._listener = <PyObject *>null_listener
             {%- else %}
             self._{{ field.name }}._listener = <PyObject *>null_listener
             {%- endif -%}
@@ -555,6 +559,7 @@ cdef class {{ message.full_name }}:
         if other_msg._{{ field.name }} is not None and other_msg._{{ field.name }}._is_present_in_parent:
             if self._{{ field.name }} is None:
                 self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
+                self._{{ field.name }}.reset()
                 self._{{ field.name }}._listener = <PyObject *>self
             self._{{ field.name }}.MergeFrom(other_msg._{{ field.name }})
         {%- else %}
