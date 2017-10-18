@@ -1,0 +1,7 @@
+message M {
+    optional string s = 1;
+
+    message Nested {
+        required int32 value = 1;
+    };
+}
