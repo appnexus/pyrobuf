@@ -1,0 +1,12 @@
+message AResponse{
+	repeated A a = 1;
+}
+
+message B {
+	required A a = 1;
+}
+
+message A {
+	required string text = 1;
+        optional B b = 2;
+}
