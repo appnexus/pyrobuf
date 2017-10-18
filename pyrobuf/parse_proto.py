@@ -20,7 +20,7 @@ class Parser(object):
         'ENUM_FIELD': r'([A-Za-z_][0-9A-Za-z_]*);',
         'ENUM_FIELD_WITH_VALUE': r'([A-Za-z_][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x[0-9A-Fa-f]+);',
         'LBRACE': r'\{',
-        'RBRACE': r'\}',
+        'RBRACE': r'\};{0,1}',
         'SKIP': r'[ \t]',
         'NEWLINE': r'[\r\n]',
         'PACKAGE': r'package\s.*;',
