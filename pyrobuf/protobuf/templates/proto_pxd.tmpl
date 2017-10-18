@@ -24,9 +24,9 @@ cdef class {{ message.full_name }}:
     {%- elif field.type == 'bytes' %}
     cdef bytes _{{ field.name }}
     {%- elif field.type == 'message' %}
-    cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.message_name }} _{{ field.name }}
+    cdef {{ field.message_name }} _{{ field.name }}
     {%- elif field.type == 'enum' %}
-    cdef {% if field.is_nested %}{{ name }}{% endif %}{{ field.enum_name }} _{{ field.name }}
+    cdef _{{ field.enum_name }} _{{ field.name }}
     {%- else %}
     cdef {{ field.c_type }} _{{ field.name }}
     {%- endif %}
@@ -59,7 +59,7 @@ cdef class {{ message.full_name }}:
     cpdef void _Modified(self)
 
     {%- for enum_name, enum in message.enums.items() %}
-{{ enumdef(enum_name, enum) }}
+{{ enumdef(enum.full_name, enum) }}
     {%- endfor %}
 
     {%- for submessage_name, submessage in message.messages.items() %}
@@ -69,14 +69,14 @@ cdef class {{ message.full_name }}:
 {%- endmacro %}
 
 {%- macro enumdef(name, enum) %}
-cdef enum {{ name }}:
+cdef enum _{{ name }}:
     {%- for field in enum.fields %}
-    _{{ field.name }} = {{ field.value }}
+    _{{ field.full_name }} = {{ field.value }}
     {%- endfor %}
 {%- endmacro %}
 
 {%- for enum in enums %}
-{{ enumdef(enum.name, enum) }}
+{{ enumdef(enum.full_name, enum) }}
 {%- endfor %}
 
 {%- for message in messages %}

@@ -175,7 +175,7 @@ class Parser(object):
                 imported['enums'].update((e.name, e) for e in imported_rep['enums'])
 
             elif token.token_type == 'MESSAGE':
-                rep['messages'].append(self._parse_message(s, token, tokens, messages, enums, imported['enums']))
+                rep['messages'].append(self._parse_message(s, token, tokens, messages, enums.copy(), imported['enums']))
 
             elif token.token_type == 'ENUM':
                 ret = self._parse_enum(s, token, tokens)
@@ -215,17 +215,22 @@ class Parser(object):
             enums: {string: ParserEnum} dictionary.
         """
         if token.default is not None:
+            found = False
             for entry in enums[token.type].fields:
                 if token.default == entry.name:
                     default = entry.value
-                    enum_default = entry.name
+                    enum_default = entry.full_name
+                    found = True
                     break
 
-            token.default = default
-            token.enum_default = enum_default
+            if found:
+                token.default = default
+                token.enum_default = enum_default
+            else:
+                raise Exception('Enum type "%s" has no value named "%s".' % (token.type, token.default))
 
         token.enum_def = enums[token.type]
-        token.enum_name = token.type
+        token.enum_name = token.enum_def.full_name
         token.type = 'enum'
 
     def _parse_message(self, s, current, tokens, messages, enums, imported_enums):
@@ -250,11 +255,12 @@ class Parser(object):
         for token in tokens:
             if token.token_type == 'MESSAGE':
                 token.full_name = current.full_name + token.name
-                current.messages[token.name] = self._parse_message(s, token, tokens, messages, enums, imported_enums)
+                current.messages[token.name] = self._parse_message(s, token, tokens, messages, enums.copy(), imported_enums)
                 # updates the dictionary of known/parsed messages.
                 messages[token.name] = current.messages[token.name]
 
             elif token.token_type == 'ENUM':
+                token.full_name = current.full_name + token.name
                 current.enums[token.name] = self._parse_enum(s, token, tokens)
                 # updates the dictionary of known/parsed enums
                 enums[token.name] = current.enums[token.name]
@@ -297,6 +303,7 @@ class Parser(object):
 
         for token in tokens:
             if token.token_type == 'ENUM_FIELD':
+                token.full_name = "%s_%s" % (current.full_name, token.name)
                 current.fields.append(token)
 
             elif token.token_type == 'RBRACE':
@@ -411,6 +418,8 @@ class ParserEnum(object):
         self.pos = pos
         self.name = name
         self.fields = []
+        # full_name may later be overriden with parent hierarchy when relevant
+        self.full_name = name
 
 
 class ParserEnumField(object):
@@ -422,6 +431,8 @@ class ParserEnumField(object):
             self.value = int(value, 0)
         else:
             self.value = None
+        # full_name may later be overriden with parent hierarchy when relevant
+        self.full_name = name
 
 
 class ParserLBrace(object):
