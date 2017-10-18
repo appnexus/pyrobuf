@@ -1,0 +1,25 @@
+message TestFieldTypes {
+    // Tests for fields of the bytes type
+    bytes payload = 1;
+    bytes payload_with_default = 2;
+
+    // Tests for packed repeated fields and repeated bytes type fields
+    repeated int32 packed_var_width_list = 3;
+    repeated sfixed32 packed_fixed_width_list = 4;
+    repeated bytes list_bytes = 5;
+
+    sint32 signed_int = 6;
+}
+
+message RepeatedFieldsSameType {
+    repeated uint32 foo = 1;
+    repeated uint32 bar = 2;
+}
+
+message TestDeprecatedField {
+    int32 old_field = 1 [deprecated=true];
+    int32 new_field = 2;
+}
+
+message EmptyMessageWithNoFields {
+}
