@@ -264,3 +264,25 @@ def from_signed_varint(data, offset=0):
     cdef int _offset = offset
     result = get_signed_varint64(data, &_offset)
     return result, _offset
+
+
+cdef bint skip_generic(const unsigned char *memory, int *offset, int size, int wire_type):
+    """
+    Parse field of given wire type to update offset.
+    """
+    cdef int64_t skip
+
+    if wire_type == 0:
+        get_varint64(memory, offset)
+    elif wire_type == 1:
+        offset[0] += 8
+    elif wire_type == 2:
+        skip = get_varint64(memory, offset)
+        offset[0] += skip
+    elif wire_type == 5:
+        offset[0] += 4
+    else:
+        return False
+
+    return offset[0] <= size
+
