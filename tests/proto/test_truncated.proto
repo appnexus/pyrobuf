@@ -1,0 +1,5 @@
+message TestTruncated {
+    optional uint32 timestamp = 1;
+    required int64 req_field = 10;
+    optional int32 negative_32 = 11;
+}
