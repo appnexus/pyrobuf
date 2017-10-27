@@ -192,7 +192,7 @@ cdef class {{ message.full_name }}:
                     self._{{ field.name }}.append(_{{ enum_field.full_name }})
                 {% endfor %}
                 else:
-                    raise ValueError("not a valid value for enum {{ field.enum_name }}")
+                    raise ValueError("{} not a valid value for enum {{ field.enum_name }}".format(val))
             {%- elif field.type == 'string' and version_major == 2 %}
                 if isinstance(val, unicode):
                     list.append(self._{{ field.name }}, val)
@@ -228,7 +228,7 @@ cdef class {{ message.full_name }}:
                 self._{{ field.name }} = _{{ enum_field.full_name }}
                 {% endfor %}
             else:
-                raise ValueError("not a valid value for enum {{ field.enum_name }}")
+                raise ValueError("{} not a valid value for enum {{ field.enum_name }}".format(value))
             {%- elif field.type == 'string' and version_major == 2 %}
             if isinstance(value, unicode):
                 self._{{ field.name }} = value
@@ -382,8 +382,10 @@ cdef class {{ message.full_name }}:
                 self._{{ field.name }} = {{ field.getter }}(memory, &current_offset)
 
         {%- endif %}
-
     {%- endfor %}
+            # Unknown field - need to skip proper number of bytes
+            else:
+                assert skip_generic(memory, &current_offset, size, key & 0x7)
     {%- endif %}
 
         self._is_present_in_parent = True
