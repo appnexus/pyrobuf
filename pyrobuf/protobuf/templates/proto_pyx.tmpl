@@ -257,6 +257,8 @@ cdef class {{ message.full_name }}:
         {%- endif %}
             if not self._is_present_in_parent:
                 self._Modified()
+            else:
+                self._cached_serialization = None
     {% endfor %}
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size, bint cache):
