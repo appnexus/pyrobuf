@@ -259,7 +259,7 @@ cdef class {{ message.full_name }}:
                 self._Modified()
     {% endfor %}
 
-    cdef int _protobuf_deserialize(self, const unsigned char *memory, int size):
+    cdef int _protobuf_deserialize(self, const unsigned char *memory, int size, bint cache):
         cdef int current_offset = 0
         cdef int64_t key
         cdef int64_t field_idx
@@ -323,7 +323,9 @@ cdef class {{ message.full_name }}:
                 {{ field.name }}_elt = {{ field.message_name }}.__new__({{ field.message_name }})
                 {{ field.name }}_elt.reset()
                 field_size = get_varint64(memory, &current_offset)
-                current_offset += {{ field.name }}_elt._protobuf_deserialize(memory+current_offset, <int>field_size)
+                if cache:
+                    {{ field.name }}_elt._cached_serialization = bytes(memory[current_offset:current_offset+field_size])
+                current_offset += {{ field.name }}_elt._protobuf_deserialize(memory+current_offset, <int>field_size, cache)
                 {%- elif field.type == 'string' %}
                 field_size = get_varint64(memory, &current_offset)
                     {%- if version_major == 2 %}
@@ -353,9 +355,11 @@ cdef class {{ message.full_name }}:
                 field_size = get_varint64(memory, &current_offset)
                 if self._{{ field.name }} is None:
                     self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
-                    self._{{ field.name }}.reset()
                     self._{{ field.name }}._listener = <PyObject *>self
-                current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, <int>field_size)
+                self._{{ field.name }}.reset()
+                if cache:
+                    self._{{ field.name }}._cached_serialization = bytes(memory[current_offset:current_offset+field_size])
+                current_offset += self._{{ field.name }}._protobuf_deserialize(memory+current_offset, <int>field_size, cache)
 
         {%- elif field.type == 'string' %}
                 field_size = get_varint64(memory, &current_offset)
@@ -591,7 +595,7 @@ cdef class {{ message.full_name }}:
 
         length = size if size is not None else len(data)
 
-        buf = self._protobuf_deserialize(data, length)
+        buf = self._protobuf_deserialize(data, length, False)
 
         if buf != length:
             raise DecodeError("Truncated message: got %s expected %s" % (buf, size))
@@ -601,7 +605,7 @@ cdef class {{ message.full_name }}:
 
         return buf
 
-    cpdef int ParseFromString(self, data, size=None, bint reset=True) except -1:
+    cpdef int ParseFromString(self, data, size=None, bint reset=True, bint cache=False) except -1:
         """
         Populate the message class from a string of protobuf encoded binary data.
 
@@ -609,6 +613,7 @@ cdef class {{ message.full_name }}:
             data (bytes): a string of binary data
             size (int): optional - the length of the data string
             reset (bool): optional - whether to reset to default values before serializing
+            cache (bool): optional - whether to cache serialized data
 
         Returns:
             int: the number of bytes processed during serialization
@@ -622,13 +627,16 @@ cdef class {{ message.full_name }}:
         if reset:
             self.reset()
 
-        buf = self._protobuf_deserialize(data, length)
+        buf = self._protobuf_deserialize(data, length, cache)
 
         if buf != length:
             raise DecodeError("Truncated message")
 
         if not already_present_in_parent:
             self._Modified()
+
+        if cache:
+            self._cached_serialization = data
 
         return buf
 
@@ -764,16 +772,18 @@ cdef class {{ message.full_name }}:
     {%- endfor %}
 
     cpdef void _Modified(self):
+        self._cached_serialization = None
+
         if not self._is_present_in_parent:
             self._is_present_in_parent = True
             (<object> self._listener)._Modified()
 
-    def SerializeToString(self):
+    cpdef bytes SerializeToString(self):
         """
         Serialize the message class into a string of protobuf encoded binary data.
 
         Returns:
-            bytes: a string of binary data
+            bytes: a byte string of binary data
         """
     {%- if message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
         cdef int i
@@ -803,17 +813,23 @@ cdef class {{ message.full_name }}:
                 raise Exception("Message {{ message.full_name }} is missing required field: {{ field.name }}[%d]" % i)
     {%- endfor %}
 
+        if self._cached_serialization is not None:
+            return self._cached_serialization
+
         cdef bytearray buf = bytearray()
         self._protobuf_serialize(buf)
-        return buf
+        return <bytes>buf
 
     cpdef bytes SerializePartialToString(self):
         """
         Serialize the message class into a string of protobuf encoded binary data.
 
         Returns:
-            bytes: a bytearray of binary data
+            bytes: a byte string of binary data
         """
+        if self._cached_serialization is not None:
+            return self._cached_serialization
+
         cdef bytearray buf = bytearray()
         self._protobuf_serialize(buf)
         return <bytes>buf
