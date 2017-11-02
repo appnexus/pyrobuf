@@ -648,7 +648,7 @@ cdef class {{ message.full_name }}:
         message.MergeFromString(s)
         return message
 
-    cdef void _protobuf_serialize(self, bytearray buf):
+    cdef void _protobuf_serialize(self, bytearray buf, bint cache):
         cdef int key
         cdef int field_idx
         cdef int wire_type
@@ -732,9 +732,11 @@ cdef class {{ message.full_name }}:
                 {%- elif field.type == 'message' %}
                 {{ field.name }}_elt = <{{ field.message_name }}>self._{{ field.name }}[i]
                 {{ field.name }}_elt_buf = bytearray()
-                {{ field.name }}_elt._protobuf_serialize({{ field.name }}_elt_buf)
+                {{ field.name }}_elt._protobuf_serialize({{ field.name }}_elt_buf, cache)
                 set_varint64(len({{ field.name }}_elt_buf), buf)
                 buf += {{ field.name }}_elt_buf
+                if cache:
+                    {{ field.name }}_elt._cached_serialization = bytes({{ field.name }}_elt_buf)
                 {%- elif field.fixed_width == true %}
                 {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
                 buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.c_type }})]
@@ -746,10 +748,12 @@ cdef class {{ message.full_name }}:
 
         {%- elif field.type == 'message' %}
             {{ field.name }}_buf = bytearray()
-            self._{{ field.name }}._protobuf_serialize({{ field.name }}_buf)
+            self._{{ field.name }}._protobuf_serialize({{ field.name }}_buf, cache)
             set_varint64(key, buf)
             set_varint64(len({{ field.name }}_buf), buf)
             buf += {{ field.name }}_buf
+            if cache:
+                self._{{ field.name }}._cached_serialization = bytes({{ field.name }}_buf)
 
         {%- elif field.type == 'string' %}
             set_varint64(key, buf)
@@ -780,7 +784,7 @@ cdef class {{ message.full_name }}:
             self._is_present_in_parent = True
             (<object> self._listener)._Modified()
 
-    cpdef bytes SerializeToString(self):
+    cpdef bytes SerializeToString(self, bint cache=False):
         """
         Serialize the message class into a string of protobuf encoded binary data.
 
@@ -819,8 +823,13 @@ cdef class {{ message.full_name }}:
             return self._cached_serialization
 
         cdef bytearray buf = bytearray()
-        self._protobuf_serialize(buf)
-        return <bytes>buf
+        self._protobuf_serialize(buf, cache)
+        cdef bytes out = bytes(buf)
+
+        if cache:
+            self._cached_serialization = out
+
+        return out
 
     cpdef bytes SerializePartialToString(self):
         """
@@ -833,8 +842,8 @@ cdef class {{ message.full_name }}:
             return self._cached_serialization
 
         cdef bytearray buf = bytearray()
-        self._protobuf_serialize(buf)
-        return <bytes>buf
+        self._protobuf_serialize(buf, False)
+        return bytes(buf)
 
     def SetInParent(self):
         """

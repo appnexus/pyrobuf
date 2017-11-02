@@ -51,12 +51,12 @@ cdef class {{ message.full_name }}:
     cpdef void MergeFrom(self, {{ message.full_name }} other_msg)
     cpdef int MergeFromString(self, data, size=*) except -1
     cpdef int ParseFromString(self, data, size=*, bint reset=*, bint cache=*) except -1
-    cpdef bytes SerializeToString(self)
+    cpdef bytes SerializeToString(self, bint cache=*)
     cpdef bytes SerializePartialToString(self)
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size, bint cache)
 
-    cdef void _protobuf_serialize(self, bytearray buf)
+    cdef void _protobuf_serialize(self, bytearray buf, bint cache)
 
     cpdef void _Modified(self)
 
