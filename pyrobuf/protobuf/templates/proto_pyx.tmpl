@@ -255,10 +255,7 @@ cdef class {{ message.full_name }}:
             self._{{ field.name }}._listener = <PyObject *>self
             {%- endif %}
         {%- endif %}
-            if not self._is_present_in_parent:
-                self._Modified()
-            else:
-                self._cached_serialization = None
+            self._Modified()
     {% endfor %}
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size, bint cache):
@@ -401,8 +398,7 @@ cdef class {{ message.full_name }}:
     cpdef void Clear(self):
         """Clears all data that was set in the message."""
         self.reset()
-        if not self._is_present_in_parent:
-            self._Modified()
+        self._Modified()
 
     cpdef void ClearField(self, field_name):
         """Clears the contents of a given field."""
@@ -461,8 +457,7 @@ cdef class {{ message.full_name }}:
         else:
             raise ValueError('Protocol message has no "%s" field.' % field_name)
 
-        if not self._is_present_in_parent:
-            self._Modified()
+        self._Modified()
     {%- else %}
         raise ValueError('Protocol message has no "%s" field.' % field_name)
     {%- endif %}
@@ -577,8 +572,7 @@ cdef class {{ message.full_name }}:
         {%- endif %}
     {%- endfor %}
 
-        if not self._is_present_in_parent:
-            self._Modified()
+        self._Modified()
 
     cpdef int MergeFromString(self, data, size=None) except -1:
         """
@@ -593,7 +587,6 @@ cdef class {{ message.full_name }}:
         """
         cdef int buf
         cdef int length
-        cdef bint already_present_in_parent = self._is_present_in_parent
 
         length = size if size is not None else len(data)
 
@@ -602,8 +595,7 @@ cdef class {{ message.full_name }}:
         if buf != length:
             raise DecodeError("Truncated message: got %s expected %s" % (buf, size))
 
-        if not already_present_in_parent:
-            self._Modified()
+        self._Modified()
 
         return buf
 
@@ -634,8 +626,7 @@ cdef class {{ message.full_name }}:
         if buf != length:
             raise DecodeError("Truncated message")
 
-        if not already_present_in_parent:
-            self._Modified()
+        self._Modified()
 
         if cache:
             self._cached_serialization = data
@@ -778,11 +769,11 @@ cdef class {{ message.full_name }}:
     {%- endfor %}
 
     cpdef void _Modified(self):
-        self._cached_serialization = None
-
-        if not self._is_present_in_parent:
+        if not self._is_present_in_parent or self._cached_serialization is not None:
             self._is_present_in_parent = True
             (<object> self._listener)._Modified()
+
+        self._cached_serialization = None
 
     cpdef bytes SerializeToString(self, bint cache=False):
         """
@@ -849,8 +840,7 @@ cdef class {{ message.full_name }}:
         """
         Mark this an present in the parent.
         """
-        if not self._is_present_in_parent:
-            self._Modified()
+        self._Modified()
 
     def ParseFromJson(self, data, size=None, reset=True):
         """
