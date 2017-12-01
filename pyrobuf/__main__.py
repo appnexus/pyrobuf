@@ -45,10 +45,12 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False):
     env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
     templ_pxd = env.get_template('proto_pxd.tmpl')
     templ_pyx = env.get_template('proto_pyx.tmpl')
+    generated = set()
+    pyx_files = []
 
     try:
         os.makedirs(out)
-    except:
+    except FileExistsError:
         pass
 
     script_args = ['build', '--build-base={0}'.format(build)]
@@ -57,10 +59,10 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False):
 
     if os.path.isdir(fname):
         for spec in glob.glob(os.path.join(fname, '*.proto')):
-            generate(spec, out, parser, templ_pxd, templ_pyx)
+            generate(spec, out, parser, templ_pxd, templ_pyx, generated,
+                     pyx_files)
 
         _, name = os.path.split(fname)
-        pyx = os.path.join(out, '*.pyx')
 
     else:
         name, _ = os.path.splitext(os.path.basename(fname))
@@ -68,24 +70,27 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False):
             print("not a .proto file")
             return
 
-        generate(fname, out, parser, templ_pxd, templ_pyx)
-
-        pyx = os.path.join(out, "%s_proto.pyx" % name)
+        generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files)
 
     setup(name=name,
-          ext_modules=cythonize([pyx],
+          ext_modules=cythonize(pyx_files,
                                 include_path=[os.path.join(HERE, 'src'), out]),
           script_args=script_args)
 
 
-def generate(fname, out, parser, templ_pxd, templ_pyx):
+def generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files):
+    name, _ = os.path.splitext(os.path.basename(fname))
+    directory = os.path.dirname(fname)
+
+    if name in generated:
+        return
 
     print("generating {0}".format(fname))
+    generated.add(name)
 
-    m, _ = os.path.splitext(os.path.basename(fname))
-
-    name_pxd = "%s_proto.pxd" % m
-    name_pyx = "%s_proto.pyx" % m
+    name_pxd = "%s_proto.pxd" % name
+    name_pyx = "%s_proto.pyx" % name
+    pyx_files.append(os.path.join(out, name_pyx))
 
     msgdef = parser.parse_from_filename(fname)
 
@@ -94,6 +99,14 @@ def generate(fname, out, parser, templ_pxd, templ_pyx):
 
     with open(os.path.join(out, name_pyx), 'w') as fp:
         fp.write(templ_pyx.render(msgdef, version_major=sys.version_info.major))
+
+    for f in msgdef['imports']:
+        print("parsing dependency '{}'".format(f))
+        try:
+            generate(os.path.join(directory, '{}.proto'.format(f)),
+                     out, parser, templ_pxd, templ_pyx, generated, pyx_files)
+        except FileNotFoundError:
+            print("can't find message spec for '{}'".format(f))
 
 
 if __name__ == "__main__":
