@@ -21,6 +21,8 @@ def add_pyrobuf_module(dist, pyrobuf_module):
     env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
     templ_pxd = env.get_template('proto_pxd.tmpl')
     templ_pyx = env.get_template('proto_pyx.tmpl')
+    generated = set()
+    pyx_files = []
 
     dir_name = "pyrobuf/_" + pyrobuf_module
 
@@ -29,10 +31,9 @@ def add_pyrobuf_module(dist, pyrobuf_module):
 
     if os.path.isdir(pyrobuf_module):
         for spec in glob.glob(os.path.join(pyrobuf_module, '*.proto')):
-            generate(spec, dir_name, parser, templ_pxd, templ_pyx)
+            generate(spec, dir_name, parser, templ_pxd, templ_pyx, generated, pyx_files)
 
         _, name = os.path.split(pyrobuf_module)
-        pyx = os.path.join(dir_name, '*.pyx')
 
     else:
         name, _ = os.path.splitext(os.path.basename(pyrobuf_module))
@@ -40,13 +41,11 @@ def add_pyrobuf_module(dist, pyrobuf_module):
             print("not a .proto file")
             return
 
-        generate(pyrobuf_module, dir_name, parser, templ_pxd, templ_pyx)
-
-        pyx = os.path.join(dir_name, "%s_proto.pyx" % name)
+        generate(pyrobuf_module, dir_name, parser, templ_pxd, templ_pyx, generated, pyx_files)
 
     if dist.ext_modules is None:
         dist.ext_modules = []
-    dist.ext_modules.extend(cythonize([pyx],
+    dist.ext_modules.extend(cythonize(pyx_files,
                             include_path=[os.path.join(HERE, 'src'), dir_name]))
 
 
