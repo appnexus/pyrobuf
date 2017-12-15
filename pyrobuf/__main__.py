@@ -13,6 +13,11 @@ from pyrobuf.parse_proto3 import Proto3Parser
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+if sys.version_info.major == 3:
+    _FileExistsError = FileExistsError
+else:
+    _FileExistsError = OSError
+
 
 def main():
     args = cli_argument_parser()
@@ -50,7 +55,7 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False):
 
     try:
         os.makedirs(out)
-    except FileExistsError:
+    except _FileExistsError:
         pass
 
     script_args = ['build', '--build-base={0}'.format(build)]
