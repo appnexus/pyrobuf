@@ -11,7 +11,7 @@ class Parser(object):
         'COMMENT_ML': r'\/\*(?:.|[\r\n])*?\*\/',
         'OPTION': r'option\s+(.*?);',
         'IMPORT': r'import\s+"(.+?).proto"[ ]*;',
-        'MESSAGE': r'message\s+([A-Z][0-9A-Za-z]*)',
+        'MESSAGE': r'message\s+([A-Z][0-9A-Za-z_]*)',
         'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
         'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')\s*\];',
         'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*packed\s*=\s*true\s*\];',
