@@ -1,0 +1,8 @@
+package test;
+
+message Test {
+    message Underscore_test {
+        optional uint32 age = 3;
+    }
+    optional Underscore_test underscore = 10;
+}
