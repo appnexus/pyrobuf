@@ -721,11 +721,11 @@ cdef class {{ message.full_name }}:
                 set_varint64(len(self._{{ field.name }}[i]), buf)
                 buf += self._{{ field.name }}[i]
                 {%- elif field.type == 'message' %}
+                {{ field.name }}_elt = <{{ field.message_name }}>self._{{ field.name }}[i]
                 if {{ field.name }}_elt._cached_serialization is not None:
                     set_varint64(len({{ field.name }}_elt._cached_serialization), buf)
                     buf += {{ field.name }}_elt._cached_serialization
                 else:
-                    {{ field.name }}_elt = <{{ field.message_name }}>self._{{ field.name }}[i]
                     {{ field.name }}_elt_buf = bytearray()
                     {{ field.name }}_elt._protobuf_serialize({{ field.name }}_elt_buf, cache)
                     set_varint64(len({{ field.name }}_elt_buf), buf)
