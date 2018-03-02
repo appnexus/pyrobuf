@@ -23,9 +23,15 @@ class CachingTest(unittest.TestCase):
         serialized = test.SerializeToString(cache=True)
         test.field = test.field + 1
         self.assertNotEqual(serialized, test.SerializeToString(cache=True))
+        test.ParseFromString(serialized, cache=True)
+        test.field = test.field + 1
+        self.assertNotEqual(serialized, test.SerializeToString(cache=True))
 
     def test_update_child(self):
         test = create_an_test()
         serialized = test.SerializeToString(cache=True)
+        test.substruct.field1 = test.substruct.field1 + 1
+        self.assertNotEqual(serialized, test.SerializeToString(cache=True))
+        test.ParseFromString(serialized, cache=True)
         test.substruct.field1 = test.substruct.field1 + 1
         self.assertNotEqual(serialized, test.SerializeToString(cache=True))
