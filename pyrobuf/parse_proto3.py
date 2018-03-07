@@ -25,28 +25,28 @@ class Proto3Parser(Parser):
     }
 
 
-class ParserField(object):
-    def __init__(self, pos, modifier, ftype, name, index):
-        self.token_type = 'FIELD'
-        self.pos = pos
-        self.modifier = 'repeated' if modifier == 'repeated ' else 'optional'
-        self.type = ftype
-        self.name = name
-        self.index = int(index)
-        self.default = None
-        self.packed = ftype in Parser.scalars
-        self.deprecated = False
+    class ParserField(object):
+        def __init__(self, pos, modifier, ftype, name, index):
+            self.token_type = 'FIELD'
+            self.pos = pos
+            self.modifier = 'repeated' if modifier == 'repeated ' else 'optional'
+            self.type = ftype
+            self.name = name
+            self.index = int(index)
+            self.default = None
+            self.packed = ftype in Parser.scalars
+            self.deprecated = False
 
 
-class ParserFieldDeprecated(object):
-    def __init__(self, pos, modifier, ftype, name, index):
-        self.token_type = 'FIELD'
-        self.pos = pos
-        self.modifier = 'repeated' if modifier == 'repeated ' else 'optional'
-        self.type = ftype
-        self.name = name
-        self.index = int(index)
-        self.default = None
-        self.packed = ftype in Parser.scalars
-        self.deprecated = True
+    class ParserFieldDeprecated(object):
+        def __init__(self, pos, modifier, ftype, name, index):
+            self.token_type = 'FIELD'
+            self.pos = pos
+            self.modifier = 'repeated' if modifier == 'repeated ' else 'optional'
+            self.type = ftype
+            self.name = name
+            self.index = int(index)
+            self.default = None
+            self.packed = ftype in Parser.scalars
+            self.deprecated = True
 
