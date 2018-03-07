@@ -100,6 +100,7 @@ class Parser(object):
     def tokenize(self, s):
         pos = 0
         line = 1
+        _P = self.__class__
 
         m = self.get_token(s, pos)
         while m is not None:
@@ -108,37 +109,37 @@ class Parser(object):
             vals = subm.groups()
 
             if token_type == 'OPTION':
-                yield ParserOption(pos, *vals)
+                yield _P.ParserOption(pos, *vals)
 
             elif token_type == 'SYNTAX':
-                yield ParserSyntax(pos, *vals)
+                yield _P.ParserSyntax(pos, *vals)
 
             elif token_type == 'IMPORT':
-                yield ParserImport(pos, *vals)
+                yield _P.ParserImport(pos, *vals)
 
             elif token_type == 'MESSAGE':
-                yield ParserMessage(pos, *vals)
+                yield _P.ParserMessage(pos, *vals)
 
             elif token_type in ('FIELD', 'FIELD_WITH_DEFAULT'):
-                yield ParserField(pos, *vals)
+                yield _P.ParserField(pos, *vals)
 
             elif token_type == 'FIELD_PACKED':
-                yield ParserFieldPacked(pos, *vals)
+                yield _P.ParserFieldPacked(pos, *vals)
 
             elif token_type == 'FIELD_DEPRECATED':
-                yield ParserFieldDeprecated(pos, *vals)
+                yield _P.ParserFieldDeprecated(pos, *vals)
 
             elif token_type == 'ENUM':
-                yield ParserEnum(pos, *vals)
+                yield _P.ParserEnum(pos, *vals)
 
             elif token_type in ('ENUM_FIELD', 'ENUM_FIELD_WITH_VALUE'):
-                yield ParserEnumField(pos, *vals)
+                yield _P.ParserEnumField(pos, *vals)
 
             elif token_type == 'LBRACE':
-                yield ParserLBrace(pos)
+                yield _P.ParserLBrace(pos)
 
             elif token_type == 'RBRACE':
-                yield ParserRBrace(pos)
+                yield _P.ParserRBrace(pos)
 
             elif token_type == 'NEWLINE':
                 line += 1
