@@ -100,7 +100,6 @@ class Parser(object):
     def tokenize(self, s):
         pos = 0
         line = 1
-        _P = self.__class__
 
         m = self.get_token(s, pos)
         while m is not None:
@@ -109,37 +108,37 @@ class Parser(object):
             vals = subm.groups()
 
             if token_type == 'OPTION':
-                yield _P.ParserOption(pos, *vals)
+                yield self.ParserOption(pos, *vals)
 
             elif token_type == 'SYNTAX':
-                yield _P.ParserSyntax(pos, *vals)
+                yield self.ParserSyntax(pos, *vals)
 
             elif token_type == 'IMPORT':
-                yield _P.ParserImport(pos, *vals)
+                yield self.ParserImport(pos, *vals)
 
             elif token_type == 'MESSAGE':
-                yield _P.ParserMessage(pos, *vals)
+                yield self.ParserMessage(pos, *vals)
 
             elif token_type in ('FIELD', 'FIELD_WITH_DEFAULT'):
-                yield _P.ParserField(pos, *vals)
+                yield self.ParserField(pos, *vals)
 
             elif token_type == 'FIELD_PACKED':
-                yield _P.ParserFieldPacked(pos, *vals)
+                yield self.ParserFieldPacked(pos, *vals)
 
             elif token_type == 'FIELD_DEPRECATED':
-                yield _P.ParserFieldDeprecated(pos, *vals)
+                yield self.ParserFieldDeprecated(pos, *vals)
 
             elif token_type == 'ENUM':
-                yield _P.ParserEnum(pos, *vals)
+                yield self.ParserEnum(pos, *vals)
 
             elif token_type in ('ENUM_FIELD', 'ENUM_FIELD_WITH_VALUE'):
-                yield _P.ParserEnumField(pos, *vals)
+                yield self.ParserEnumField(pos, *vals)
 
             elif token_type == 'LBRACE':
-                yield _P.ParserLBrace(pos)
+                yield self.ParserLBrace(pos)
 
             elif token_type == 'RBRACE':
-                yield _P.ParserRBrace(pos)
+                yield self.ParserRBrace(pos)
 
             elif token_type == 'NEWLINE':
                 line += 1
@@ -331,13 +330,11 @@ class Parser(object):
         for submessage in message.messages.values():
             self.add_cython_info(submessage)
 
-
     class ParserOption(object):
         def __init__(self, pos, option):
             self.token_type = 'OPTION'
             self.pos = pos
             self.option = option
-
 
     class ParserSyntax(object):
         def __init__(self, pos, value):
@@ -345,13 +342,11 @@ class Parser(object):
             self.pos = pos
             self.value = value
 
-
     class ParserImport(object):
         def __init__(self, pos, value):
             self.token_type = 'IMPORT'
             self.pos = pos
             self.value = value
-
 
     class ParserMessage(object):
         def __init__(self, pos, name):
@@ -363,7 +358,6 @@ class Parser(object):
             self.messages = {}
             self.enums = {}
             self.fields = []
-
 
     class ParserField(object):
         def __init__(self, pos, modifier, ftype, name, index, default=None):
@@ -377,10 +371,6 @@ class Parser(object):
             self.packed = False
             self.deprecated = False
 
-
-
-
-
     class ParserFieldPacked(object):
         def __init__(self, pos, modifier, ftype, name, index):
             self.token_type = 'FIELD'
@@ -392,7 +382,6 @@ class Parser(object):
             self.default = None
             self.packed = True
             self.deprecated = False
-
 
     class ParserFieldDeprecated(object):
         def __init__(self, pos, modifier, ftype, name, index):
@@ -406,7 +395,6 @@ class Parser(object):
             self.packed = False
             self.deprecated = True
 
-
     class ParserEnum(object):
         def __init__(self, pos, name):
             self.token_type = 'ENUM'
@@ -415,7 +403,6 @@ class Parser(object):
             self.fields = []
             # full_name may later be overriden with parent hierarchy when relevant
             self.full_name = name
-
 
     class ParserEnumField(object):
         def __init__(self, pos, name, value=None):
@@ -429,12 +416,10 @@ class Parser(object):
             # full_name may later be overriden with parent hierarchy when relevant
             self.full_name = name
 
-
     class ParserLBrace(object):
         def __init__(self, pos):
             self.token_type = 'LBRACE'
             self.pos = pos
-
 
     class ParserRBrace(object):
         def __init__(self, pos):
