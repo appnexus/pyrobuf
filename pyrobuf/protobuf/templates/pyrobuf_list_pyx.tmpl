@@ -421,6 +421,22 @@ cdef class {{ name }}:
     def __releasebuffer__(self, Py_buffer *buffer):
         pass
 
+    def __eq__(self, other):
+        try:
+            if len(self) != len(other):
+                return False
+        except TypeError:
+            return False
+
+        for x, y in zip(self, other):
+            if x != y:
+                return False
+
+        return True
+
+    def __neq__(self, other):
+        return not self == other
+
     cpdef append(self, {{ type }} x):
         self._append(x)
         listener = <object>self._listener

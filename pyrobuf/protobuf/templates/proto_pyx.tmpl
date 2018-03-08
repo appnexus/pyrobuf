@@ -172,7 +172,7 @@ cdef class {{ message.full_name }}:
         try:
             memview = value
             memview_available = 1
-        except (TypeError, NameError):
+        except (TypeError, NameError, ValueError):
             pass
         cdef int i
         if memview_available == 1:
