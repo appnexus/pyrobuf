@@ -968,6 +968,39 @@ cdef class {{ message.full_name }}:
 
         return out
 
+    def Items(self):
+        """
+        Iterator over the field names and values of the message.
+
+        Returns:
+            iterator
+        """
+    {%- for field in message.fields|sort(attribute='index') %}
+        yield '{{ field.name }}', self.{{ field.name }}
+    {%- endfor %}
+
+    def Fields(self):
+        """
+        Iterator over the field names of the message.
+
+        Returns:
+            iterator
+        """
+    {%- for field in message.fields|sort(attribute='index') %}
+        yield '{{ field.name }}'
+    {%- endfor %}
+
+    def Values(self):
+        """
+        Iterator over the values of the message.
+
+        Returns:
+            iterator
+        """
+    {%- for field in message.fields|sort(attribute='index') %}
+        yield self.{{ field.name }}
+    {%- endfor %}
+
     {% for message_enum_name, message_enum in message.enums.items() %}
         {{ message_enum_fields_def(message_enum) }}
     {% endfor %}
