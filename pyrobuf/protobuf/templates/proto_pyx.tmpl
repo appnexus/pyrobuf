@@ -130,133 +130,134 @@ cdef class {{ message.full_name }}:
         return
 
     {% for field in message.fields|sort(attribute='index') %}
-    property {{ field.name }}:
-        def __get__(self):
+    @property
+    def {{ field.name }}(self):
         {%- if field.deprecated|default(false) == true %}
-            warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
+        warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
         {%- endif %}
         {%- if field.type == 'message' %}
-            # lazy init sub messages
-            if self._{{ field.name }} is None:
-                self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
-                self._{{ field.name }}.reset()
-                self._{{ field.name }}._listener = <PyObject *>self
+        # lazy init sub messages
+        if self._{{ field.name }} is None:
+            self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
+            self._{{ field.name }}.reset()
+            self._{{ field.name }}._listener = <PyObject *>self
         {%- endif %}
-            return self._{{ field.name }}
+        return self._{{ field.name }}
 
-        def __set__(self, value):
+    @{{ field.name }}.setter
+    def {{ field.name }}(self, value):
         {%- if field.deprecated|default(false) == true %}
-            warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
+        warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
         {%- endif %}
         {%- if field.type != 'message' and field.modifier != 'repeated' %}
-            self._{{ field.name }}_isSet = True
+        self._{{ field.name }}_isSet = True
         {%- else %}
-            if self._{{ field.name }} is not None:
-                self._{{ field.name }}._listener = <PyObject *>null_listener
+        if self._{{ field.name }} is not None:
+            self._{{ field.name }}._listener = <PyObject *>null_listener
         {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
-            self._{{ field.name }} = TypedList.__new__(TypedList)
-            self._{{ field.name }}._list_type = {{ field.message_name }}
-            self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }} = TypedList.__new__(TypedList)
+        self._{{ field.name }}._list_type = {{ field.message_name }}
+        self._{{ field.name }}._listener = <PyObject *>self
             {%- elif field.type == 'string' %}
-            self._{{ field.name }} = StringList.__new__(StringList)
-            self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }} = StringList.__new__(StringList)
+        self._{{ field.name }}._listener = <PyObject *>self
             {%- elif field.type == 'bytes' %}
-            self._{{ field.name }} = BytesList.__new__(BytesList)
-            self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }} = BytesList.__new__(BytesList)
+        self._{{ field.name }}._listener = <PyObject *>self
             {%- else %}
-            cdef {{ field.c_type }}[:] memview
-            cdef int memview_available = 0
-            try:
-                memview = value
-                memview_available = 1
-            except (TypeError, NameError):
-                pass
-            cdef int i
-            if memview_available == 1:
-                self._{{ field.name }} = {{ field.list_type }}(memview.size, listener=self)
-                for i in range(memview.size):
-                    self._{{ field.name }}.append(memview[i])
-                return
-            self._{{ field.name }} = {{ field.list_type }}(listener=self)
+        cdef {{ field.c_type }}[:] memview
+        cdef int memview_available = 0
+        try:
+            memview = value
+            memview_available = 1
+        except (TypeError, NameError):
+            pass
+        cdef int i
+        if memview_available == 1:
+            self._{{ field.name }} = {{ field.list_type }}(memview.size, listener=self)
+            for i in range(memview.size):
+                self._{{ field.name }}.append(memview[i])
+            return
+        self._{{ field.name }} = {{ field.list_type }}(listener=self)
             {%- endif %}
-            for val in value:
+        for val in value:
             {%- if field.type == 'enum' and field.enum_def != None %}
                 {%- for enum_field in field.enum_def.fields %}
                     {%- if loop.index == 1 %}
-                if val == {{ enum_field.value }}:
+            if val == {{ enum_field.value }}:
                     {%- else %}
-                elif val == {{ enum_field.value }}:
+            elif val == {{ enum_field.value }}:
                     {%- endif %}
-                    self._{{ field.name }}.append(_{{ enum_field.full_name }})
+                self._{{ field.name }}.append(_{{ enum_field.full_name }})
                 {% endfor %}
-                else:
-                    raise ValueError("{} not a valid value for enum {{ field.enum_name }}".format(val))
+            else:
+                raise ValueError("{} not a valid value for enum {{ field.enum_name }}".format(val))
             {%- elif field.type == 'string' and version_major == 2 %}
-                if isinstance(val, unicode):
-                    list.append(self._{{ field.name }}, val)
-                elif isinstance(val, str):
-                    list.append(self._{{ field.name }}, unicode(val, 'utf-8'))
-                else:
-                    raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), str, unicode))
-            {%- elif field.type == 'string' and version_major != 2 %}
-                if isinstance(val, bytes):
-                    list.append(self._{{ field.name }}, val.decode('utf-8'))
-                elif isinstance(val, str):
-                    list.append(self._{{ field.name }}, val)
-                else:
-                    raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), bytes, str))
-            {%- elif field.type == 'bytes' %}
-                if isinstance(val, {% if version_major == 2 %}str{% else %}bytes{% endif %}):
-                    list.append(self._{{ field.name }}, val)
-                else:
-                    raise TypeError("%r has type %s, but expected one of: (%s,)" % (val, type(val), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
-            {%- elif field.type == 'message' %}
+            if isinstance(val, unicode):
                 list.append(self._{{ field.name }}, val)
+            elif isinstance(val, str):
+                list.append(self._{{ field.name }}, unicode(val, 'utf-8'))
+            else:
+                raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), str, unicode))
+            {%- elif field.type == 'string' and version_major != 2 %}
+            if isinstance(val, bytes):
+                list.append(self._{{ field.name }}, val.decode('utf-8'))
+            elif isinstance(val, str):
+                list.append(self._{{ field.name }}, val)
+            else:
+                raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), bytes, str))
+            {%- elif field.type == 'bytes' %}
+            if isinstance(val, {% if version_major == 2 %}str{% else %}bytes{% endif %}):
+                list.append(self._{{ field.name }}, val)
+            else:
+                raise TypeError("%r has type %s, but expected one of: (%s,)" % (val, type(val), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
+            {%- elif field.type == 'message' %}
+            list.append(self._{{ field.name }}, val)
             {%- else %}
-                self._{{ field.name }}.append(val)
+            self._{{ field.name }}.append(val)
             {%- endif %}
         {%- else %}
             {%- if field.type == 'enum' and field.enum_def != None %}
                 {%- for enum_field in field.enum_def.fields %}
                     {%- if loop.index == 1 %}
-            if value == {{ enum_field.value }}:
+        if value == {{ enum_field.value }}:
                     {%- else %}
-            elif value == {{ enum_field.value }}:
+        elif value == {{ enum_field.value }}:
                     {%- endif %}
-                self._{{ field.name }} = _{{ enum_field.full_name }}
+            self._{{ field.name }} = _{{ enum_field.full_name }}
                 {% endfor %}
-            else:
-                raise ValueError("{} not a valid value for enum {{ field.enum_name }}".format(value))
+        else:
+            raise ValueError("{} not a valid value for enum {{ field.enum_name }}".format(value))
             {%- elif field.type == 'string' and version_major == 2 %}
-            if isinstance(value, unicode):
-                self._{{ field.name }} = value
-            elif isinstance(value, str):
-                self._{{ field.name }} = unicode(value, 'utf-8')
-            else:
-                raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (value, type(value), unicode, str))
-            {%- elif field.type == 'string' and version_major != 2 %}
-            if isinstance(value, bytes):
-                self._{{ field.name }} = value.decode('utf-8')
-            elif isinstance(value, str):
-                self._{{ field.name }} = value
-            else:
-                raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (value, type(value), bytes, str))
-            {%- elif field.type == 'bytes' %}
-            if isinstance(value, bytes):
-                self._{{ field.name }} = value
-            else:
-                raise TypeError("%r has type %s, but expected one of: (%s,)" % (value, type(value), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
-            {%- else %}
+        if isinstance(value, unicode):
             self._{{ field.name }} = value
+        elif isinstance(value, str):
+            self._{{ field.name }} = unicode(value, 'utf-8')
+        else:
+            raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (value, type(value), unicode, str))
+            {%- elif field.type == 'string' and version_major != 2 %}
+        if isinstance(value, bytes):
+            self._{{ field.name }} = value.decode('utf-8')
+        elif isinstance(value, str):
+            self._{{ field.name }} = value
+        else:
+            raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (value, type(value), bytes, str))
+            {%- elif field.type == 'bytes' %}
+        if isinstance(value, bytes):
+            self._{{ field.name }} = value
+        else:
+            raise TypeError("%r has type %s, but expected one of: (%s,)" % (value, type(value), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
+            {%- else %}
+        self._{{ field.name }} = value
             {%- endif %}
             {%- if field.type == 'message' %}
-            self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }}._listener = <PyObject *>self
             {%- endif %}
         {%- endif %}
-            if not self._is_present_in_parent:
-                self._Modified()
+        if not self._is_present_in_parent:
+            self._Modified()
     {% endfor %}
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size):
@@ -1005,6 +1006,18 @@ cdef class {{ message.full_name }}:
         {{ message_enum_fields_def(message_enum) }}
     {% endfor %}
 
+    def Setters(self):
+        """
+        Iterator over functions to set the fields in a message.
+
+        Returns:
+            iterator
+        """
+    {%- for field in message.fields|sort(attribute='index') %}
+        def setter(value):
+            self.{{ field.name }} = value
+        yield setter
+    {%- endfor %}
 
     {% for message_name, message_message in message.messages.items() %}
 {{ classdef(message_message) }}

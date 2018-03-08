@@ -22,7 +22,7 @@ else:
 def main():
     args = cli_argument_parser()
     gen_message(args.source, out=args.out_dir, build=args.build_dir,
-                install=args.install, proto3=args.proto3)
+                install=args.install, proto3=args.proto3, force=args.force)
 
 
 def cli_argument_parser():
@@ -37,10 +37,13 @@ def cli_argument_parser():
                         help="install the extension [default: False]")
     parser.add_argument('--proto3', action='store_true',
                         help="compile proto3 syntax [default: False]")
+    parser.add_argument('--force', action='store_true',
+                        help="force install")
     return parser.parse_args()
 
 
-def gen_message(fname, out="out", build="build", install=False, proto3=False):
+def gen_message(fname, out="out", build="build", install=False, proto3=False,
+                force=False):
 
     if proto3:
         parser = Proto3Parser()
@@ -61,6 +64,9 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False):
     script_args = ['build', '--build-base={0}'.format(build)]
     if install:
         script_args.append('install')
+
+    if force:
+        script_args.append('--force')
 
     if os.path.isdir(fname):
         for spec in glob.glob(os.path.join(fname, '*.proto')):
