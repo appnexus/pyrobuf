@@ -9,16 +9,16 @@ class ItemsTest(unittest.TestCase):
         test = create_an_test()
         fields = [
             'timestamp',
-             'field',
-             'string_field',
-             'list_fieldx',
-             'substruct',
-             'test_ref',
-             'enum_field',
-             'list_ref',
-             'another_substruct',
-             'req_field',
-             'negative_32'
+            'field',
+            'string_field',
+            'list_fieldx',
+            'substruct',
+            'test_ref',
+            'enum_field',
+            'list_ref',
+            'another_substruct',
+            'req_field',
+            'negative_32'
         ]
         self.assertEqual(fields, list(test.Fields()))
 
