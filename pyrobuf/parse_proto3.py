@@ -24,7 +24,6 @@ class Proto3Parser(Parser):
         'SYNTAX': Parser.tokens['SYNTAX']
     }
 
-
     class ParserField(object):
         def __init__(self, pos, modifier, ftype, name, index):
             self.token_type = 'FIELD'
@@ -37,7 +36,6 @@ class Proto3Parser(Parser):
             self.packed = ftype in Parser.scalars
             self.deprecated = False
 
-
     class ParserFieldDeprecated(object):
         def __init__(self, pos, modifier, ftype, name, index):
             self.token_type = 'FIELD'
@@ -49,4 +47,3 @@ class Proto3Parser(Parser):
             self.default = None
             self.packed = ftype in Parser.scalars
             self.deprecated = True
-
