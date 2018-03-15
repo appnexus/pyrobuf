@@ -37,6 +37,7 @@ cdef class {{ name }}:
 
     cdef void _append(self, {{ type }} x)
 
+    cpdef _equal(self, other)
     cpdef append(self, {{ type }} x)
     cpdef extend(self, x)
     cpdef insert(self, int i, {{ type }} x)

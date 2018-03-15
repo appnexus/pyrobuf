@@ -10,7 +10,7 @@ import platform
 import sys
 
 
-VERSION = "0.7.0"
+VERSION = "0.7.1"
 HERE = os.path.dirname(os.path.abspath(__file__))
 PYROBUF_DEFS_PXI = "pyrobuf_defs.pxi"
 PYROBUF_LIST_PXD = "pyrobuf_list.pxd"
@@ -152,7 +152,7 @@ setup(
     url='https://github.com/appnexus/pyrobuf',
     author='AppNexus',
     tests_require=['pytest'] + (['protobuf >= 2.6.0, <3'] if sys.version_info.major == 2 else []),
-    setup_requires=['jinja2 >= 2.8', 'cython >= 0.27', 'pytest-runner'],
-    install_requires=['jinja2 >= 2.8', 'cython >= 0.27'],
+    setup_requires=['jinja2 >= 2.8', 'cython >= 0.23', 'pytest-runner'],
+    install_requires=['jinja2 >= 2.8', 'cython >= 0.23'],
     zip_safe=False,
 )
