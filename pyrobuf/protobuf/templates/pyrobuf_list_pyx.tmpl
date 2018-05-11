@@ -424,9 +424,9 @@ cdef class {{ name }}:
 
     def __richcmp__(self, other, op):
         if op == Py_EQ:
-            return self.equal(other)
+            return self._equal(other)
         elif op == Py_NE:
-            return not self.equal(other)
+            return not self._equal(other)
         else:
             raise TypeError('Operation not supported for lists')
 
