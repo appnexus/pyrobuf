@@ -1,7 +1,5 @@
 import unittest
 
-from test_truncated_proto import TestTruncated
-
 
 GOOGLE_SERIALIZED_MESSAGE = b'\x08\x80\x89\x9a\x81\x02\x10\xc1S\x1a\tgo goats! \x00 d \xc8\x01 ' \
     b'\xac\x02 \x90\x03*A\x08\xb9`\x12\x05hello\x1a\x12\tH\xe1z\x14\xae.\x96@\x12\x07goodbye!\xd7' \
@@ -13,6 +11,11 @@ GOOGLE_SERIALIZED_MESSAGE = b'\x08\x80\x89\x9a\x81\x02\x10\xc1S\x1a\tgo goats! \
 
 
 class MessageTest(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        global TestTruncated
+        from test_truncated_proto import TestTruncated
 
     def test_deser(self):
         test = TestTruncated()

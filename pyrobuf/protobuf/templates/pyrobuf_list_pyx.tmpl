@@ -1,6 +1,7 @@
 from cpython.mem cimport PyMem_Malloc, PyMem_Realloc, PyMem_Free
 from libc.stdint cimport *
 from cpython.ref cimport PyObject
+from cpython.object cimport Py_EQ, Py_NE
 
 
 cdef class NullListener:
@@ -420,6 +421,30 @@ cdef class {{ name }}:
 
     def __releasebuffer__(self, Py_buffer *buffer):
         pass
+
+    def __richcmp__(self, other, op):
+        if op == Py_EQ:
+            return self.equal(other)
+        elif op == Py_NE:
+            return not self.equal(other)
+        else:
+            raise TypeError('Operation not supported for lists')
+
+    def __neq__(self, other):
+        return not self == other
+
+    cpdef _equal(self, other):
+        try:
+            if len(self) != len(other):
+                return False
+        except TypeError:
+            return False
+
+        for x, y in zip(self, other):
+            if x != y:
+                return False
+
+        return True
 
     cpdef append(self, {{ type }} x):
         self._append(x)
