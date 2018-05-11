@@ -256,7 +256,7 @@ cdef class {{ message.full_name }}:
         self._{{ field.name }}._listener = <PyObject *>self
             {%- endif %}
         {%- endif %}
-            self._Modified()
+        self._Modified()
     {% endfor %}
 
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size, bint cache):
