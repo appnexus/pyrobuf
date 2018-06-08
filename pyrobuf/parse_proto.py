@@ -25,7 +25,9 @@ class Parser(object):
         'NEWLINE': r'[\r\n]',
         'PACKAGE': r'package\s.*;',
         'SYNTAX': r'(syntax\s+.*?);',
-        'EXTENSION': r'extensions (\d+) to (\d+|max);'
+        'EXTENSION': r'extensions\s+(\d+)\s+to\s+(\d+|max);',
+        'ONEOF': r'oneof\s+([A-Za-z_][0-9A-Za-z_]*)',
+        'ONEOF_FIELD': r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);'
     }
 
     scalars = (
@@ -99,7 +101,8 @@ class Parser(object):
 
     def tokenize(self, s):
         pos = 0
-        line = 1
+        line = 0
+        lines = s.split('\n')
 
         m = self.get_token(s, pos)
         while m is not None:
@@ -108,37 +111,46 @@ class Parser(object):
             vals = subm.groups()
 
             if token_type == 'OPTION':
-                yield self.ParserOption(pos, *vals)
+                yield self.Option(line, *vals)
 
             elif token_type == 'SYNTAX':
-                yield self.ParserSyntax(pos, *vals)
+                yield self.Syntax(line, *vals)
 
             elif token_type == 'IMPORT':
-                yield self.ParserImport(pos, *vals)
+                yield self.Import(line, *vals)
 
             elif token_type == 'MESSAGE':
-                yield self.ParserMessage(pos, *vals)
+                yield self.Message(line, *vals)
 
             elif token_type in ('FIELD', 'FIELD_WITH_DEFAULT'):
-                yield self.ParserField(pos, *vals)
+                yield self.Field(line, *vals)
 
             elif token_type == 'FIELD_PACKED':
-                yield self.ParserFieldPacked(pos, *vals)
+                yield self.FieldPacked(line, *vals)
 
             elif token_type == 'FIELD_DEPRECATED':
-                yield self.ParserFieldDeprecated(pos, *vals)
+                yield self.FieldDeprecated(line, *vals)
 
             elif token_type == 'ENUM':
-                yield self.ParserEnum(pos, *vals)
+                yield self.Enum(line, *vals)
 
             elif token_type in ('ENUM_FIELD', 'ENUM_FIELD_WITH_VALUE'):
-                yield self.ParserEnumField(pos, *vals)
+                yield self.EnumField(line, *vals)
 
             elif token_type == 'LBRACE':
-                yield self.ParserLBrace(pos)
+                yield self.LBrace(line)
 
             elif token_type == 'RBRACE':
-                yield self.ParserRBrace(pos)
+                yield self.RBrace(line)
+
+            elif token_type == 'EXTENSION':
+                yield self.Extension(line, *vals)
+
+            elif token_type == 'ONEOF':
+                yield self.Oneof(line, *vals)
+
+            elif token_type == 'ONEOF_FIELD':
+                yield self.OneofField(line, *vals)
 
             elif token_type == 'NEWLINE':
                 line += 1
@@ -147,7 +159,7 @@ class Parser(object):
             m = self.get_token(s, pos)
 
         if pos != len(s):
-            raise Exception("Unexpected character '%s' in line %d: '%s'" % (s[pos], line, s[pos-10:pos+10]))
+            raise Exception("Unexpected character '%s' on line %d: '%s'" % (s[pos], line, lines[line]))
 
     def parse(self, s, cython_info=True, fname=''):
         tokens = self.tokenize(s)
@@ -155,6 +167,7 @@ class Parser(object):
         enums = {}
         imported = {'messages': {}, 'enums': {}}
         messages = {}
+        lines = s.split('\n')
 
         for token in tokens:
             if token.token_type == 'OPTION':
@@ -183,7 +196,7 @@ class Parser(object):
                 enums[token.name] = token
 
             else:
-                raise Exception("unexpected %s token at character %d: '%s'" % (token.type, token.pos, s[token.pos:token.pos+10]))
+                raise Exception("unexpected %s token on line %d: '%s'" % (token.type, token.line, lines[token.line]))
 
         if cython_info:
             for message in rep['messages']:
@@ -247,10 +260,11 @@ class Parser(object):
             a list/hiearchy of ParserMessage objects.
         """
         token = next(tokens)
+        lines = s.split('\n')
         try:
             assert token.token_type == 'LBRACE'
         except AssertionError:
-            raise Exception("missing opening paren at pos %d: '%s'" % (token.pos, s[token.pos:token.pos+10]))
+            raise Exception("missing opening brace on line %d: '%s'" % (token.line, lines[token.line]))
 
         for token in tokens:
             if token.token_type == 'MESSAGE':
@@ -286,20 +300,25 @@ class Parser(object):
 
                 current.fields.append(token)
 
+            elif token.token_type == 'EXTENSION':
+                # Just ignore extensions for now, but don't error
+                continue
+
             elif token.token_type == 'RBRACE':
                 return current
 
             else:
-                raise Exception("unexpected %s token at character %d: '%s'" % (token.typ, token.pos, s[token.pos:token.pos+10]))
+                raise Exception("unexpected %s token on line %d: '%s'" % (token.token_type, token.line, lines[token.line]))
 
-        raise Exception("unexpected EOF at character %d: '%s'" % (token.pos, s[token.pos:token.pos+10]))
+        raise Exception("unexpected EOF on line %d: '%s'" % (token.line, lines[token.line]))
 
     def _parse_enum(self, s, current, tokens):
         token = next(tokens)
+        lines = s.split('\n')
         try:
             assert token.token_type == 'LBRACE'
         except AssertionError:
-            raise Exception("missing opening paren at pos %d: '%s'" % (token.pos, s[token.pos:token.pos+10]))
+            raise Exception("missing opening paren on line %d: '%s'" % (token.line, lines[token.line]))
 
         for token in tokens:
             if token.token_type == 'ENUM_FIELD':
@@ -310,9 +329,9 @@ class Parser(object):
                 return current
 
             else:
-                raise Exception("unexpected %s token at character %d: '%s'" % (token.typ, token.pos, s[token.pos:token.pos+10]))
+                raise Exception("unexpected %s token on line %d: '%s'" % (token.token_type, token.line, lines[token.line]))
 
-        raise Exception("unexpected EOF at character %d: '%s'" % (token.pos, s[token.pos:token.pos+10]))
+        raise Exception("unexpected EOF on line %d: '%s'" % (token.line, lines[token.line]))
 
     def add_cython_info(self, message):
         for field in message.fields:
@@ -330,28 +349,33 @@ class Parser(object):
         for submessage in message.messages.values():
             self.add_cython_info(submessage)
 
-    class ParserOption(object):
-        def __init__(self, pos, option):
+    class Token(object):
+        token_type = None
+        line = -1
+        type = None
+
+    class Option(Token):
+        def __init__(self, line, option):
             self.token_type = 'OPTION'
-            self.pos = pos
+            self.line = line
             self.option = option
 
-    class ParserSyntax(object):
-        def __init__(self, pos, value):
+    class Syntax(Token):
+        def __init__(self, line, value):
             self.token_type = 'SYNTAX'
-            self.pos = pos
+            self.line = line
             self.value = value
 
-    class ParserImport(object):
-        def __init__(self, pos, value):
+    class Import(Token):
+        def __init__(self, line, value):
             self.token_type = 'IMPORT'
-            self.pos = pos
+            self.line = line
             self.value = value
 
-    class ParserMessage(object):
-        def __init__(self, pos, name):
+    class Message(Token):
+        def __init__(self, line, name):
             self.token_type = 'MESSAGE'
-            self.pos = pos
+            self.line = line
             self.name = name
             # full_name may later be overriden with parent hierarchy when relevant
             self.full_name = name
@@ -359,10 +383,10 @@ class Parser(object):
             self.enums = {}
             self.fields = []
 
-    class ParserField(object):
-        def __init__(self, pos, modifier, ftype, name, index, default=None):
+    class Field(Token):
+        def __init__(self, line, modifier, ftype, name, index, default=None):
             self.token_type = 'FIELD'
-            self.pos = pos
+            self.line = line
             self.modifier = modifier
             self.type = ftype
             self.name = name
@@ -371,10 +395,10 @@ class Parser(object):
             self.packed = False
             self.deprecated = False
 
-    class ParserFieldPacked(object):
-        def __init__(self, pos, modifier, ftype, name, index):
+    class FieldPacked(Token):
+        def __init__(self, line, modifier, ftype, name, index):
             self.token_type = 'FIELD'
-            self.pos = pos
+            self.line = line
             self.modifier = modifier
             self.type = ftype
             self.name = name
@@ -383,10 +407,10 @@ class Parser(object):
             self.packed = True
             self.deprecated = False
 
-    class ParserFieldDeprecated(object):
-        def __init__(self, pos, modifier, ftype, name, index):
+    class FieldDeprecated(Token):
+        def __init__(self, line, modifier, ftype, name, index):
             self.token_type = 'FIELD'
-            self.pos = pos
+            self.line = line
             self.modifier = modifier
             self.type = ftype
             self.name = name
@@ -395,19 +419,19 @@ class Parser(object):
             self.packed = False
             self.deprecated = True
 
-    class ParserEnum(object):
-        def __init__(self, pos, name):
+    class Enum(Token):
+        def __init__(self, line, name):
             self.token_type = 'ENUM'
-            self.pos = pos
+            self.line = line
             self.name = name
             self.fields = []
             # full_name may later be overriden with parent hierarchy when relevant
             self.full_name = name
 
-    class ParserEnumField(object):
-        def __init__(self, pos, name, value=None):
+    class EnumField(Token):
+        def __init__(self, line, name, value=None):
             self.token_type = 'ENUM_FIELD'
-            self.pos = pos
+            self.line = line
             self.name = name
             if value is not None:
                 self.value = int(value, 0)
@@ -416,15 +440,38 @@ class Parser(object):
             # full_name may later be overriden with parent hierarchy when relevant
             self.full_name = name
 
-    class ParserLBrace(object):
-        def __init__(self, pos):
+    class LBrace(Token):
+        def __init__(self, line):
             self.token_type = 'LBRACE'
-            self.pos = pos
+            self.line = line
 
-    class ParserRBrace(object):
-        def __init__(self, pos):
+    class RBrace(Token):
+        def __init__(self, line):
             self.token_type = 'RBRACE'
-            self.pos = pos
+            self.line = line
+
+    class Extension(Token):
+        def __init__(self, line, low, hi):
+            self.token_type = 'EXTENSION'
+            self.line = line
+            self.low = low
+            self.hi = hi
+
+    class Oneof(Token):
+        def __init__(self, line, name):
+            self.token_type = 'ONEOF'
+            self.line = line
+            self.name = name
+
+    class OneofField(Token):
+        def __init__(self, line, ftype, name, index):
+            self.token_type = 'ONEOF_FIELD'
+            self.line = line
+            self.modifier = 'optional'
+            self.type = ftype
+            self.name = name
+            self.index = int(index)
+
 
 def process_default(default):
     if default == 'true':

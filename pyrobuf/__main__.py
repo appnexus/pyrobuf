@@ -73,17 +73,10 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False,
             generate(spec, out, parser, templ_pxd, templ_pyx, generated,
                      pyx_files)
 
-        _, name = os.path.split(fname)
-
     else:
-        name, _ = os.path.splitext(os.path.basename(fname))
-        if not name:
-            print("not a .proto file")
-            return
-
         generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files)
 
-    setup(name=name,
+    setup(name='pyrobuf-generated',
           ext_modules=cythonize(pyx_files,
                                 include_path=[os.path.join(HERE, 'src'), out]),
           script_args=script_args)
