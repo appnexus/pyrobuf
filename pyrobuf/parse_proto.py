@@ -156,7 +156,7 @@ class Parser(object):
                 line += 1
 
             pos = m.end()
-            m = self.get_token(s, line)
+            m = self.get_token(s, pos)
 
         if pos != len(s):
             raise Exception("Unexpected character '%s' on line %d: '%s'" % (s[pos], line, lines[line]))
@@ -264,7 +264,7 @@ class Parser(object):
         try:
             assert token.token_type == 'LBRACE'
         except AssertionError:
-            raise Exception("missing opening paren on line %d: '%s'" % (token.line, lines[token.line]))
+            raise Exception("missing opening brace on line %d: '%s'" % (token.line, lines[token.line]))
 
         for token in tokens:
             if token.token_type == 'MESSAGE':
