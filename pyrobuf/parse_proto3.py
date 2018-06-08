@@ -24,10 +24,10 @@ class Proto3Parser(Parser):
         'SYNTAX': Parser.tokens['SYNTAX']
     }
 
-    class ParserField(object):
-        def __init__(self, pos, modifier, ftype, name, index):
+    class Field(Parser.Token):
+        def __init__(self, line, modifier, ftype, name, index):
             self.token_type = 'FIELD'
-            self.pos = pos
+            self.line = line
             self.modifier = 'repeated' if modifier == 'repeated ' else 'optional'
             self.type = ftype
             self.name = name
@@ -36,10 +36,10 @@ class Proto3Parser(Parser):
             self.packed = ftype in Parser.scalars
             self.deprecated = False
 
-    class ParserFieldDeprecated(object):
-        def __init__(self, pos, modifier, ftype, name, index):
+    class FieldDeprecated(Parser.Token):
+        def __init__(self, line, modifier, ftype, name, index):
             self.token_type = 'FIELD'
-            self.pos = pos
+            self.line = line
             self.modifier = 'repeated' if modifier == 'repeated ' else 'optional'
             self.type = ftype
             self.name = name
