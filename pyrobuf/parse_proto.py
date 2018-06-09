@@ -9,9 +9,9 @@ class Parser(object):
     tokens = {
         'COMMENT_OL': r'\/\/.*?\n',
         'COMMENT_ML': r'\/\*(?:.|[\r\n])*?\*\/',
-        'OPTION': r'option\s+(.*?);',
-        'IMPORT': r'import\s+"(.+?).proto"[ ]*;',
-        'MESSAGE': r'message\s+([A-Za_z_][0-9A-Za-z_]*)',
+        'OPTION': r'option\s+((?:.|[\n\r])*?)\s*;',
+        'IMPORT': r'import\s+"(.+?).proto"\s*;',
+        'MESSAGE': r'message\s+([A-Za-z_][0-9A-Za-z_]*)',
         'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
         'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')\s*\];',
         'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*packed\s*=\s*true\s*\];',
@@ -21,13 +21,13 @@ class Parser(object):
         'ENUM_FIELD_WITH_VALUE': r'([A-Za-z_][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x[0-9A-Fa-f]+);',
         'LBRACE': r'\{',
         'RBRACE': r'\};{0,1}',
-        'SKIP': r'[ \t]',
-        'NEWLINE': r'[\r\n]',
-        'PACKAGE': r'package\s.*;',
+        'SKIP': r'\s',
+        'PACKAGE': r'package\s+.*;',
         'SYNTAX': r'(syntax\s+.*?);',
         'EXTENSION': r'extensions\s+(\d+)\s+to\s+(\d+|max);',
         'ONEOF': r'oneof\s+([A-Za-z_][0-9A-Za-z_]*)',
-        'ONEOF_FIELD': r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);'
+        'ONEOF_FIELD': r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
+        'EXTEND': r'extend\s+([A-Za-z_][0-9A-Za-z_\.]*)'
     }
 
     scalars = (
@@ -96,8 +96,9 @@ class Parser(object):
 
     def __init__(self):
         token_regex = '|'.join('(?P<%s>%s)' % pair for pair in self.tokens.items())
-        self.get_token = re.compile(token_regex).match
-        self.token_getter = {key: re.compile(val).match for key, val in self.tokens.items()}
+        self.get_token = re.compile(token_regex, flags=re.MULTILINE).match
+        self.token_getter = {key: re.compile(val, flags=re.MULTILINE).match
+                             for key, val in self.tokens.items()}
 
     def tokenize(self, s):
         pos = 0
@@ -152,14 +153,16 @@ class Parser(object):
             elif token_type == 'ONEOF_FIELD':
                 yield self.OneofField(line, *vals)
 
-            elif token_type == 'NEWLINE':
-                line += 1
+            elif token_type == 'EXTEND':
+                yield self.Extend(line, *vals)
 
+            line += subm.group().count('\n')
             pos = m.end()
             m = self.get_token(s, pos)
 
         if pos != len(s):
-            raise Exception("Unexpected character '%s' on line %d: '%s'" % (s[pos], line, lines[line]))
+            raise Exception("Unexpected character '%s' on line %d: '%s'" % (
+                s[pos], line + 1, lines[line]))
 
     def parse(self, s, cython_info=True, fname=''):
         tokens = self.tokenize(s)
@@ -181,6 +184,10 @@ class Parser(object):
             elif token.token_type == 'IMPORT':
                 rep['imports'].append(token.value)
 
+                # Ignore google meta messages
+                if token.value.find('google/protobuf') == 0:
+                    continue
+
                 # Google's protoc only supports the use of messages and enums from direct imports.
                 # So messages and enums from indirect imports are not fetched here.
                 imported_rep = self._parse_import(token.value + '.proto', fname)
@@ -195,8 +202,12 @@ class Parser(object):
                 rep['enums'].append(ret)
                 enums[token.name] = token
 
+            elif token.token_type == 'EXTEND':
+                self._parse_extend(s, token, tokens)
+
             else:
-                raise Exception("unexpected %s token on line %d: '%s'" % (token.type, token.line, lines[token.line]))
+                raise Exception("unexpected %s token on line %d: '%s'" % (
+                    token.type, token.line + 1, lines[token.line]))
 
         if cython_info:
             for message in rep['messages']:
@@ -264,7 +275,8 @@ class Parser(object):
         try:
             assert token.token_type == 'LBRACE'
         except AssertionError:
-            raise Exception("missing opening brace on line %d: '%s'" % (token.line, lines[token.line]))
+            raise Exception("missing opening brace on line %d: '%s'" % (
+                token.line + 1, lines[token.line]))
 
         for token in tokens:
             if token.token_type == 'MESSAGE':
@@ -304,13 +316,19 @@ class Parser(object):
                 # Just ignore extensions for now, but don't error
                 continue
 
+            elif token.token_type == 'OPTION':
+                # Just ignore options for now, but don't error
+                continue
+
             elif token.token_type == 'RBRACE':
                 return current
 
             else:
-                raise Exception("unexpected %s token on line %d: '%s'" % (token.token_type, token.line, lines[token.line]))
+                raise Exception("unexpected %s token on line %d: '%s'" % (
+                    token.token_type, token.line + 1, lines[token.line]))
 
-        raise Exception("unexpected EOF on line %d: '%s'" % (token.line, lines[token.line]))
+        raise Exception("unexpected EOF on line %d: '%s'" % (
+            token.line + 1, lines[token.line]))
 
     def _parse_enum(self, s, current, tokens):
         token = next(tokens)
@@ -318,7 +336,8 @@ class Parser(object):
         try:
             assert token.token_type == 'LBRACE'
         except AssertionError:
-            raise Exception("missing opening paren on line %d: '%s'" % (token.line, lines[token.line]))
+            raise Exception("missing opening paren on line %d: '%s'" % (
+                token.line + 1, lines[token.line]))
 
         for token in tokens:
             if token.token_type == 'ENUM_FIELD':
@@ -329,9 +348,25 @@ class Parser(object):
                 return current
 
             else:
-                raise Exception("unexpected %s token on line %d: '%s'" % (token.token_type, token.line, lines[token.line]))
+                raise Exception("unexpected %s token on line %d: '%s'" % (
+                    token.token_type, token.line + 1, lines[token.line]))
 
-        raise Exception("unexpected EOF on line %d: '%s'" % (token.line, lines[token.line]))
+        raise Exception("unexpected EOF on line %d: '%s'" % (
+            token.line + 1, lines[token.line]))
+
+    def _parse_extend(self, s, current, tokens):
+        token = next(tokens)
+        lines = s.split('\n')
+        try:
+            assert token.token_type == 'LBRACE'
+        except AssertionError:
+            raise Exception("missing opening paren on line %d: '%s'" % (
+                token.line + 1, lines[token.line]))
+
+        # For now, just find the closing brace and return
+        for token in tokens:
+            if token.token_type == 'RBRACE':
+                return current
 
     def add_cython_info(self, message):
         for field in message.fields:
@@ -471,6 +506,12 @@ class Parser(object):
             self.type = ftype
             self.name = name
             self.index = int(index)
+
+    class Extend(Token):
+        def __init__(self, line, name):
+            self.token_type = 'EXTEND'
+            self.line = line
+            self.name = name
 
 
 def process_default(default):

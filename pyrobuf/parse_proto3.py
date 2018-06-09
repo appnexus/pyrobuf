@@ -19,7 +19,6 @@ class Proto3Parser(Parser):
         'LBRACE': Parser.tokens['LBRACE'],
         'RBRACE': Parser.tokens['RBRACE'],
         'SKIP': Parser.tokens['SKIP'],
-        'NEWLINE': Parser.tokens['NEWLINE'],
         'PACKAGE': Parser.tokens['PACKAGE'],
         'SYNTAX': Parser.tokens['SYNTAX']
     }
