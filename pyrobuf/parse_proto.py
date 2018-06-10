@@ -324,6 +324,8 @@ class Parser(object):
                 enums[token.name] = current.enums[token.name]
 
             elif token.token_type == 'FIELD':
+                self._parse_field(s, token, tokens)
+
                 if messages.get(token.type) is not None:
                     # retrieves the type "full_name"
                     token.message_name = messages.get(token.type).full_name
@@ -342,7 +344,6 @@ class Parser(object):
                     token.message_name = token.type
                     token.type = 'message'
 
-                self._parse_field(s, token, tokens)
                 current.fields.append(token)
 
             elif token.token_type == 'EXTENSION':
@@ -569,30 +570,6 @@ class Parser(object):
         def __init__(self, line):
             self.token_type = 'SEMICOLON'
             self.line = line
-
-    class FieldPacked(Token):
-        def __init__(self, line, modifier, ftype, name, index):
-            self.token_type = 'FIELD'
-            self.line = line
-            self.modifier = modifier
-            self.type = ftype
-            self.name = name
-            self.index = int(index)
-            self.default = None
-            self.packed = True
-            self.deprecated = False
-
-    class FieldDeprecated(Token):
-        def __init__(self, line, modifier, ftype, name, index):
-            self.token_type = 'FIELD'
-            self.line = line
-            self.modifier = modifier
-            self.type = ftype
-            self.name = name
-            self.index = int(index)
-            self.default = None
-            self.packed = False
-            self.deprecated = True
 
     class Enum(Token):
         def __init__(self, line, name):
