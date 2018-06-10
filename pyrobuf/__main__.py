@@ -46,9 +46,9 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False,
                 force=False):
 
     if proto3:
-        parser = Proto3Parser()
+        parser = Proto3Parser
     else:
-        parser = Parser()
+        parser = Parser
 
     env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
     templ_pxd = env.get_template('proto_pxd.tmpl')
