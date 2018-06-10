@@ -72,7 +72,6 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False,
         for spec in glob.glob(os.path.join(fname, '*.proto')):
             generate(spec, out, parser, templ_pxd, templ_pyx, generated,
                      pyx_files)
-
     else:
         generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files)
 

@@ -21,7 +21,7 @@ class Parser(object):
         'ONEOF': r'oneof\s+([A-Za-z_][0-9A-Za-z_]*)',
         'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)'
                  r'\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)',
-        'DEFAULT': r'default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+'
+        'DEFAULT': r'default\s*=\s*([A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+'
                    r'(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*'
                    r'\')',
         'PACKED': r'packed\s*=\s*(true|false)',
@@ -36,7 +36,7 @@ class Parser(object):
         'SKIP': r'\s',
         'SEMICOLON': r';',
         'ENUM_FIELD_WITH_VALUE': r'([A-Za-z_][0-9A-Za-z_]*)\s*='
-                                 r'\s*(-\d+|\d+|0x[0-9A-Fa-f]+)\s*',
+                                 r'\s*(0x[0-9A-Fa-f]+|-\d+|\d+)',
         'ENUM_FIELD': r'([A-Za-z_][0-9A-Za-z_]*)\s*',
         'ONEOF_FIELD': r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*='
                        r'\s*(\d+)\s*;'
@@ -449,7 +449,7 @@ class Parser(object):
                 assert token.token_type == 'SEMICOLON'
             except AssertionError:
                 raise Exception("expected ; or modifier on line %d, got %s: '%s'" % (
-                    token.line + 1, lines[token.line], token.token_type))
+                    token.line + 1, token.token_type, lines[token.line]))
 
     def _parse_extend(self, s, current, tokens):
         token = next(tokens)
