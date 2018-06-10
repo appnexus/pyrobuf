@@ -122,7 +122,6 @@ class Parser(object):
             token_type = m.lastgroup
             subm = self.token_getter[token_type](m.group(token_type))
             vals = subm.groups()
-            print(token_type)
 
             if token_type == 'OPTION':
                 yield self.Option(line, *vals)
