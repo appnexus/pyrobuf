@@ -14,13 +14,14 @@ class Parser(object):
         ('IMPORT', r'import\s+"(.+?).proto"\s*;'),
         ('MESSAGE', r'message\s+([A-Za-z_][0-9A-Za-z_]*)'),
         ('ENUM', r'enum\s+([A-Za-z_][0-9A-Za-z_]*)'),
-        ('PACKAGE', r'package\s+.*\s*;'),
-        ('SYNTAX', r'(syntax\s+.*?)\s*;'),
+        ('PACKAGE', r'package\s+[A-Za-z_][0-9A-Za-z_\.]*\s*;'),
+        ('SYNTAX', r'syntax\s*=\s*"(.*?)"\s*;'),
         ('EXTEND', r'extend\s+([A-Za-z_][0-9A-Za-z_\.]*)'),
         ('EXTENSION', r'extensions\s+(\d+)\s+to\s+(\d+|max)\s*;'),
         ('ONEOF', r'oneof\s+([A-Za-z_][0-9A-Za-z_]*)'),
-        ('FIELD', r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)'
-                  r'\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)'),
+        ('MODIFIER', r'(optional|required|repeated)'),
+        ('FIELD', r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*='
+                  r'\s*(\d+)'),
         ('DEFAULT', r'default\s*=\s*([A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+'
                     r'(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*'
                     r'\')'),
@@ -37,9 +38,7 @@ class Parser(object):
         ('SEMICOLON', r';'),
         ('ENUM_FIELD_WITH_VALUE', r'([A-Za-z_][0-9A-Za-z_]*)\s*='
                                   r'\s*(0x[0-9A-Fa-f]+|-\d+|\d+)'),
-        ('ENUM_FIELD', r'([A-Za-z_][0-9A-Za-z_]*)\s*'),
-        ('ONEOF_FIELD', r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*='
-                        r'\s*(\d+)\s*;')
+        ('ENUM_FIELD', r'([A-Za-z_][0-9A-Za-z_]*)')
     ]
 
     scalars = {
@@ -111,7 +110,7 @@ class Parser(object):
     get_token = re.compile(token_regex).match
     token_getter = {key: re.compile(val).match for key, val in tokens}
 
-    def __init__(self, string: str):
+    def __init__(self, string):
         self.string = string
         self.lines = string.split('\n')
 
@@ -136,6 +135,9 @@ class Parser(object):
 
             elif token_type == 'MESSAGE':
                 yield self.Message(line, *vals)
+
+            elif token_type == 'MODIFIER':
+                yield self.Modifier(line, *vals)
 
             elif token_type == 'FIELD':
                 yield self.Field(line, *vals)
@@ -167,7 +169,7 @@ class Parser(object):
             elif token_type == 'ENUM':
                 yield self.Enum(line, *vals)
 
-            elif token_type in ('ENUM_FIELD', 'ENUM_FIELD_WITH_VALUE'):
+            elif token_type in {'ENUM_FIELD', 'ENUM_FIELD_WITH_VALUE'}:
                 yield self.EnumField(line, *vals)
 
             elif token_type == 'LBRACE':
@@ -181,9 +183,6 @@ class Parser(object):
 
             elif token_type == 'ONEOF':
                 yield self.Oneof(line, *vals)
-
-            elif token_type == 'ONEOF_FIELD':
-                yield self.OneofField(line, *vals)
 
             elif token_type == 'EXTEND':
                 yield self.Extend(line, *vals)
@@ -208,8 +207,8 @@ class Parser(object):
                 continue
 
             elif token.token_type == 'SYNTAX':
-                if 'proto3' in token.value:
-                    assert(self.syntax == 3)
+                if 'proto3' == token.value:
+                    assert self.syntax == 3, "Syntax and parser do not match"
                 continue
 
             elif token.token_type == 'IMPORT':
@@ -285,7 +284,7 @@ class Parser(object):
                     found = True
                     break
 
-            assert (found, 'Enum type "{}" has no value named "{}" on line {}: '
+            assert found, ('Enum type "{}" has no value named "{}" on line {}: '
                            '{}'.format(token.type, token.default,
                                        token.line + 1, self.lines[token.line]))
             token.default = default
@@ -309,9 +308,11 @@ class Parser(object):
             a list/hiearchy of ParserMessage objects.
         """
         token = next(tokens)
-        assert (token.token_type == 'LBRACE',
-                "missing opening brace on line {}: '{}'".format(
-                    token.line + 1, self.lines[token.line]))
+        previous = self.LBrace(-1)
+
+        assert token.token_type == 'LBRACE', (
+            "missing opening brace on line {}: '{}'".format(
+                token.line + 1, self.lines[token.line]))
 
         for token in tokens:
             if token.token_type == 'MESSAGE':
@@ -326,7 +327,22 @@ class Parser(object):
                 # updates the dictionary of known/parsed enums
                 enums[token.name] = current.enums[token.name]
 
+            elif token.token_type == 'MODIFIER':
+                if self.syntax == 3:
+                    assert token.value == 'repeated', (
+                        "Illegal modifier {} on line {}: {}".format(
+                            token.value, token.line + 1,
+                            self.lines[token.line]))
+
             elif token.token_type == 'FIELD':
+                if self.syntax == 2:
+                    assert previous.token_type == 'MODIFIER', (
+                        "Need modifier for field on line {}: {}".format(
+                            token.line + 1, self.lines[token.line]))
+
+                if previous.token_type == 'MODIFIER':
+                    token.modifier = previous.value
+
                 self._parse_field(token, tokens)
 
                 if messages.get(token.type) is not None:
@@ -352,18 +368,22 @@ class Parser(object):
 
             elif token.token_type == 'EXTENSION':
                 # Just ignore extensions for now, but don't error
+                previous = token
                 continue
 
             elif token.token_type == 'OPTION':
                 # Just ignore options for now, but don't error
+                previous = token
                 continue
 
             else:
-                assert (token.token_type == 'RBRACE',
-                        "unexpected {} token on line {}: '{}'".format(
-                            token.token_type, token.line + 1,
-                            self.lines[token.line]))
+                assert token.token_type == 'RBRACE', (
+                    "unexpected {} token on line {}: '{}'".format(
+                        token.token_type, token.line + 1,
+                        self.lines[token.line]))
                 return current
+
+            previous = token
 
         raise Exception("unexpected EOF on line {}: '{}'".format(
             token.line + 1, self.lines[token.line]))
@@ -385,23 +405,23 @@ class Parser(object):
                 elif token.token_type == 'COMMA':
                     continue
                 else:
-                    assert (token.token_type == 'RBRACKET',
-                            "unexpected {} token on line {}: '{}'".format(
-                                token.token_type, token.line + 1,
-                                self.lines[token.line]))
+                    assert token.token_type == 'RBRACKET', (
+                        "unexpected {} token on line {}: '{}'".format(
+                            token.token_type, token.line + 1,
+                            self.lines[token.line]))
                     return
 
         else:
-            assert (token.token_type == 'SEMICOLON',
-                    "expected ; or modifier on line {}, got {}: '{}'".format(
-                        token.line + 1, self.lines[token.line],
-                        token.token_type))
+            assert token.token_type == 'SEMICOLON', (
+                "expected ; or modifier on line {}, got {}: '{}'".format(
+                    token.line + 1, self.lines[token.line],
+                    token.token_type))
 
     def _parse_enum(self, current, tokens):
         token = next(tokens)
-        assert (token.token_type == 'LBRACE',
-                "missing opening paren on line {}: '{}'".format(
-                    token.line + 1, self.lines[token.line]))
+        assert token.token_type == 'LBRACE', (
+            "missing opening paren on line {}: '{}'".format(
+                token.line + 1, self.lines[token.line]))
 
         for token in tokens:
             if token.token_type == 'ENUM_FIELD':
@@ -410,10 +430,10 @@ class Parser(object):
                 current.fields.append(token)
 
             else:
-                assert (token.token_type == 'RBRACE',
-                        "unexpected %s token on line {}: '{}'".format(
-                            token.token_type, token.line + 1,
-                            self.lines[token.line]))
+                assert token.token_type == 'RBRACE', (
+                    "unexpected %s token on line {}: '{}'".format(
+                        token.token_type, token.line + 1,
+                        self.lines[token.line]))
                 return current
 
         raise Exception("unexpected EOF on line {}: '{}'".format(
@@ -430,23 +450,23 @@ class Parser(object):
                 elif token.token_type == 'COMMA':
                     continue
                 else:
-                    assert (token.token_type == 'RBRACKET',
-                            "unexpected {} token on line {}: '{}'".format(
-                                token.token_type, token.line + 1,
-                                self.lines[token.line]))
+                    assert token.token_type == 'RBRACKET', (
+                        "unexpected {} token on line {}: '{}'".format(
+                            token.token_type, token.line + 1,
+                            self.lines[token.line]))
                     return
 
         else:
-            assert (token.token_type == 'SEMICOLON',
-                    "expected ; or modifier on line {}, got {}: '{}'".format(
-                        token.line + 1, token.token_type,
-                        self.lines[token.line]))
+            assert token.token_type == 'SEMICOLON', (
+                "expected ; or modifier on line {}, got {}: '{}'".format(
+                    token.line + 1, token.token_type,
+                    self.lines[token.line]))
 
     def _parse_extend(self, current, tokens):
         token = next(tokens)
-        assert (token.token_type == 'LBRACE',
-                "missing opening paren on line {}: '{}'".format(
-                    token.line + 1, self.lines[token.line]))
+        assert token.token_type == 'LBRACE', (
+            "missing opening paren on line {}: '{}'".format(
+                token.line + 1, self.lines[token.line]))
 
         # For now, just find the closing brace and return
         for token in tokens:
@@ -502,17 +522,23 @@ class Parser(object):
             self.token_type = 'MESSAGE'
             self.line = line
             self.name = name
-            # full_name may later be overriden with parent hierarchy
+            # full_name may later be overridden with parent hierarchy
             self.full_name = name
             self.messages = {}
             self.enums = {}
             self.fields = []
 
+    class Modifier(Token):
+        def __init__(self, line, value):
+            self.token_type = 'MODIFIER'
+            self.line = line
+            self.value = value
+
     class Field(Token):
-        def __init__(self, line, modifier, ftype, name, index):
+        def __init__(self, line, ftype, name, index):
             self.token_type = 'FIELD'
             self.line = line
-            self.modifier = modifier
+            self.modifier = None
             self.type = ftype
             self.name = name
             self.index = int(index)
@@ -570,7 +596,7 @@ class Parser(object):
             self.line = line
             self.name = name
             self.fields = []
-            # full_name may later be overriden with parent hierarchy
+            # full_name may later be overridden with parent hierarchy
             self.full_name = name
 
     class EnumField(Token):
@@ -582,7 +608,7 @@ class Parser(object):
                 self.value = int(value, 0)
             else:
                 self.value = None
-            # full_name may later be overriden with parent hierarchy
+            # full_name may later be overridden with parent hierarchy
             self.full_name = name
 
     class LBrace(Token):
@@ -608,20 +634,16 @@ class Parser(object):
             self.line = line
             self.name = name
 
-    class OneofField(Token):
-        def __init__(self, line, ftype, name, index):
-            self.token_type = 'ONEOF_FIELD'
-            self.line = line
-            self.modifier = 'optional'
-            self.type = ftype
-            self.name = name
-            self.index = int(index)
-
     class Extend(Token):
         def __init__(self, line, name):
             self.token_type = 'EXTEND'
             self.line = line
             self.name = name
+
+
+class Proto3Parser(Parser):
+
+    syntax = 3
 
 
 def process_default(default):

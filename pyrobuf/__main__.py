@@ -7,8 +7,7 @@ from setuptools import setup
 from Cython.Build import cythonize
 from jinja2 import Environment, PackageLoader
 
-from pyrobuf.parse_proto import Parser
-from pyrobuf.parse_proto3 import Proto3Parser
+from pyrobuf.parse_proto import Parser, Proto3Parser
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))

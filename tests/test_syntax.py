@@ -35,10 +35,11 @@ message SearchRequest {
 class SyntaxTest(unittest.TestCase):
 
     def test_syntax2(self):
-        parser = Parser()
-        parser.parse(syntax2_implicit)
-        parser.parse(syntax2_explicit)
+        parser = Parser(syntax2_implicit)
+        parser.parse()
+        parser = Parser(syntax2_explicit)
+        parser.parse()
 
     def test_syntax3_raises_exception(self):
-        parser = Parser()
-        self.assertRaises(Exception, parser.parse, syntax3_explicit)
+        parser = Parser(syntax3_explicit)
+        self.assertRaises(Exception, parser.parse)
