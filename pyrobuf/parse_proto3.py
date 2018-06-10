@@ -5,23 +5,9 @@ class Proto3Parser(Parser):
 
     syntax = 3
 
-    tokens = {
-        'COMMENT_OL': Parser.tokens['COMMENT_OL'],
-        'COMMENT_ML': Parser.tokens['COMMENT_ML'],
-        'OPTION': Parser.tokens['OPTION'],
-        'IMPORT': Parser.tokens['IMPORT'],
-        'MESSAGE': Parser.tokens['MESSAGE'],
-        'FIELD': r'(repeated |)\s*([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
-        'FIELD_DEPRECATED': r'(repeated |)\s*([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[deprecated\s*=\s*true\];',
-        'ENUM': Parser.tokens['ENUM'],
-        'ENUM_FIELD': Parser.tokens['ENUM_FIELD'],
-        'ENUM_FIELD_WITH_VALUE': Parser.tokens['ENUM_FIELD_WITH_VALUE'],
-        'LBRACE': Parser.tokens['LBRACE'],
-        'RBRACE': Parser.tokens['RBRACE'],
-        'SKIP': Parser.tokens['SKIP'],
-        'PACKAGE': Parser.tokens['PACKAGE'],
-        'SYNTAX': Parser.tokens['SYNTAX']
-    }
+    tokens = Parser.tokens.copy()
+    tokens['FIELD'] = (r'(repeated|)\s+([A-Za-z][0-9A-Za-z_]*)\s+'
+                       r'([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);')
 
     class Field(Parser.Token):
         def __init__(self, line, modifier, ftype, name, index):

@@ -6,28 +6,40 @@ class Parser(object):
 
     syntax = 2
 
+    # Tokens ordered roughly by priority
     tokens = {
         'COMMENT_OL': r'\/\/.*?\n',
         'COMMENT_ML': r'\/\*(?:.|[\r\n])*?\*\/',
-        'OPTION': r'option\s+((?:.|[\n\r])*?)\s*;',
+        'OPTION': r'option\s+((?:.|[\n\r])*?);',
         'IMPORT': r'import\s+"(.+?).proto"\s*;',
         'MESSAGE': r'message\s+([A-Za-z_][0-9A-Za-z_]*)',
-        'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
-        'FIELD_WITH_DEFAULT': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\')\s*\];',
-        'FIELD_PACKED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*packed\s*=\s*true\s*\];',
-        'FIELD_DEPRECATED': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)\s+\[\s*deprecated\s*=\s*true\s*\];',
         'ENUM': r'enum\s+([A-Za-z_][0-9A-Za-z_]*)',
-        'ENUM_FIELD': r'([A-Za-z_][0-9A-Za-z_]*);',
-        'ENUM_FIELD_WITH_VALUE': r'([A-Za-z_][0-9A-Za-z_]*)\s*=\s*(-\d+|\d+|0x[0-9A-Fa-f]+);',
-        'LBRACE': r'\{',
-        'RBRACE': r'\};{0,1}',
-        'SKIP': r'\s',
-        'PACKAGE': r'package\s+.*;',
-        'SYNTAX': r'(syntax\s+.*?);',
-        'EXTENSION': r'extensions\s+(\d+)\s+to\s+(\d+|max);',
+        'PACKAGE': r'package\s+.*\s*;',
+        'SYNTAX': r'(syntax\s+.*?)\s*;',
+        'EXTEND': r'extend\s+([A-Za-z_][0-9A-Za-z_\.]*)',
+        'EXTENSION': r'extensions\s+(\d+)\s+to\s+(\d+|max)\s*;',
         'ONEOF': r'oneof\s+([A-Za-z_][0-9A-Za-z_]*)',
-        'ONEOF_FIELD': r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+);',
-        'EXTEND': r'extend\s+([A-Za-z_][0-9A-Za-z_\.]*)'
+        'FIELD': r'(optional|required|repeated)\s+([A-Za-z][0-9A-Za-z_]*)'
+                 r'\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)',
+        'DEFAULT': r'default\s*=\s*([0-9A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+'
+                   r'(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*'
+                   r'\')',
+        'PACKED': r'packed\s*=\s*(true|false)',
+        'DEPRECATED': r'deprecated\s*=\s*(true|false)',
+        'GENERIC': r'(\([A-Za-z][0-9A-Za-z_]*\).[A-Za-z][0-9A-Za-z_]*)\s*='
+                   r'\s*([^\]]+)',
+        'LBRACKET': r'\[',
+        'RBRACKET': r'\]\s*;',
+        'LBRACE': r'\{',
+        'RBRACE': r'\}\s*;{0,1}',
+        'COMMA': r',',
+        'SKIP': r'\s',
+        'SEMICOLON': r';',
+        'ENUM_FIELD_WITH_VALUE': r'([A-Za-z_][0-9A-Za-z_]*)\s*='
+                                 r'\s*(-\d+|\d+|0x[0-9A-Fa-f]+)\s*',
+        'ENUM_FIELD': r'([A-Za-z_][0-9A-Za-z_]*)\s*',
+        'ONEOF_FIELD': r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*='
+                       r'\s*(\d+)\s*;'
     }
 
     scalars = (
@@ -96,8 +108,8 @@ class Parser(object):
 
     def __init__(self):
         token_regex = '|'.join('(?P<%s>%s)' % pair for pair in self.tokens.items())
-        self.get_token = re.compile(token_regex, flags=re.MULTILINE).match
-        self.token_getter = {key: re.compile(val, flags=re.MULTILINE).match
+        self.get_token = re.compile(token_regex).match
+        self.token_getter = {key: re.compile(val).match
                              for key, val in self.tokens.items()}
 
     def tokenize(self, s):
@@ -110,6 +122,7 @@ class Parser(object):
             token_type = m.lastgroup
             subm = self.token_getter[token_type](m.group(token_type))
             vals = subm.groups()
+            print(token_type)
 
             if token_type == 'OPTION':
                 yield self.Option(line, *vals)
@@ -123,14 +136,32 @@ class Parser(object):
             elif token_type == 'MESSAGE':
                 yield self.Message(line, *vals)
 
-            elif token_type in ('FIELD', 'FIELD_WITH_DEFAULT'):
+            elif token_type == 'FIELD':
                 yield self.Field(line, *vals)
 
-            elif token_type == 'FIELD_PACKED':
-                yield self.FieldPacked(line, *vals)
+            elif token_type == 'LBRACKET':
+                yield self.LBracket(line)
 
-            elif token_type == 'FIELD_DEPRECATED':
-                yield self.FieldDeprecated(line, *vals)
+            elif token_type == 'RBRACKET':
+                yield self.RBracket(line)
+
+            elif token_type == 'DEFAULT':
+                yield self.Default(line, *vals)
+
+            elif token_type == 'PACKED':
+                yield self.Packed(line, *vals)
+
+            elif token_type == 'DEPRECATED':
+                yield self.Deprecated(line, *vals)
+
+            elif token_type == 'CUSTOM':
+                yield self.Custom(line, *vals)
+
+            elif token_type == 'COMMA':
+                yield self.Comma(line)
+
+            elif token_type == 'SEMICOLON':
+                yield self.Semicolon(line)
 
             elif token_type == 'ENUM':
                 yield self.Enum(line, *vals)
@@ -182,14 +213,15 @@ class Parser(object):
                 continue
 
             elif token.token_type == 'IMPORT':
-                rep['imports'].append(token.value)
-
                 # Ignore google meta messages
                 if token.value.find('google/protobuf') == 0:
                     continue
 
-                # Google's protoc only supports the use of messages and enums from direct imports.
-                # So messages and enums from indirect imports are not fetched here.
+                rep['imports'].append(token.value)
+
+                # Google's protoc only supports the use of messages and enums
+                # from direct imports. So messages and enums from indirect
+                # imports are not fetched here.
                 imported_rep = self._parse_import(token.value + '.proto', fname)
                 imported['messages'].update((m.name, m) for m in imported_rep['messages'])
                 imported['enums'].update((e.name, e) for e in imported_rep['enums'])
@@ -310,6 +342,7 @@ class Parser(object):
                     token.message_name = token.type
                     token.type = 'message'
 
+                self._parse_field(s, token, tokens)
                 current.fields.append(token)
 
             elif token.token_type == 'EXTENSION':
@@ -330,6 +363,40 @@ class Parser(object):
         raise Exception("unexpected EOF on line %d: '%s'" % (
             token.line + 1, lines[token.line]))
 
+    def _parse_field(self, s, field, tokens):
+        token = next(tokens)
+        lines = s.split('\n')
+
+        if token.token_type == 'LBRACKET':
+            for token in tokens:
+                if token.token_type == 'DEFAULT':
+                    field.default = token.value
+                elif token.token_type == 'PACKED':
+                    field.packed = token.value
+                elif token.token_type == 'DEPRECATED':
+                    field.deprecated = token.value
+                elif token.token_type == 'CUSTOM':
+                    # Ignore custom modifiers for now
+                    continue
+                elif token.token_type == 'COMMA':
+                    continue
+                else:
+                    try:
+                        assert token.token_type == 'RBRACKET'
+                    except AssertionError:
+                        raise Exception(
+                            "unexpected %s token on line %d: '%s'" % (
+                                token.token_type, token.line + 1,
+                                lines[token.line]))
+                    return
+
+        else:
+            try:
+                assert token.token_type == 'SEMICOLON'
+            except AssertionError:
+                raise Exception("expected ; or modifier on line %d, got %s: '%s'" % (
+                    token.line + 1, lines[token.line], token.token_type))
+
     def _parse_enum(self, s, current, tokens):
         token = next(tokens)
         lines = s.split('\n')
@@ -342,6 +409,7 @@ class Parser(object):
         for token in tokens:
             if token.token_type == 'ENUM_FIELD':
                 token.full_name = "%s_%s" % (current.full_name, token.name)
+                self._parse_enum_field(s, token, tokens)
                 current.fields.append(token)
 
             elif token.token_type == 'RBRACE':
@@ -353,6 +421,34 @@ class Parser(object):
 
         raise Exception("unexpected EOF on line %d: '%s'" % (
             token.line + 1, lines[token.line]))
+
+    def _parse_enum_field(self, s, field, tokens):
+        token = next(tokens)
+        lines = s.split('\n')
+
+        if token.token_type == 'LBRACKET':
+            for token in tokens:
+                if token.token_type == 'CUSTOM':
+                    # Ignore custom modifiers for now
+                    continue
+                elif token.token_type == 'COMMA':
+                    continue
+                else:
+                    try:
+                        assert token.token_type == 'RBRACKET'
+                    except AssertionError:
+                        raise Exception(
+                            "unexpected %s token on line %d: '%s'" % (
+                                token.token_type, token.line + 1,
+                                lines[token.line]))
+                    return
+
+        else:
+            try:
+                assert token.token_type == 'SEMICOLON'
+            except AssertionError:
+                raise Exception("expected ; or modifier on line %d, got %s: '%s'" % (
+                    token.line + 1, lines[token.line], token.token_type))
 
     def _parse_extend(self, s, current, tokens):
         token = next(tokens)
@@ -419,16 +515,60 @@ class Parser(object):
             self.fields = []
 
     class Field(Token):
-        def __init__(self, line, modifier, ftype, name, index, default=None):
+        def __init__(self, line, modifier, ftype, name, index):
             self.token_type = 'FIELD'
             self.line = line
             self.modifier = modifier
             self.type = ftype
             self.name = name
             self.index = int(index)
-            self.default = process_default(default)
+            self.default = None
             self.packed = False
             self.deprecated = False
+
+    class LBracket(Token):
+        def __init__(self, line):
+            self.token_type = 'LBRACKET'
+            self.line = line
+
+    class RBracket(Token):
+        def __init__(self, line):
+            self.token_type = 'RBRACKET'
+            self.line = line
+
+    class Default(Token):
+        def __init__(self, line, value):
+            self.token_type = 'DEFAULT'
+            self.line = line
+            self.value = process_default(value)
+
+    class Packed(Token):
+        def __init__(self, line, value):
+            self.token_type = 'PACKED'
+            self.line = line
+            self.value = value == 'true'
+
+    class Deprecated(Token):
+        def __init__(self, line, value):
+            self.token_type = 'DEPRECATED'
+            self.line = line
+            self.value = value == 'true'
+
+    class Custom(Token):
+        def __init__(self, line, value):
+            self.token_type = 'CUSTOM'
+            self.line = line
+            self.value = value
+
+    class Comma(Token):
+        def __init__(self, line):
+            self.token_type = 'COMMA'
+            self.line = line
+
+    class Semicolon(Token):
+        def __init__(self, line):
+            self.token_type = 'SEMICOLON'
+            self.line = line
 
     class FieldPacked(Token):
         def __init__(self, line, modifier, ftype, name, index):
