@@ -7,8 +7,7 @@ from setuptools import setup
 from Cython.Build import cythonize
 from jinja2 import Environment, PackageLoader
 
-from pyrobuf.parse_proto import Parser
-from pyrobuf.parse_proto3 import Proto3Parser
+from pyrobuf.parse_proto import Parser, Proto3Parser
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -46,9 +45,9 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False,
                 force=False):
 
     if proto3:
-        parser = Proto3Parser()
+        parser = Proto3Parser
     else:
-        parser = Parser()
+        parser = Parser
 
     env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
     templ_pxd = env.get_template('proto_pxd.tmpl')
@@ -72,7 +71,6 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False,
         for spec in glob.glob(os.path.join(fname, '*.proto')):
             generate(spec, out, parser, templ_pxd, templ_pyx, generated,
                      pyx_files)
-
     else:
         generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files)
 
