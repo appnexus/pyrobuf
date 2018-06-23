@@ -25,9 +25,11 @@ def main():
 
 
 def cli_argument_parser():
-    parser = argparse.ArgumentParser("pyrobuf", description="a Cython based protobuf compiler")
+    parser = argparse.ArgumentParser(
+        "pyrobuf", description="a Cython based protobuf compiler")
     parser.add_argument('source', type=str,
-                        help="filename.proto or directory containing proto files")
+                        help="<filename>.proto or directory containing proto "
+                             "files")
     parser.add_argument('--out-dir', default='out',
                         help="cythonize output directory [default: out]")
     parser.add_argument('--build-dir', default='build',
@@ -43,7 +45,23 @@ def cli_argument_parser():
 
 def gen_message(fname, out="out", build="build", install=False, proto3=False,
                 force=False):
+    script_args = ['build', '--build-base={0}'.format(build)]
 
+    if install:
+        script_args.append('install')
+
+    if force:
+        script_args.append('--force')
+
+    pyx_files = compile_spec(fname, out=out, proto3=proto3)
+    include_path = [os.path.join(HERE, 'src'), out]
+
+    setup(name='pyrobuf-generated',
+          ext_modules=cythonize(pyx_files, include_path=include_path),
+          script_args=script_args)
+
+
+def compile_spec(fname, out="out", proto3=False):
     if proto3:
         parser = Proto3Parser
     else:
@@ -60,13 +78,6 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False,
     except _FileExistsError:
         pass
 
-    script_args = ['build', '--build-base={0}'.format(build)]
-    if install:
-        script_args.append('install')
-
-    if force:
-        script_args.append('--force')
-
     if os.path.isdir(fname):
         for spec in glob.glob(os.path.join(fname, '*.proto')):
             generate(spec, out, parser, templ_pxd, templ_pyx, generated,
@@ -74,10 +85,7 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False,
     else:
         generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files)
 
-    setup(name='pyrobuf-generated',
-          ext_modules=cythonize(pyx_files,
-                                include_path=[os.path.join(HERE, 'src'), out]),
-          script_args=script_args)
+    return pyx_files
 
 
 def generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files):

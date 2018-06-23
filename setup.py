@@ -144,7 +144,7 @@ setup(
     entry_points={
         'console_scripts': ['pyrobuf = pyrobuf.__main__:main'],
         'distutils.setup_keywords': [
-                'pyrobuf_modules = pyrobuf.setuptools_ext:pyrobuf_modules',
+            'pyrobuf_modules = pyrobuf.setuptools_ext:pyrobuf_modules',
         ],
     },
     description='A Cython based protobuf compiler',
