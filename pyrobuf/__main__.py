@@ -11,6 +11,9 @@ from pyrobuf.parse_proto import Parser, Proto3Parser
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
+T_PXD = env.get_template('proto_pxd.tmpl')
+T_PYX = env.get_template('proto_pyx.tmpl')
 
 if sys.version_info.major == 3:
     _FileExistsError = FileExistsError
@@ -21,7 +24,8 @@ else:
 def main():
     args = cli_argument_parser()
     gen_message(args.source, out=args.out_dir, build=args.build_dir,
-                install=args.install, proto3=args.proto3, force=args.force)
+                install=args.install, proto3=args.proto3, force=args.force,
+                package=args.package)
 
 
 def cli_argument_parser():
@@ -40,11 +44,13 @@ def cli_argument_parser():
                         help="compile proto3 syntax [default: False]")
     parser.add_argument('--force', action='store_true',
                         help="force install")
+    parser.add_argument('--package', type=str, default=None,
+                        help="name of package to compile to")
     return parser.parse_args()
 
 
 def gen_message(fname, out="out", build="build", install=False, proto3=False,
-                force=False):
+                force=False, package=None):
     script_args = ['build', '--build-base={0}'.format(build)]
 
     if install:
@@ -53,8 +59,16 @@ def gen_message(fname, out="out", build="build", install=False, proto3=False,
     if force:
         script_args.append('--force')
 
-    pyx_files = compile_spec(fname, out=out, proto3=proto3)
+    pyx_files, includes = compile_spec(fname, out=out, proto3=proto3)
     include_path = [os.path.join(HERE, 'src'), out]
+
+    if package is not None:
+        agg_file = os.path.join(out, '{}.pyx'.format(package))
+        with open(agg_file, 'w') as fp:
+            for name in includes:
+                fp.write('include "{}"\n'.format(name))
+
+        pyx_files = agg_file
 
     setup(name='pyrobuf-generated',
           ext_modules=cythonize(pyx_files, include_path=include_path),
@@ -67,11 +81,9 @@ def compile_spec(fname, out="out", proto3=False):
     else:
         parser = Parser
 
-    env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
-    templ_pxd = env.get_template('proto_pxd.tmpl')
-    templ_pyx = env.get_template('proto_pyx.tmpl')
     generated = set()
     pyx_files = []
+    includes = []
 
     try:
         os.makedirs(out)
@@ -80,15 +92,14 @@ def compile_spec(fname, out="out", proto3=False):
 
     if os.path.isdir(fname):
         for spec in glob.glob(os.path.join(fname, '*.proto')):
-            generate(spec, out, parser, templ_pxd, templ_pyx, generated,
-                     pyx_files)
+            generate(spec, out, parser, generated, pyx_files, includes)
     else:
-        generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files)
+        generate(fname, out, parser, generated, pyx_files, includes)
 
-    return pyx_files
+    return pyx_files, includes
 
 
-def generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files):
+def generate(fname, out, parser, generated, pyx_files, includes):
     name, _ = os.path.splitext(os.path.basename(fname))
     directory = os.path.dirname(fname)
 
@@ -101,22 +112,23 @@ def generate(fname, out, parser, templ_pxd, templ_pyx, generated, pyx_files):
     name_pxd = "%s_proto.pxd" % name
     name_pyx = "%s_proto.pyx" % name
     pyx_files.append(os.path.join(out, name_pyx))
-
+    includes.append(name_pyx)
     msgdef = parser.parse_from_filename(fname)
 
     with open(os.path.join(out, name_pxd), 'w') as fp:
-        fp.write(templ_pxd.render(msgdef, version_major=sys.version_info.major))
+        fp.write(T_PXD.render(msgdef, version_major=sys.version_info.major))
 
     with open(os.path.join(out, name_pyx), 'w') as fp:
-        fp.write(templ_pyx.render(msgdef, version_major=sys.version_info.major))
+        fp.write(T_PYX.render(msgdef, version_major=sys.version_info.major))
 
     for f in msgdef['imports']:
         print("parsing dependency '{}'".format(f))
         try:
             generate(os.path.join(directory, '{}.proto'.format(f)),
-                     out, parser, templ_pxd, templ_pyx, generated, pyx_files)
+                     out, parser, generated, pyx_files, includes)
         except FileNotFoundError:
-            print("can't find message spec for '{}'".format(f))
+            raise FileNotFoundError("can't find message spec for '{}'"
+                                    .format(f))
 
 
 if __name__ == "__main__":
