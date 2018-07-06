@@ -38,9 +38,9 @@ class Compiler(object):
         self._pyx_files = []
 
         if proto3:
-            self.parser = Parser
-        else:
             self.parser = Proto3Parser
+        else:
+            self.parser = Parser
 
     @classmethod
     def parse_cli_args(cls):
@@ -135,8 +135,8 @@ class Compiler(object):
             self._write(name, msg_def)
 
     def _write(self, name, msg_def):
-        name_pxd = "%s_proto.pxd".format(name)
-        name_pyx = "%s_proto.pyx".format(name)
+        name_pxd = "{}_proto.pxd".format(name)
+        name_pyx = "{}_proto.pyx".format(name)
         self._pyx_files.append(os.path.join(self.out, name_pyx))
 
         with open(os.path.join(self.out, name_pxd), 'w') as fp:
@@ -146,4 +146,18 @@ class Compiler(object):
             fp.write(self.t_pyx.render(msg_def, version_major=_VM))
 
     def _package(self):
-        pass
+        meta = {'imports': [], 'messages': [], 'enums': []}
+
+        for msg_def in self._messages:
+            meta['messages'].extend(msg_def['messages'])
+            meta['enums'].extend(msg_def['enums'])
+
+        name_pxd = "{}.pxd".format(self.package)
+        name_pyx = "{}.pyx".format(self.package)
+        self._pyx_files.append(os.path.join(self.out, name_pyx))
+
+        with open(os.path.join(self.out, name_pxd), 'w') as fp:
+            fp.write(self.t_pxd.render(meta, version_major=_VM))
+
+        with open(os.path.join(self.out, name_pyx), 'w') as fp:
+            fp.write(self.t_pyx.render(meta, version_major=_VM))

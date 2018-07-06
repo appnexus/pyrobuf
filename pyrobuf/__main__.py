@@ -1,6 +1,10 @@
 from pyrobuf.compile import Compiler
 
 
-if __name__ == "__main__":
+def main():
     compiler = Compiler.parse_cli_args()
     compiler.compile()
+
+
+if __name__ == "__main__":
+    main()
