@@ -1,9 +1,5 @@
 """Setuptools integration."""
-import os
-import os.path
-
-from Cython.Build import cythonize
-from pyrobuf.__main__ import compile_spec, HERE
+from pyrobuf.compile import Compiler
 
 try:
     basestring
@@ -14,13 +10,8 @@ except NameError:
 
 def add_pyrobuf_module(dist, pyrobuf_module):
     dir_name = "pyrobuf/_" + pyrobuf_module
-    pyx_files = compile_spec(pyrobuf_module, out=dir_name)
-    include_path = [os.path.join(HERE, 'src'), dir_name]
-
-    if dist.ext_modules is None:
-        dist.ext_modules = []
-
-    dist.ext_modules.extend(cythonize(pyx_files, include_path=include_path))
+    compiler = Compiler(pyrobuf_module, out=dir_name)
+    compiler.extend(dist)
 
 
 def pyrobuf_modules(dist, attr, value):
