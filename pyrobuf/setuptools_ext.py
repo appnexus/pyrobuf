@@ -10,7 +10,8 @@ except NameError:
 
 def add_pyrobuf_module(dist, pyrobuf_module):
     dir_name = "pyrobuf/_" + pyrobuf_module
-    compiler = Compiler(pyrobuf_module, out=dir_name)
+    compiler = Compiler(pyrobuf_module, out=dir_name,
+                        package="{}_{}".format(dist.get_name(), pyrobuf_module))
     compiler.extend(dist)
 
 
