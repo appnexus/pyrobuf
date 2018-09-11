@@ -106,6 +106,7 @@ When you `pip install pyrobuf` you get the pyrobuf CLI tool ...:
       --build-dir BUILD_DIR
                             C compiler build directory [default: build]
       --install             install the extension [default: False]
+      --package             the name of the package to install to
 
 If you do not want to have to deal with setuptools entry_points idiosyncrasies
 you can also do:
@@ -191,10 +192,23 @@ bytearray(b'\xff\xff\x07')
 The `from_varint` and `from_signed_varint` functions return both the decoded integer and
 the offset of the first byte after the encoded integer in the source data.
 
+### Packaging
+
+If you are compiling multiple messages or a directory of messages and don't want them
+all to be built to their own separate package but instead want a single namespace
+containing all your messages, you can specify a package name:
+```
+pyrobuf /path/to/proto/specs --install --package=my_messages
+```
+
+Then you can import your message classes from the `my_messages` pakcage:
+```
+>>> from my_messages import MyMessage1, MyMessage2
+```
+
 ### Distributing a Python Package with Pyrobuf Modules
 
 Suppose you have a Python package called 'sample' arranged on disk as follows:
-
 ```
 sample/
     proto/
@@ -222,11 +236,14 @@ setup(
 )
 ```
 
+In addition to the package "sample", setuptools will also build a package named
+"sample_proto" which will contain the compiled Protobuf messages.
+
 Once installed this sample package can be used as follows:
 
 ```
->>> import sample
->>> import my_message_proto
+>>> from sample_proto import MyMessage
+>>> my_message = MyMessage()
 ```
 
 ### Performance

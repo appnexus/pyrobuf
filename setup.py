@@ -10,7 +10,7 @@ import platform
 import sys
 
 
-VERSION = "0.8.0"
+VERSION = "0.8.1"
 HERE = os.path.dirname(os.path.abspath(__file__))
 PYROBUF_DEFS_PXI = "pyrobuf_defs.pxi"
 PYROBUF_LIST_PXD = "pyrobuf_list.pxd"
@@ -144,7 +144,7 @@ setup(
     entry_points={
         'console_scripts': ['pyrobuf = pyrobuf.__main__:main'],
         'distutils.setup_keywords': [
-                'pyrobuf_modules = pyrobuf.setuptools_ext:pyrobuf_modules',
+            'pyrobuf_modules = pyrobuf.setuptools_ext:pyrobuf_modules',
         ],
     },
     description='A Cython based protobuf compiler',

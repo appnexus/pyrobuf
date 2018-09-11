@@ -207,9 +207,13 @@ class Parser(object):
                 continue
 
             elif token.token_type == 'SYNTAX':
-                if 'proto3' == token.value:
-                    assert self.syntax == 3, "Syntax and parser do not match"
-                continue
+                if 'proto2' == token.value:
+                    self.syntax = 2
+                elif 'proto3' == token.value:
+                    self.syntax = 3
+                else:
+                    raise Exception("Unexpected syntax value '{}'".format(
+                        token.value))
 
             elif token.token_type == 'IMPORT':
                 # Ignore google meta messages
@@ -642,7 +646,6 @@ class Parser(object):
 
 
 class Proto3Parser(Parser):
-
     syntax = 3
 
 
