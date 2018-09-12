@@ -40,6 +40,6 @@ class SyntaxTest(unittest.TestCase):
         parser = Parser(syntax2_explicit)
         parser.parse()
 
-    def test_syntax3_raises_exception(self):
+    def test_syntax3(self):
         parser = Parser(syntax3_explicit)
-        self.assertRaises(Exception, parser.parse)
+        parser.parse()
