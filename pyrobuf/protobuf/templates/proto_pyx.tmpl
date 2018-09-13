@@ -681,7 +681,8 @@ cdef class {{ message.full_name }}:
 
         {%- if field.modifier == 'repeated' %}
             {%- if field.packed == true %}
-        if len(self._{{ field.name }}) > 0:
+        length = len(self._{{ field.name }})
+        if length > 0:
             set_varint64({{ field.get_key() }}, buf)
             {%- if field.fixed_width == true %}
             set_varint64(length * sizeof({{ field.c_type }}), buf)
