@@ -649,8 +649,11 @@ cdef class {{ message.full_name }}:
             {%- if field.type == 'message' %}
         cdef {{ field.message_name }} {{ field.name }}_elt
         cdef bytearray {{ field.name }}_elt_buf
-            {%- elif field.type in ('bytes', 'string') %}
+            {%- elif field.type == 'bytes' %}
         cdef bytes {{ field.name }}_elt
+            {%- elif field.type == 'string' %}
+        cdef str {{ field.name }}_elt
+        cdef bytes {{ field.name }}_elt_bytes
             {%- else %}
         cdef {{ field.c_type }} {{ field.name }}_elt
             {%- endif %}
@@ -672,33 +675,35 @@ cdef class {{ message.full_name }}:
         if self._{{ field.name }}_isSet:
         {%- endif %}
 
-        {%- if field.modifier == 'repeated' %}
-            {%- if field.packed == true %}
-        if len(self._{{ field.name }}) > 0:
-            set_varint64({{ field.get_key() }}, buf)
-            {%- endif %}
-        {%- else %}
+        {%- if field.modifier != 'repeated' %}
             set_varint64({{ field.get_key() }}, buf)
         {%- endif %}
 
         {%- if field.modifier == 'repeated' %}
-        for {{ field.name }}_elt in self._{{ field.name }}:
             {%- if field.packed == true %}
+        if len(self._{{ field.name }}) > 0:
+            set_varint64({{ field.get_key() }}, buf)
+            {%- if field.fixed_width == true %}
+            set_varint64(length * sizeof({{ field.c_type }}), buf)
+            {%- endif %}
+            for {{ field.name }}_elt in self._{{ field.name }}:
                 {%- if field.fixed_width == true %}
-            buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.c_type }})]
+                buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.c_type }})]
 
                 {%- elif field.var_width == true %}
-            {{ field.setter }}({{ field.name }}_elt, {{ field.name }}_buf)
+                {{ field.setter }}({{ field.name }}_elt, {{ field.name }}_buf)
 
-        set_varint64(len({{ field.name }}_buf), buf)
-        buf += {{ field.name }}_buf
+            set_varint64(len({{ field.name }}_buf), buf)
+            buf += {{ field.name }}_buf
                 {%- endif %}
 
             {%- else %}
+        for {{ field.name }}_elt in self._{{ field.name }}:
             set_varint64({{ field.get_key() }}, buf)
                 {%- if field.type == 'string' %}
-            set_varint64(len({{ field.name }}_elt), buf)
-            buf += {{ field.name }}_elt
+            {{ field.name }}_elt_bytes = {{ field.name }}_elt.encode('utf-8')
+            set_varint64(len({{ field.name }}_elt_bytes), buf)
+            buf += {{ field.name }}_elt_bytes
                 {%- elif field.type == 'bytes' %}
             set_varint64(len({{ field.name }}_elt), buf)
             buf += {{ field.name }}_elt
