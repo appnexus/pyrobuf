@@ -550,6 +550,18 @@ class Parser(object):
             self.packed = False
             self.deprecated = False
 
+        def get_key(self):
+            if self.modifier == 'repeated' and self.packed:
+                return (self.index << 3) | 2
+            elif self.type in {'message', 'string', 'bytes'}:
+                return (self.index << 3) | 2
+            elif self.type in {'fixed64', 'sfixed64', 'double'}:
+                return (self.index << 3) | 1
+            elif self.type in {'fixed32', 'sfixed32', 'float'}:
+                return (self.index << 3) | 5
+            else:
+                return (self.index << 3) | 0
+
     class LBracket(Token):
         def __init__(self, line):
             self.token_type = 'LBRACKET'
