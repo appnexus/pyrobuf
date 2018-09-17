@@ -262,13 +262,11 @@ cdef class {{ message.full_name }}:
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size, bint cache):
         cdef int current_offset = 0
         cdef int64_t key
-        cdef int64_t field_idx
     {%- if message.fields|selectattr('type', 'equalto', 'message')|first is defined or
            message.fields|selectattr('type', 'equalto', 'string')|first is defined or
            message.fields|selectattr('type', 'equalto', 'bytes')|first is defined %}
         cdef int64_t field_size
     {%- endif %}
-        # cdef int wire_type
 
     {%- for field in message.fields|sort(attribute='index') %}
         {%- if field.modifier == 'repeated' and field.packed|default(false) == true %}
@@ -287,18 +285,16 @@ cdef class {{ message.full_name }}:
         {%- endif %}
     {%- endfor %}
 
-    {% if message.fields|count > 0 %}
+    {%- if message.fields|count > 0 %}
         while current_offset < size:
             key = get_varint64(memory, &current_offset)
-            field_idx = (key >> 3)
-            # wire_type = (key & 0x7)
 
     {%- for field in message.fields|sort(attribute='index') %}
             # {{ field.name }}
         {%- if loop.index == 1 %}
-            if field_idx == {{ field.index }}:
+            if key == {{ field.get_key() }}:
         {%- else %}
-            elif field_idx == {{ field.index }}:
+            elif key == {{ field.get_key() }}:
         {%- endif %}
 
         {%- if field.modifier != 'repeated' and field.type != 'message' and field.type != 'enum' %}
@@ -640,23 +636,24 @@ cdef class {{ message.full_name }}:
         return message
 
     cdef void _protobuf_serialize(self, bytearray buf, bint cache):
-        cdef int key
-        cdef int field_idx
-        cdef int wire_type
     {%- if message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
-        cdef int i
         cdef ssize_t length
+    {%- endif %}
+    {%- if message.fields|count == 0 %}
+        pass
     {%- endif %}
 
     {%- for field in message.fields|sort(attribute='index') %}
-
         # {{ field.name }}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
         cdef {{ field.message_name }} {{ field.name }}_elt
         cdef bytearray {{ field.name }}_elt_buf
-            {%- elif field.type == 'string' %}
+            {%- elif field.type == 'bytes' %}
         cdef bytes {{ field.name }}_elt
+            {%- elif field.type == 'string' %}
+        cdef str {{ field.name }}_elt
+        cdef bytes {{ field.name }}_elt_bytes
             {%- else %}
         cdef {{ field.c_type }} {{ field.name }}_elt
             {%- endif %}
@@ -664,8 +661,6 @@ cdef class {{ message.full_name }}:
             {%- if field.packed == true and field.var_width == true %}
         cdef bytearray {{ field.name }}_buf = bytearray()
             {%- endif %}
-        length = len(self._{{ field.name }})
-        if length:
 
         {%- elif field.type == 'message' %}
         cdef bytearray {{ field.name }}_buf
@@ -675,35 +670,28 @@ cdef class {{ message.full_name }}:
         cdef bytes {{ field.name }}_bytes
         if self._{{ field.name }}_isSet:
         {#- !messages and !repeated fields can all have default values #}
+
         {%- else %}
         if self._{{ field.name }}_isSet:
         {%- endif %}
-            field_idx = {{ field.index }}
-        {%- if field.modifier == 'repeated' and field.packed == true %}
-            wire_type = 2
-        {%- elif field.type in ('message', 'string', 'bytes') %}
-            wire_type = 2
-        {%- elif field.type in ('fixed64', 'sfixed64', 'double') %}
-            wire_type = 1
-        {%- elif field.type in ('fixed32', 'sfixed32', 'float') %}
-            wire_type = 5
-        {%- else %}
-            wire_type = 0
+
+        {%- if field.modifier != 'repeated' %}
+            set_varint64({{ field.get_key() }}, buf)
         {%- endif %}
-            key = (field_idx << 3) | wire_type
 
         {%- if field.modifier == 'repeated' %}
             {%- if field.packed == true %}
-            set_varint64(key, buf)
-                {%- if field.fixed_width == true %}
+        length = len(self._{{ field.name }})
+        if length > 0:
+            set_varint64({{ field.get_key() }}, buf)
+            {%- if field.fixed_width == true %}
             set_varint64(length * sizeof({{ field.c_type }}), buf)
-            for i in range(length):
-                {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
+            {%- endif %}
+            for {{ field.name }}_elt in self._{{ field.name }}:
+                {%- if field.fixed_width == true %}
                 buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.c_type }})]
 
                 {%- elif field.var_width == true %}
-            for i in range(length):
-                {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
                 {{ field.setter }}({{ field.name }}_elt, {{ field.name }}_buf)
 
             set_varint64(len({{ field.name }}_buf), buf)
@@ -711,38 +699,34 @@ cdef class {{ message.full_name }}:
                 {%- endif %}
 
             {%- else %}
-            for i in range(length):
-                set_varint64(key, buf)
+        for {{ field.name }}_elt in self._{{ field.name }}:
+            set_varint64({{ field.get_key() }}, buf)
                 {%- if field.type == 'string' %}
-                {{ field.name }}_elt = self._{{ field.name }}[i].encode('utf-8')
-                set_varint64(len({{ field.name }}_elt), buf)
-                buf += {{ field.name }}_elt
+            {{ field.name }}_elt_bytes = {{ field.name }}_elt.encode('utf-8')
+            set_varint64(len({{ field.name }}_elt_bytes), buf)
+            buf += {{ field.name }}_elt_bytes
                 {%- elif field.type == 'bytes' %}
-                set_varint64(len(self._{{ field.name }}[i]), buf)
-                buf += self._{{ field.name }}[i]
+            set_varint64(len({{ field.name }}_elt), buf)
+            buf += {{ field.name }}_elt
                 {%- elif field.type == 'message' %}
-                {{ field.name }}_elt = <{{ field.message_name }}>self._{{ field.name }}[i]
-                if {{ field.name }}_elt._cached_serialization is not None:
-                    set_varint64(len({{ field.name }}_elt._cached_serialization), buf)
-                    buf += {{ field.name }}_elt._cached_serialization
-                else:
-                    {{ field.name }}_elt_buf = bytearray()
-                    {{ field.name }}_elt._protobuf_serialize({{ field.name }}_elt_buf, cache)
-                    set_varint64(len({{ field.name }}_elt_buf), buf)
-                    buf += {{ field.name }}_elt_buf
-                    if cache:
-                        {{ field.name }}_elt._cached_serialization = bytes({{ field.name }}_elt_buf)
+            if {{ field.name }}_elt._cached_serialization is not None:
+                set_varint64(len({{ field.name }}_elt._cached_serialization), buf)
+                buf += {{ field.name }}_elt._cached_serialization
+            else:
+                {{ field.name }}_elt_buf = bytearray()
+                {{ field.name }}_elt._protobuf_serialize({{ field.name }}_elt_buf, cache)
+                set_varint64(len({{ field.name }}_elt_buf), buf)
+                buf += {{ field.name }}_elt_buf
+                if cache:
+                    {{ field.name }}_elt._cached_serialization = bytes({{ field.name }}_elt_buf)
                 {%- elif field.fixed_width == true %}
-                {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
-                buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.c_type }})]
+            buf += (<unsigned char *>&{{ field.name }}_elt)[:sizeof({{ field.c_type }})]
                 {%- elif field.var_width == true %}
-                {{ field.name }}_elt = <{{ field.c_type }}>self._{{ field.name }}[i]
-                {{ field.setter }}({{ field.name }}_elt, buf)
+            {{ field.setter }}({{ field.name }}_elt, buf)
                 {%- endif %}
             {%- endif %}
 
         {%- elif field.type == 'message' %}
-            set_varint64(key, buf)
             if self._{{ field.name }}._cached_serialization is not None:
                 set_varint64(len(self._{{ field.name }}._cached_serialization), buf)
                 buf += self._{{ field.name }}._cached_serialization
@@ -755,22 +739,18 @@ cdef class {{ message.full_name }}:
                     self._{{ field.name }}._cached_serialization = bytes({{ field.name }}_buf)
 
         {%- elif field.type == 'string' %}
-            set_varint64(key, buf)
             {{ field.name }}_bytes = self._{{ field.name }}.encode('utf-8')
             set_varint64(len({{ field.name }}_bytes), buf)
             buf += {{ field.name }}_bytes
 
         {%- elif field.type == 'bytes' %}
-            set_varint64(key, buf)
             set_varint64(len(self._{{ field.name }}), buf)
             buf += self._{{ field.name }}
 
         {%- elif field.fixed_width == true %}
-            set_varint64(key, buf)
             buf += (<unsigned char *>&self._{{ field.name }})[:sizeof({{ field.c_type }})]
 
         {%- elif field.var_width == true %}
-            set_varint64(key, buf)
             {{ field.setter }}(self._{{ field.name }}, buf)
 
         {%- endif %}
