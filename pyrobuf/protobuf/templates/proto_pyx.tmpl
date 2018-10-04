@@ -5,6 +5,7 @@ from cpython.ref cimport PyObject
 from pyrobuf_list cimport *
 from pyrobuf_util cimport *
 
+import base64
 import json
 import warnings
 
@@ -885,7 +886,7 @@ cdef class {{ message.full_name }}:
         {%- elif field.type == 'message' %}
             self.{{ field.name }}.ParseFromDict(d["{{ field.name }}"])
         {%- elif field.type == 'bytes' %}
-            self.{{ field.name }} = d["{{ field.name }}"].encode('utf-8')
+            self.{{ field.name }} = base64.b64decode(d["{{ field.name }}"].encode('utf-8'))
         {%- else %}
             self.{{ field.name }} = d["{{ field.name }}"]
         {%- endif %}
@@ -931,7 +932,7 @@ cdef class {{ message.full_name }}:
             out["{{ field.name }}"] = {{ field.name }}_dict
         {%- elif field.type == 'bytes' %}
         if self._{{ field.name }}_isSet:
-            out["{{ field.name }}"] = self.{{ field.name }}.decode('utf-8')
+            out["{{ field.name }}"] = base64.b64encode(self.{{ field.name }}).decode('utf-8')
         {%- else %}
         if self._{{ field.name }}_isSet:
             out["{{ field.name }}"] = self.{{ field.name }}
@@ -962,7 +963,7 @@ cdef class {{ message.full_name }}:
             out["{{ field.name }}"] = {{ field.name }}_dict
         {%- elif field.type == 'bytes' %}
         if self._{{ field.name }}_isSet:
-            out["{{ field.name }}"] = self.{{ field.name }}.decode('utf-8')
+            out["{{ field.name }}"] = base64.b64encode(self.{{ field.name }}).decode('utf-8')
         {%- else %}
         if self._{{ field.name }}_isSet:
             out["{{ field.name }}"] = self.{{ field.name }}
