@@ -1,5 +1,6 @@
 import unittest
 
+import base64
 import pytest
 from proto_lib_fixture import proto_lib
 
@@ -31,11 +32,11 @@ class MessageFieldTypesTest(unittest.TestCase):
     def test_bytes_payload_serialize_to_json(self):
         message = TestFieldTypes()
         message.payload = b'\x01\x02\x03'
-        self.assertEqual(message.SerializeToJson(), '{"payload": "\\u0001\\u0002\\u0003"}')
+        self.assertEqual(message.SerializeToJson(), '{"payload": "AQID"}')
 
     def test_bytes_payload_parse_from_json(self):
         message = TestFieldTypes()
-        message.ParseFromJson('{"payload": "\\u0001\\u0002\\u0003"}')
+        message.ParseFromJson('{"payload": "AQID"}')
         self.assertEqual(message.payload, b'\x01\x02\x03')
 
     def test_bytes_payload_with_default_has_default_value(self):
