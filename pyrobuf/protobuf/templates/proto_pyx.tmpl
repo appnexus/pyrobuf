@@ -653,7 +653,7 @@ cdef class {{ message.full_name }}:
             {%- elif field.type == 'bytes' %}
         cdef bytes {{ field.name }}_elt
             {%- elif field.type == 'string' %}
-        cdef str {{ field.name }}_elt
+        cdef {% if version_major == 2 %}unicode{% else %}str{% endif %} {{ field.name }}_elt
         cdef bytes {{ field.name }}_elt_bytes
             {%- else %}
         cdef {{ field.c_type }} {{ field.name }}_elt
