@@ -195,12 +195,13 @@ class Parser(object):
             raise Exception("Unexpected character '{}' on line {}: '{}'".format(
                 self.string[pos], line + 1, self.lines[line]))
 
-    def parse(self, cython_info=True, fname=''):
+    def parse(self, cython_info=True, fname='', includes=None):
         tokens = self.tokenize()
         rep = {'imports': [], 'messages': [], 'enums': []}
         enums = {}
         imported = {'messages': {}, 'enums': {}}
         messages = {}
+        includes = includes or []
 
         for token in tokens:
             if token.token_type == 'OPTION':
@@ -225,7 +226,7 @@ class Parser(object):
                 # Google's protoc only supports the use of messages and enums
                 # from direct imports. So messages and enums from indirect
                 # imports are not fetched here.
-                imported_rep = self._parse_import(token.value + '.proto', fname)
+                imported_rep = self._parse_import(token.value + '.proto', fname, includes)
                 imported['messages'].update((m.name, m) for m in imported_rep['messages'])
                 imported['enums'].update((e.name, e) for e in imported_rep['enums'])
 
@@ -251,19 +252,25 @@ class Parser(object):
         return rep
 
     @classmethod
-    def parse_from_filename(cls, fname):
+    def parse_from_filename(cls, fname, includes):
         with open(fname, 'r') as fp:
             s = fp.read()
 
         try:
-            return cls(s).parse(fname=fname)
+            return cls(s).parse(fname=fname, includes=includes)
         except Exception as e:
             print('Exception while parsing {}'.format(fname))
             raise e
 
-    def _parse_import(self, fname, parent_fname):
-        actual_fname = fname if os.path.isabs(fname) else os.path.join(os.path.dirname(parent_fname), fname)
-        rep = self.__class__.parse_from_filename(actual_fname)
+    def _parse_import(self, fname, parent_fname, includes):
+        actual_fname = fname
+        if not os.path.isabs(fname):
+            for d in [os.path.dirname(parent_fname)] + includes:
+                actual_fname = os.path.join(d, fname)
+                if os.path.exists(actual_fname):
+                    break
+
+        rep = self.__class__.parse_from_filename(actual_fname, includes)
         return rep
 
     def _process_token_enum(self, token, enums):

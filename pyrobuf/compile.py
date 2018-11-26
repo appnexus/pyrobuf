@@ -23,14 +23,15 @@ class Compiler(object):
     t_pxd = _env.get_template('proto_pxd.tmpl')
     t_pyx = _env.get_template('proto_pyx.tmpl')
 
-    def __init__(self, source, out="out", build="build", install=False,
-                 proto3=False, force=False, package=None):
-        self.source = source
+    def __init__(self, sources, out="out", build="build", install=False,
+                 proto3=False, force=False, package=None, includes=None):
+        self.sources = sources
         self.out = out
         self.build = build
         self.install = install
         self.force = force
         self.package = package
+        self.includes = includes or []
         here = os.path.dirname(os.path.abspath(__file__))
         self.include_path = [os.path.join(here, 'src'), self.out]
         self._generated = set()
@@ -46,9 +47,10 @@ class Compiler(object):
     def parse_cli_args(cls):
         parser = argparse.ArgumentParser(
             "pyrobuf", description="a Cython based protobuf compiler")
-        parser.add_argument('source', type=str,
+        parser.add_argument('sources', type=str,
                             help="<filename>.proto or directory containing "
-                                 "proto files")
+                                 "proto files",
+                            nargs='+')
         parser.add_argument('--out-dir', default='out',
                             help="cythonize output directory [default: out]")
         parser.add_argument('--build-dir', default='build',
@@ -61,11 +63,12 @@ class Compiler(object):
                             help="force install")
         parser.add_argument('--package', type=str, default=None,
                             help="name of package to compile to")
+        parser.add_argument('--include', action='append')
         args = parser.parse_args()
 
-        return cls(args.source, out=args.out_dir, build=args.build_dir,
+        return cls(args.sources, out=args.out_dir, build=args.build_dir,
                    install=args.install, proto3=args.proto3, force=args.force,
-                   package=args.package)
+                   package=args.package, includes=args.include)
 
     def compile(self):
         script_args = ['build', '--build-base={0}'.format(self.build)]
@@ -104,11 +107,12 @@ class Compiler(object):
         except _FileExistsError:
             pass
 
-        if os.path.isdir(self.source):
-            for spec in glob.glob(os.path.join(self.source, '*.proto')):
-                self._generate(spec)
-        else:
-            self._generate(self.source)
+        for source in self.sources:
+            if os.path.isdir(source):
+                for spec in glob.glob(os.path.join(source, '*.proto')):
+                    self._generate(spec)
+            else:
+                self._generate(source)
 
     def _generate(self, filename):
         name, _ = os.path.splitext(os.path.basename(filename))
@@ -120,13 +124,20 @@ class Compiler(object):
         print("generating {0}".format(filename))
         self._generated.add(name)
 
-        msg_def = self.parser.parse_from_filename(filename)
+        msg_def = self.parser.parse_from_filename(filename, self.includes)
         self._messages.append(msg_def)
 
         for f in msg_def['imports']:
             print("parsing dependency '{}'".format(f))
+            depends = None
+
+            for d in [directory] + self.includes:
+                depends = os.path.join(d, '{}.proto'.format(f))
+                if os.path.exists(depends):
+                    break
+
             try:
-                self._generate(os.path.join(directory, '{}.proto'.format(f)))
+                self._generate(depends)
             except FileNotFoundError:
                 raise FileNotFoundError("can't find message spec for '{}'"
                                         .format(f))
