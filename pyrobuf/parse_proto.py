@@ -22,6 +22,8 @@ class Parser(object):
         ('MODIFIER', r'(optional|required|repeated)'),
         ('FIELD', r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*='
                   r'\s*(\d+)'),
+        ('MAP_FIELD', r'map<([A-Za-z][0-9A-Za-z_]+),\s*([A-Za-z][0-9A-Za-z_]+)>\s+([A-Za-z][0-9A-Za-z_]*)\s*='
+                  r'\s*(\d+)'),
         ('DEFAULT', r'default\s*=\s*([A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+'
                     r'(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*'
                     r'\')'),
@@ -40,6 +42,34 @@ class Parser(object):
                                   r'\s*(0x[0-9A-Fa-f]+|-\d+|\d+)'),
         ('ENUM_FIELD', r'([A-Za-z_][0-9A-Za-z_]*)')
     ]
+
+    parsable_tokens = (
+        'OPTION',
+        'SYNTAX',
+        'IMPORT',
+        'MESSAGE',
+        'MODIFIER',
+        'FIELD',
+        'MAP_FIELD',
+        'LBRACKET',
+        'RBRACKET',
+        'DEFAULT',
+        'PACKED',
+        'DEPRECATED',
+        'COMMA',
+        'SEMICOLON',
+        'ENUM',
+        'LBRACE',
+        'RBRACE',
+        'EXTENSION',
+        'ONEOF',
+        'EXTEND',
+    )
+
+    tokens_not_supported_by_c = (
+        'MAP_FIELD',
+        'ONEOF',
+    )
 
     scalars = {
         'double', 'float', 'int32', 'int64', 'uint32', 'uint64', 'sint32',
@@ -114,7 +144,9 @@ class Parser(object):
         self.string = string
         self.lines = string.split('\n')
 
-    def tokenize(self):
+    def tokenize(self, disabled_token_types):
+        token_type_to_token_class = self.get_token_type_to_token_class_map()
+
         pos = 0
         line = 0
 
@@ -124,68 +156,17 @@ class Parser(object):
             subm = self.token_getter[token_type](m.group(token_type))
             vals = subm.groups()
 
-            if token_type == 'OPTION':
-                yield self.Option(line, *vals)
+            assert token_type not in disabled_token_types, (
+                        "Disabled token '{}' found on line {}: {}".format(
+                            token_type, line + 1,
+                            self.lines[line]))
 
-            elif token_type == 'SYNTAX':
-                yield self.Syntax(line, *vals)
+            # ENUM_FIELD_WITH_VALUE has different regex but same class as ENUM_FIELD
+            if token_type == 'ENUM_FIELD_WITH_VALUE':
+                token_type = 'ENUM_FIELD'
 
-            elif token_type == 'IMPORT':
-                yield self.Import(line, *vals)
-
-            elif token_type == 'MESSAGE':
-                yield self.Message(line, *vals)
-
-            elif token_type == 'MODIFIER':
-                yield self.Modifier(line, *vals)
-
-            elif token_type == 'FIELD':
-                yield self.Field(line, *vals)
-
-            elif token_type == 'LBRACKET':
-                yield self.LBracket(line)
-
-            elif token_type == 'RBRACKET':
-                yield self.RBracket(line)
-
-            elif token_type == 'DEFAULT':
-                yield self.Default(line, *vals)
-
-            elif token_type == 'PACKED':
-                yield self.Packed(line, *vals)
-
-            elif token_type == 'DEPRECATED':
-                yield self.Deprecated(line, *vals)
-
-            elif token_type == 'CUSTOM':
-                yield self.Custom(line, *vals)
-
-            elif token_type == 'COMMA':
-                yield self.Comma(line)
-
-            elif token_type == 'SEMICOLON':
-                yield self.Semicolon(line)
-
-            elif token_type == 'ENUM':
-                yield self.Enum(line, *vals)
-
-            elif token_type in {'ENUM_FIELD', 'ENUM_FIELD_WITH_VALUE'}:
-                yield self.EnumField(line, *vals)
-
-            elif token_type == 'LBRACE':
-                yield self.LBrace(line)
-
-            elif token_type == 'RBRACE':
-                yield self.RBrace(line)
-
-            elif token_type == 'EXTENSION':
-                yield self.Extension(line, *vals)
-
-            elif token_type == 'ONEOF':
-                yield self.Oneof(line, *vals)
-
-            elif token_type == 'EXTEND':
-                yield self.Extend(line, *vals)
+            if token_type in token_type_to_token_class:
+                yield token_type_to_token_class[token_type](line, *vals)
 
             line += subm.group().count('\n')
             pos = m.end()
@@ -195,8 +176,9 @@ class Parser(object):
             raise Exception("Unexpected character '{}' on line {}: '{}'".format(
                 self.string[pos], line + 1, self.lines[line]))
 
-    def parse(self, cython_info=True, fname='', includes=None):
-        tokens = self.tokenize()
+    def parse(self, cython_info=True, fname='', includes=None, disabled_tokens=()):
+        self.verify_parsable_tokens()
+        tokens = self.tokenize(disabled_tokens)
         rep = {'imports': [], 'messages': [], 'enums': []}
         enums = {}
         imported = {'messages': {}, 'enums': {}}
@@ -226,7 +208,7 @@ class Parser(object):
                 # Google's protoc only supports the use of messages and enums
                 # from direct imports. So messages and enums from indirect
                 # imports are not fetched here.
-                imported_rep = self._parse_import(token.value + '.proto', fname, includes)
+                imported_rep = self._parse_import(token.value + '.proto', fname, includes, disabled_tokens)
                 imported['messages'].update((m.name, m) for m in imported_rep['messages'])
                 imported['enums'].update((e.name, e) for e in imported_rep['enums'])
 
@@ -252,17 +234,26 @@ class Parser(object):
         return rep
 
     @classmethod
-    def parse_from_filename(cls, fname, includes):
+    def parse_from_filename(
+            cls,
+            fname,
+            includes,
+            disabled_tokens=tokens_not_supported_by_c
+    ):
         with open(fname, 'r') as fp:
             s = fp.read()
 
         try:
-            return cls(s).parse(fname=fname, includes=includes)
+            return cls(s).parse(
+                fname=fname,
+                includes=includes,
+                disabled_tokens=disabled_tokens
+            )
         except Exception as e:
             print('Exception while parsing {}'.format(fname))
             raise e
 
-    def _parse_import(self, fname, parent_fname, includes):
+    def _parse_import(self, fname, parent_fname, includes, disabled_tokens):
         actual_fname = fname
         if not os.path.isabs(fname):
             for d in [os.path.dirname(parent_fname)] + includes:
@@ -270,7 +261,7 @@ class Parser(object):
                 if os.path.exists(actual_fname):
                     break
 
-        rep = self.__class__.parse_from_filename(actual_fname, includes)
+        rep = self.__class__.parse_from_filename(actual_fname, includes, disabled_tokens)
         return rep
 
     def _process_token_enum(self, token, enums):
@@ -305,12 +296,12 @@ class Parser(object):
         token.enum_name = token.enum_def.full_name
         token.type = 'enum'
 
-    def _parse_message(self, current, tokens, messages, enums, imported_enums):
+    def _parse_message(self, current_message, tokens, messages, enums, imported_enums):
         """
         Recursive parsing of messages.
         Args:
             s: the proto content string.
-            current: the current ParserMessage object we are working on.
+            current_message: the current ParserMessage object we are working on.
             tokens: a generator of Parser*.
             messages: a dictionary of all ParserMessage objects already known/parsed.
             enums: a dictionary of ParserEnum objects.
@@ -327,16 +318,27 @@ class Parser(object):
 
         for token in tokens:
             if token.token_type == 'MESSAGE':
-                token.full_name = current.full_name + token.name
-                current.messages[token.name] = self._parse_message(token, tokens, messages, enums.copy(), imported_enums)
+                token.full_name = current_message.full_name + token.name
+                current_message.messages[token.name] = self._parse_message(token, tokens, messages, enums.copy(), imported_enums)
                 # updates the dictionary of known/parsed messages.
-                messages[token.name] = current.messages[token.name]
+                messages[token.name] = current_message.messages[token.name]
 
             elif token.token_type == 'ENUM':
-                token.full_name = current.full_name + token.name
-                current.enums[token.name] = self._parse_enum(token, tokens)
+                token.full_name = current_message.full_name + token.name
+                current_message.enums[token.name] = self._parse_enum(token, tokens)
                 # updates the dictionary of known/parsed enums
-                enums[token.name] = current.enums[token.name]
+                enums[token.name] = current_message.enums[token.name]
+
+            elif token.token_type == 'ONEOF':
+                current_message.oneofs[token.name] = token
+                self._parse_oneof(
+                    token,
+                    tokens,
+                    current_message,
+                    messages,
+                    enums,
+                    imported_enums,
+                )
 
             elif token.token_type == 'MODIFIER':
                 if self.syntax == 3:
@@ -345,37 +347,16 @@ class Parser(object):
                             token.value, token.line + 1,
                             self.lines[token.line]))
 
-            elif token.token_type == 'FIELD':
-                if self.syntax == 2:
-                    assert previous.token_type == 'MODIFIER', (
-                        "Need modifier for field on line {}: {}".format(
-                            token.line + 1, self.lines[token.line]))
-
-                if previous.token_type == 'MODIFIER':
-                    token.modifier = previous.value
-
-                self._parse_field(token, tokens)
-
-                if messages.get(token.type) is not None:
-                    # retrieves the type "full_name"
-                    token.message_name = messages.get(token.type).full_name
-                    token.type = 'message'
-
-                elif current.enums.get(token.type) is not None:
-                    self._process_token_enum(token, current.enums)
-
-                elif enums.get(token.type) is not None:
-                    self._process_token_enum(token, enums)
-
-                elif imported_enums.get(token.type) is not None:
-                    self._process_token_enum(token, imported_enums)
-
-                elif (token.type not in self.scalars) and (
-                            token.type not in {'string', 'bytes'}):
-                    token.message_name = token.type
-                    token.type = 'message'
-
-                current.fields.append(token)
+            elif token.token_type in ('FIELD', 'MAP_FIELD'):
+                self._parse_field_token(
+                    token,
+                    previous,
+                    tokens,
+                    current_message,
+                    messages,
+                    enums,
+                    imported_enums,
+                )
 
             elif token.token_type == 'EXTENSION':
                 # Just ignore extensions for now, but don't error
@@ -392,9 +373,79 @@ class Parser(object):
                     "unexpected {} token on line {}: '{}'".format(
                         token.token_type, token.line + 1,
                         self.lines[token.line]))
-                return current
+                return current_message
 
             previous = token
+
+        raise Exception("unexpected EOF on line {}: '{}'".format(
+            token.line + 1, self.lines[token.line]))
+
+    def _parse_field_token(self, token, previous, tokens, current_message, messages, enums, imported_enums):
+        if self.syntax == 2:
+            assert previous.token_type == 'MODIFIER', (
+                "Need modifier for field on line {}: {}".format(
+                    token.line + 1, self.lines[token.line]))
+        if previous.token_type == 'MODIFIER':
+            # Map fields does not accept any modifiers
+            assert token.token_type == 'FIELD', (
+                "Illegal modifier '{}' for map field on line {}: {}".format(
+                    previous.value,
+                    token.line + 1,
+                    self.lines[token.line],
+                ))
+
+            token.modifier = previous.value
+        self._parse_field(token, tokens)
+        if messages.get(token.type) is not None:
+            # retrieves the type "full_name"
+            token.message_name = messages.get(token.type).full_name
+            token.type = 'message'
+
+        elif current_message.enums.get(token.type) is not None:
+            self._process_token_enum(token, current_message.enums)
+
+        elif enums.get(token.type) is not None:
+            self._process_token_enum(token, enums)
+
+        elif imported_enums.get(token.type) is not None:
+            self._process_token_enum(token, imported_enums)
+
+        elif (token.type not in self.scalars) and (
+                token.type not in {'string', 'bytes'}):
+            token.message_name = token.type
+            token.type = 'message'
+        current_message.fields.append(token)
+
+    def _parse_oneof(self, oneof_token, tokens, current_message, messages, enums, imported_enums):
+        token = next(tokens)
+        assert token.token_type == 'LBRACE', (
+            "missing opening paren on line {}: '{}'".format(
+                token.line + 1, self.lines[token.line]))
+
+        # setting previous as a place holder for the inner fields parsing
+        previous = self.LBrace(-1)
+        for token in tokens:
+            if token.token_type == 'FIELD':
+                # fields will be added to the proper message by the following
+                # parser function that takes care of fields generally
+                self._parse_field_token(
+                    token,
+                    previous,
+                    tokens,
+                    current_message,
+                    messages,
+                    enums,
+                    imported_enums
+                )
+                oneof_token.fields.append(token.name)
+                previous = token
+
+            else:
+                assert token.token_type == 'RBRACE', (
+                    "unexpected %s token on line {}: '{}'".format(
+                        token.token_type, token.line + 1,
+                        self.lines[token.line]))
+                return oneof_token
 
         raise Exception("unexpected EOF on line {}: '{}'".format(
             token.line + 1, self.lines[token.line]))
@@ -505,49 +556,73 @@ class Parser(object):
         for submessage in message.messages.values():
             self.add_cython_info(submessage)
 
+    @classmethod
+    def get_token_type_to_token_class_map(cls):
+        return {
+            token_class.token_type: token_class
+            for token_class in cls.Token.__subclasses__()
+        }
+
+    @classmethod
+    def verify_parsable_tokens(cls):
+        """Raise error if any of the parsable tokens has no class defined."""
+        mapping = cls.get_token_type_to_token_class_map()
+        for token_type in cls.parsable_tokens:
+            if token_type not in mapping:
+                raise NotImplementedError(
+                    "Parsable token {} has no repr class defined.".format(token_type)
+                )
+
     class Token(object):
         token_type = None
         line = -1
         type = None
 
     class Option(Token):
+        token_type = 'OPTION'
+
         def __init__(self, line, option):
-            self.token_type = 'OPTION'
             self.line = line
             self.option = option
 
     class Syntax(Token):
+        token_type = 'SYNTAX'
+
         def __init__(self, line, value):
-            self.token_type = 'SYNTAX'
             self.line = line
             self.value = value
 
     class Import(Token):
+        token_type = 'IMPORT'
+
         def __init__(self, line, value):
-            self.token_type = 'IMPORT'
             self.line = line
             self.value = value
 
     class Message(Token):
+        token_type = 'MESSAGE'
+
         def __init__(self, line, name):
-            self.token_type = 'MESSAGE'
             self.line = line
             self.name = name
             # full_name may later be overridden with parent hierarchy
             self.full_name = name
             self.messages = {}
             self.enums = {}
+            self.oneofs = {}
             self.fields = []
 
     class Modifier(Token):
+        token_type = 'MODIFIER'
+
         def __init__(self, line, value):
-            self.token_type = 'MODIFIER'
             self.line = line
             self.value = value
 
     class Field(Token):
+        token_type = 'FIELD'
+
         def __init__(self, line, ftype, name, index):
-            self.token_type = 'FIELD'
             self.line = line
             self.modifier = None
             self.type = ftype
@@ -569,53 +644,86 @@ class Parser(object):
             else:
                 return (self.index << 3) | 0
 
+    class MapField(Token):
+        token_type = 'MAP_FIELD'
+
+        def __init__(self, line, key_type, value_type, name, index):
+            self.line = line
+            # value type is set to self.type if it is processed similarly
+            # to the Field token.
+            self.type = value_type
+            self.key_type = key_type
+            self.name = name
+            self.index = int(index)
+
+            # currently copied from the Field token so they are processed the same way.
+            # maybe it is not needed if these are not supported for map fields
+            self.default = None
+            self.packed = False
+            self.deprecated = False
+
+            # Map fields does not support modifiers both for syntax 2 and 3
+            # self.modifier = None
+
+        def get_key(self):
+            raise NotImplementedError("MapField implemented currently only for parsing purposes.")
+
     class LBracket(Token):
+        token_type = 'LBRACKET'
+
         def __init__(self, line):
-            self.token_type = 'LBRACKET'
             self.line = line
 
     class RBracket(Token):
+        token_type = 'RBRACKET'
+
         def __init__(self, line):
-            self.token_type = 'RBRACKET'
             self.line = line
 
     class Default(Token):
+        token_type = 'DEFAULT'
+
         def __init__(self, line, value):
-            self.token_type = 'DEFAULT'
             self.line = line
             self.value = process_default(value)
 
     class Packed(Token):
+        token_type = 'PACKED'
+
         def __init__(self, line, value):
-            self.token_type = 'PACKED'
             self.line = line
             self.value = value == 'true'
 
     class Deprecated(Token):
+        token_type = 'DEPRECATED'
+
         def __init__(self, line, value):
-            self.token_type = 'DEPRECATED'
             self.line = line
             self.value = value == 'true'
 
     class Custom(Token):
+        token_type = 'CUSTOM'
+
         def __init__(self, line, value):
-            self.token_type = 'CUSTOM'
             self.line = line
             self.value = value
 
     class Comma(Token):
+        token_type = 'COMMA'
+
         def __init__(self, line):
-            self.token_type = 'COMMA'
             self.line = line
 
     class Semicolon(Token):
+        token_type = 'SEMICOLON'
+
         def __init__(self, line):
-            self.token_type = 'SEMICOLON'
             self.line = line
 
     class Enum(Token):
+        token_type = 'ENUM'
+
         def __init__(self, line, name):
-            self.token_type = 'ENUM'
             self.line = line
             self.name = name
             self.fields = []
@@ -623,8 +731,9 @@ class Parser(object):
             self.full_name = name
 
     class EnumField(Token):
+        token_type = 'ENUM_FIELD'
+
         def __init__(self, line, name, value=None):
-            self.token_type = 'ENUM_FIELD'
             self.line = line
             self.name = name
             if value is not None:
@@ -635,31 +744,37 @@ class Parser(object):
             self.full_name = name
 
     class LBrace(Token):
+        token_type = 'LBRACE'
+
         def __init__(self, line):
-            self.token_type = 'LBRACE'
             self.line = line
 
     class RBrace(Token):
+        token_type = 'RBRACE'
+
         def __init__(self, line):
-            self.token_type = 'RBRACE'
             self.line = line
 
     class Extension(Token):
+        token_type = 'EXTENSION'
+
         def __init__(self, line, low, hi):
-            self.token_type = 'EXTENSION'
             self.line = line
             self.low = low
             self.hi = hi
 
     class Oneof(Token):
+        token_type = 'ONEOF'
+
         def __init__(self, line, name):
-            self.token_type = 'ONEOF'
             self.line = line
             self.name = name
+            self.fields = []
 
     class Extend(Token):
+        token_type = 'EXTEND'
+
         def __init__(self, line, name):
-            self.token_type = 'EXTEND'
             self.line = line
             self.name = name
 
@@ -675,3 +790,4 @@ def process_default(default):
         return False
     else:
         return default
+
