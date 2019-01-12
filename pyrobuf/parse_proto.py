@@ -381,6 +381,7 @@ class Parser(object):
             token.line + 1, self.lines[token.line]))
 
     def _parse_field_token(self, token, previous, tokens, current_message, messages, enums, imported_enums):
+        """Parse FIELD and MAP_FIELD token types"""
         if self.syntax == 2:
             assert previous.token_type == 'MODIFIER', (
                 "Need modifier for field on line {}: {}".format(
@@ -451,6 +452,7 @@ class Parser(object):
             token.line + 1, self.lines[token.line]))
 
     def _parse_field(self, field, tokens):
+        """Parse the body of a FIELD token"""
         token = next(tokens)
 
         if token.token_type == 'LBRACKET':
