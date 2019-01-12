@@ -66,7 +66,9 @@ class Parser(object):
         'EXTEND',
     )
 
-    tokens_not_supported_by_c = (
+    # These tokens are parsed by the parser but are not supported by the
+    # code that build the C extension files and definitions
+    unsupported_tokens = (
         'MAP_FIELD',
         'ONEOF',
     )
@@ -234,12 +236,7 @@ class Parser(object):
         return rep
 
     @classmethod
-    def parse_from_filename(
-            cls,
-            fname,
-            includes,
-            disabled_tokens=tokens_not_supported_by_c
-    ):
+    def parse_from_filename(cls, fname, includes, disabled_tokens=unsupported_tokens):
         with open(fname, 'r') as fp:
             s = fp.read()
 
