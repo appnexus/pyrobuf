@@ -22,8 +22,8 @@ class Parser(object):
         ('MODIFIER', r'(optional|required|repeated)'),
         ('FIELD', r'([A-Za-z][0-9A-Za-z_]*)\s+([A-Za-z][0-9A-Za-z_]*)\s*='
                   r'\s*(\d+)'),
-        ('MAP_FIELD', r'map<([A-Za-z][0-9A-Za-z_]+),\s*([A-Za-z][0-9A-Za-z_]+)>\s+([A-Za-z][0-9A-Za-z_]*)\s*='
-                  r'\s*(\d+)'),
+        ('MAP_FIELD', r'map<([A-Za-z][0-9A-Za-z_]+),\s*([A-Za-z][0-9A-Za-z_]+)>'
+                      r'\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)'),
         ('DEFAULT', r'default\s*=\s*([A-Za-z][0-9A-Za-z_]*|-?[0-9]*\.?[0-9]+'
                     r'(?:[eE][-+]?[0-9]+)?|"(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*'
                     r'\')'),
@@ -113,7 +113,7 @@ class Parser(object):
         'fixed64':  'uint64_t',
         'bool':     'uint32_t',
         'enum':     'int32_t',
-        'timestamp':'uint32_t'
+        'timestamp': 'uint32_t'
     }
 
     getter_map = {
@@ -163,7 +163,8 @@ class Parser(object):
                             token_type, line + 1,
                             self.lines[line]))
 
-            # ENUM_FIELD_WITH_VALUE has different regex but same class as ENUM_FIELD
+            # ENUM_FIELD_WITH_VALUE has different regex
+            # but same class as ENUM_FIELD
             if token_type == 'ENUM_FIELD_WITH_VALUE':
                 token_type = 'ENUM_FIELD'
 
@@ -178,7 +179,13 @@ class Parser(object):
             raise Exception("Unexpected character '{}' on line {}: '{}'".format(
                 self.string[pos], line + 1, self.lines[line]))
 
-    def parse(self, cython_info=True, fname='', includes=None, disabled_tokens=()):
+    def parse(
+            self,
+            cython_info=True,
+            fname='',
+            includes=None,
+            disabled_tokens=()
+    ):
         self.verify_parsable_tokens()
         tokens = self.tokenize(disabled_tokens)
         rep = {'imports': [], 'messages': [], 'enums': []}
@@ -210,12 +217,25 @@ class Parser(object):
                 # Google's protoc only supports the use of messages and enums
                 # from direct imports. So messages and enums from indirect
                 # imports are not fetched here.
-                imported_rep = self._parse_import(token.value + '.proto', fname, includes, disabled_tokens)
-                imported['messages'].update((m.name, m) for m in imported_rep['messages'])
-                imported['enums'].update((e.name, e) for e in imported_rep['enums'])
+                imported_rep = self._parse_import(
+                    token.value + '.proto',
+                    fname,
+                    includes,
+                    disabled_tokens
+                )
+                imported['messages'].update(
+                    (m.name, m) for m in imported_rep['messages']
+                )
+                imported['enums'].update(
+                    (e.name, e) for e in imported_rep['enums']
+                )
 
             elif token.token_type == 'MESSAGE':
-                rep['messages'].append(self._parse_message(token, tokens, messages, enums.copy(), imported['enums']))
+                rep['messages'].append(
+                    self._parse_message(
+                        token, tokens, messages, enums.copy(), imported['enums']
+                    )
+                )
 
             elif token.token_type == 'ENUM':
                 ret = self._parse_enum(token, tokens)
@@ -236,7 +256,12 @@ class Parser(object):
         return rep
 
     @classmethod
-    def parse_from_filename(cls, fname, includes, disabled_tokens=unsupported_tokens):
+    def parse_from_filename(
+            cls,
+            fname,
+            includes,
+            disabled_tokens=unsupported_tokens
+    ):
         with open(fname, 'r') as fp:
             s = fp.read()
 
@@ -258,7 +283,11 @@ class Parser(object):
                 if os.path.exists(actual_fname):
                     break
 
-        rep = self.__class__.parse_from_filename(actual_fname, includes, disabled_tokens)
+        rep = self.__class__.parse_from_filename(
+            actual_fname,
+            includes,
+            disabled_tokens
+        )
         return rep
 
     def _process_token_enum(self, token, enums):
@@ -293,14 +322,21 @@ class Parser(object):
         token.enum_name = token.enum_def.full_name
         token.type = 'enum'
 
-    def _parse_message(self, current_message, tokens, messages, enums, imported_enums):
+    def _parse_message(
+            self,
+            current_message,
+            tokens,
+            messages,
+            enums,
+            imported_enums
+    ):
         """
         Recursive parsing of messages.
         Args:
-            s: the proto content string.
             current_message: the current ParserMessage object we are working on.
             tokens: a generator of Parser*.
-            messages: a dictionary of all ParserMessage objects already known/parsed.
+            messages: a dictionary of all ParserMessage objects
+                already known/parsed.
             enums: a dictionary of ParserEnum objects.
             imported_enums: a dictionary of ParserEnum objects.
         Returns:
@@ -316,13 +352,22 @@ class Parser(object):
         for token in tokens:
             if token.token_type == 'MESSAGE':
                 token.full_name = current_message.full_name + token.name
-                current_message.messages[token.name] = self._parse_message(token, tokens, messages, enums.copy(), imported_enums)
+                current_message.messages[token.name] = self._parse_message(
+                    token,
+                    tokens,
+                    messages,
+                    enums.copy(),
+                    imported_enums
+                )
                 # updates the dictionary of known/parsed messages.
                 messages[token.name] = current_message.messages[token.name]
 
             elif token.token_type == 'ENUM':
                 token.full_name = current_message.full_name + token.name
-                current_message.enums[token.name] = self._parse_enum(token, tokens)
+                current_message.enums[token.name] = self._parse_enum(
+                    token,
+                    tokens
+                )
                 # updates the dictionary of known/parsed enums
                 enums[token.name] = current_message.enums[token.name]
 
@@ -377,7 +422,16 @@ class Parser(object):
         raise Exception("unexpected EOF on line {}: '{}'".format(
             token.line + 1, self.lines[token.line]))
 
-    def _parse_field_token(self, token, previous, tokens, current_message, messages, enums, imported_enums):
+    def _parse_field_token(
+            self,
+            token,
+            previous,
+            tokens,
+            current_message,
+            messages,
+            enums,
+            imported_enums
+    ):
         """Parse FIELD and MAP_FIELD token types"""
         if self.syntax == 2:
             assert previous.token_type == 'MODIFIER', (
@@ -414,7 +468,15 @@ class Parser(object):
             token.type = 'message'
         current_message.fields.append(token)
 
-    def _parse_oneof(self, oneof_token, tokens, current_message, messages, enums, imported_enums):
+    def _parse_oneof(
+            self,
+            oneof_token,
+            tokens,
+            current_message,
+            messages,
+            enums,
+            imported_enums
+    ):
         token = next(tokens)
         assert token.token_type == 'LBRACE', (
             "missing opening paren on line {}: '{}'".format(
@@ -569,7 +631,9 @@ class Parser(object):
         for token_type in cls.parsable_tokens:
             if token_type not in mapping:
                 raise NotImplementedError(
-                    "Parsable token {} has no repr class defined.".format(token_type)
+                    "Parsable token {} has no repr class defined.".format(
+                        token_type
+                    )
                 )
 
     class Token(object):
@@ -655,8 +719,9 @@ class Parser(object):
             self.name = name
             self.index = int(index)
 
-            # currently copied from the Field token so they are processed the same way.
-            # maybe it is not needed if these are not supported for map fields
+            # currently copied from the Field token so they are processed the
+            # same way. Maybe it is not needed if these are not supported for
+            # map fields
             self.default = None
             self.packed = False
             self.deprecated = False
@@ -665,7 +730,9 @@ class Parser(object):
             # self.modifier = None
 
         def get_key(self):
-            raise NotImplementedError("MapField implemented currently only for parsing purposes.")
+            raise NotImplementedError(
+                "MapField implemented currently only for parsing purposes."
+            )
 
     class LBracket(Token):
         token_type = 'LBRACKET'
@@ -789,4 +856,3 @@ def process_default(default):
         return False
     else:
         return default
-
