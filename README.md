@@ -40,7 +40,15 @@ Fork and clone the repository, then run:
 It will generate the platform specific pyrobuf_list then compile
 the pyrobuf_list and pyrobuf_util modules.
 
-You can then run the test suite (a work in progress) using py.test directly:
+
+### Unit Testing
+
+First you have to build the `.proto` files inside the `tests` folder:
+
+        pyrobuf --install tests/proto/
+ 
+ 
+Now you can run the test suite (a work in progress) using py.test directly:
 
     $ PYTHONPATH=. py.test
 
