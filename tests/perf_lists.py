@@ -3,12 +3,13 @@ from array import array
 
 from pyrobuf_list import *
 
+
 def main():
     start = time.time()
     x = []
     y = 0
 
-    for i in xrange(1000000):
+    for i in range(1000000):
         x.append(float(i))
 
     for i in x:
@@ -21,7 +22,7 @@ def main():
     x = TypedList(float)
     y = 0
 
-    for i in xrange(1000000):
+    for i in range(1000000):
         x.append(float(i))
 
     for i in x:
@@ -34,7 +35,7 @@ def main():
     x = DoubleList()
     y = 0
 
-    for i in xrange(1000000):
+    for i in range(1000000):
         x.append(float(i))
 
     for i in x:
@@ -47,7 +48,7 @@ def main():
     x = FloatList()
     y = 0
 
-    for i in xrange(1000000):
+    for i in range(1000000):
         x.append(float(i))
 
     for i in x:
@@ -60,7 +61,7 @@ def main():
     x = array('f')
     y = 0
 
-    for i in xrange(1000000):
+    for i in range(1000000):
         x.append(float(i))
 
     for i in x:
@@ -82,13 +83,11 @@ def main():
     end = time.time()
     print("array 'd' took %f seconds" % (end - start))
 
-    print ""
-
     start = time.time()
     x = []
     y = 0
 
-    for i in xrange(1000000):
+    for i in range(1000000):
         x.append(i)
 
     for i in x:
@@ -101,7 +100,7 @@ def main():
     x = IntList()
     y = 0
 
-    for i in xrange(1000000):
+    for i in range(1000000):
         x.append(i)
 
     for i in x:
@@ -114,7 +113,7 @@ def main():
     x = Int32List()
     y = 0
 
-    for i in xrange(1000000):
+    for i in range(1000000):
         x.append(i)
 
     for i in x:
@@ -127,7 +126,7 @@ def main():
     x = array('i')
     y = 0
 
-    for i in xrange(1000000):
+    for i in range(1000000):
         x.append(i)
 
     for i in x:
