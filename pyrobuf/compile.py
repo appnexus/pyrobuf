@@ -24,7 +24,8 @@ class Compiler(object):
     t_pyx = _env.get_template('proto_pyx.tmpl')
 
     def __init__(self, sources, out="out", build="build", install=False,
-                 proto3=False, force=False, package=None, includes=None):
+                 proto3=False, force=False, package=None, includes=None,
+                 clean=False):
         self.sources = sources
         self.out = out
         self.build = build
@@ -32,6 +33,7 @@ class Compiler(object):
         self.force = force
         self.package = package
         self.includes = includes or []
+        self.clean = clean
         here = os.path.dirname(os.path.abspath(__file__))
         self.include_path = [os.path.join(here, 'src'), self.out]
         self._generated = set()
@@ -63,12 +65,16 @@ class Compiler(object):
                             help="force install")
         parser.add_argument('--package', type=str, default=None,
                             help="name of package to compile to")
-        parser.add_argument('--include', action='append')
+        parser.add_argument('--include', action='append',
+                            help="add directory to includes path")
+        parser.add_argument('--clean', action='store_true',
+                            help="force recompilation of messages")
         args = parser.parse_args()
 
         return cls(args.sources, out=args.out_dir, build=args.build_dir,
                    install=args.install, proto3=args.proto3, force=args.force,
-                   package=args.package, includes=args.include)
+                   package=args.package, includes=args.include,
+                   clean=args.clean)
 
     def compile(self):
         script_args = ['build', '--build-base={0}'.format(self.build)]
@@ -155,13 +161,13 @@ class Compiler(object):
         write_pxd = True
         write_pyx = True
 
-        if os.path.exists(os.path.join(self.out, name_pxd)):
+        if not self.clean and os.path.exists(os.path.join(self.out, name_pxd)):
             with open(os.path.join(self.out, name_pxd), 'r') as fp:
                 if fp.read().strip() == generated_pxd.strip():
                     write_pxd = False
                     print('{} has not changed'.format(name_pxd))
 
-        if os.path.exists(os.path.join(self.out, name_pyx)):
+        if not self.clean and os.path.exists(os.path.join(self.out, name_pyx)):
             with open(os.path.join(self.out, name_pyx), 'r') as fp:
                 if fp.read().strip() == generated_pyx.strip():
                     write_pyx = False
