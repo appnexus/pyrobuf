@@ -1,15 +1,10 @@
 import unittest
 
-import pytest
-from proto_lib_fixture import proto_lib
-
-
 Test = None
 TestSs1 = None
 TestSs3 = None
 
 
-@pytest.mark.usefixtures('proto_lib')
 class MergeFromTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

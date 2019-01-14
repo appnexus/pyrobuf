@@ -28,7 +28,7 @@ Cython to work properly is the trickiest bit especially if you are still using
 ### Contributing
 
 People use protobuf in many different ways. Pyrobuf handles the use cases of
-AppNexus and other contributors, but is not yet a 100% shoe-in replacement to
+AppNexus and other contributors, but is not yet a 100% drop-in replacement to
 what protoc would generate.
 
 You can help make it so!
@@ -37,46 +37,42 @@ Fork and clone the repository, then run:
 
     $ python setup.py develop
 
-It will generate the platform specific pyrobuf_list then compile
-the pyrobuf_list and pyrobuf_util modules.
+It will generate the platform specific `pyrobuf_list` then compile
+the `pyrobuf_list` and `pyrobuf_util` modules.
 
 
 ### Unit Testing
 
-First you have to build the `.proto` files inside the `tests` folder:
+You can run the test suite (a work in progress) using py.test directly:
 
-        pyrobuf --install tests/proto/
- 
- 
-Now you can run the test suite (a work in progress) using py.test directly:
-
-    $ PYTHONPATH=. py.test
+    $ py.test
 
 Or using the `test` command (which installs pytest if not already available):
 
     $ python setup.py test
 
+Either method will automatically build all the protobuf message specs in
+`tests/proto` and point the `PYTHONPATH` to the built messages before running
+the tests.
+
 Re-running the `develop` or `test` commands will automatically re-build the
-pyrobuf_list and pyrobuf_util modules if necessary.
+`pyrobuf_list` and `pyrobuf_util` modules if necessary.
 
 The `clean` command does the house keeping for you:
 
     $ python setup.py clean
-
-`test__gen_message` will attempt to process all the proto files in
-`tests/proto`.
 
 If you find that pyrobuf does not work for one of your proto files, add a minimal
 proto file to `tests/proto` that breaks before submitting a pull request.
 
 Pull requests including a breaking test are gold!
 
-Improving testing is on the cards.
+Improving testing is in the cards.
 
 
 ### Installation
 
-You may very well be able to just use pyrobuf as is ... just pip it!
+You may very well be able to just use pyrobuf as is... just pip it!
 
 ```
 $ pip install pyrobuf

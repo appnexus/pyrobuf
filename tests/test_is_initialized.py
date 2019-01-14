@@ -1,15 +1,11 @@
 import unittest
 
-import pytest
-from proto_lib_fixture import proto_lib
-
 
 TestIsInitialized = None
 SubMessage = None
 TestWithRequiredSubMessage = None
 
 
-@pytest.mark.usefixtures('proto_lib')
 class MergeFromTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

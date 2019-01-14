@@ -1,12 +1,8 @@
 import unittest
 
-import pytest
-from proto_lib_fixture import proto_lib
-
 TestRepeatedEnum = None
 
 
-@pytest.mark.usefixtures('proto_lib')
 class RepeatedEnumTest(unittest.TestCase):
 
     @classmethod
