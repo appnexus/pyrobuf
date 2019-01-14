@@ -28,7 +28,7 @@ Cython to work properly is the trickiest bit especially if you are still using
 ### Contributing
 
 People use protobuf in many different ways. Pyrobuf handles the use cases of
-AppNexus and other contributors, but is not yet a 100% shoe-in replacement to
+AppNexus and other contributors, but is not yet a 100% drop-in replacement to
 what protoc would generate.
 
 You can help make it so!
@@ -37,8 +37,8 @@ Fork and clone the repository, then run:
 
     $ python setup.py develop
 
-It will generate the platform specific pyrobuf_list then compile
-the pyrobuf_list and pyrobuf_util modules.
+It will generate the platform specific `pyrobuf_list` then compile
+the `pyrobuf_list` and `pyrobuf_util` modules.
 
 
 ### Unit Testing
@@ -72,7 +72,7 @@ Improving testing is in the cards.
 
 ### Installation
 
-You may very well be able to just use pyrobuf as is ... just pip it!
+You may very well be able to just use pyrobuf as is... just pip it!
 
 ```
 $ pip install pyrobuf
