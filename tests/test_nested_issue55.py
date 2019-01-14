@@ -1,14 +1,10 @@
 import unittest
 
-import pytest
-from proto_lib_fixture import proto_lib
-
 M = None
 MN = None
 MN2 = None
 
 
-@pytest.mark.usefixtures('proto_lib')
 class NestedTest(unittest.TestCase):
     """
     Verifies we can create instance from nested proto file.

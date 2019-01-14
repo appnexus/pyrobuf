@@ -1,9 +1,4 @@
 import unittest
-import sys
-
-import pytest
-from proto_lib_fixture import proto_lib
-
 
 Test = None
 TestSs1 = None
@@ -12,7 +7,6 @@ TestSs1 = None
 GREEK_LETTERS = u"\u0391\u0392\u0393\u0394"
 
 
-@pytest.mark.usefixtures('proto_lib')
 class TestUnicodeStrings(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

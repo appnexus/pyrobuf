@@ -1,14 +1,8 @@
 import unittest
 
-import base64
-import pytest
-from proto_lib_fixture import proto_lib
-
-
 TestFieldTypes = None
 
 
-@pytest.mark.usefixtures('proto_lib')
 class MessageFieldTypesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

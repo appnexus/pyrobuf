@@ -1,8 +1,5 @@
 import unittest
 
-import pytest
-from proto_lib_fixture import proto_lib
-
 
 # These can't be imported until the test_imported_enums_proto module has been built.
 CLOSE = None
@@ -11,7 +8,6 @@ ExposesInternalEnumConstantsMessage = None
 UsesImportedEnumsMessage = None
 
 
-@pytest.mark.usefixtures('proto_lib')
 class ImportedEnumsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

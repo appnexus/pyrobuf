@@ -1,14 +1,10 @@
 import unittest
 
-import pytest
-from proto_lib_fixture import proto_lib
-
 
 TestDecimalDefaultsMessage = None
 TestStringDefaultsMessage = None
 
 
-@pytest.mark.usefixtures('proto_lib')
 class DecimalDefaultsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -61,7 +57,6 @@ class DecimalDefaultsTest(unittest.TestCase):
         self.assertEqual(self.message.one_e_minus_6, 1e-6)
 
 
-@pytest.mark.usefixtures('proto_lib')
 class StringDefaultsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

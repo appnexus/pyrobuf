@@ -1,13 +1,8 @@
 import unittest
 
-import pytest
-from proto_lib_fixture import proto_lib
-
-
 EmptyMessageWithNoFields = None
 
 
-@pytest.mark.usefixtures('proto_lib')
 class EmptyMessageTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

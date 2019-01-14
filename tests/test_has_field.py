@@ -1,8 +1,5 @@
 import unittest
 
-import pytest
-from proto_lib_fixture import proto_lib
-
 
 Test = None
 TestRef = None
@@ -10,7 +7,6 @@ TestSs1 = None
 TestSs1Thing = None
 
 
-@pytest.mark.usefixtures('proto_lib')
 class HasFieldTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

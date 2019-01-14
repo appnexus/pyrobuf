@@ -1,11 +1,7 @@
 import unittest
 import warnings
 
-import pytest
-from proto_lib_fixture import proto_lib
 
-
-@pytest.mark.usefixtures('proto_lib')
 class DecimalDefaultsTest(unittest.TestCase):
     def setUp(self):
         from test_message_field_types_proto import TestDeprecatedField

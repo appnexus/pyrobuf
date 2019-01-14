@@ -1,9 +1,6 @@
 import sys
 import unittest
 
-import pytest
-from proto_lib_fixture import proto_lib
-
 from create_message import *
 
 
@@ -16,7 +13,6 @@ GOOGLE_SERIALIZED_MESSAGE = b'\x08\x80\x89\x9a\x81\x02\x10\xc1S\x1a\tgo goats! \
     b'\xff\xff\xff\xff\x01X\xff\xff\xff\xff\xff\xff\xff\xff\xff\x01'
 
 
-@pytest.mark.usefixtures('proto_lib')
 class MessageTest(unittest.TestCase):
 
     def test_ser_deser(self):
