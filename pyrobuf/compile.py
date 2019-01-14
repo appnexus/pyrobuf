@@ -150,11 +150,30 @@ class Compiler(object):
         name_pyx = "{}_proto.pyx".format(name)
         self._pyx_files.append(os.path.join(self.out, name_pyx))
 
-        with open(os.path.join(self.out, name_pxd), 'w') as fp:
-            fp.write(self.t_pxd.render(msg_def, version_major=_VM))
+        generated_pxd = self.t_pxd.render(msg_def, version_major=_VM)
+        generated_pyx = self.t_pyx.render(msg_def, version_major=_VM)
+        write_pxd = True
+        write_pyx = True
 
-        with open(os.path.join(self.out, name_pyx), 'w') as fp:
-            fp.write(self.t_pyx.render(msg_def, version_major=_VM))
+        if os.path.exists(os.path.join(self.out, name_pxd)):
+            with open(os.path.join(self.out, name_pxd), 'r') as fp:
+                if fp.read().strip() == generated_pxd.strip():
+                    write_pxd = False
+                    print('{} has not changed'.format(name_pxd))
+
+        if os.path.exists(os.path.join(self.out, name_pyx)):
+            with open(os.path.join(self.out, name_pyx), 'r') as fp:
+                if fp.read().strip() == generated_pyx.strip():
+                    write_pyx = False
+                    print('{} has not changed'.format(name_pyx))
+
+        if write_pxd:
+            with open(os.path.join(self.out, name_pxd), 'w') as fp:
+                fp.write(generated_pxd)
+
+        if write_pyx:
+            with open(os.path.join(self.out, name_pyx), 'w') as fp:
+                fp.write(generated_pyx)
 
     def _package(self):
         meta = {'imports': [], 'messages': [], 'enums': []}
