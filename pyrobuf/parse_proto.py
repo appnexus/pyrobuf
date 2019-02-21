@@ -239,6 +239,13 @@ class Parser(object):
 
             elif token.token_type == 'ENUM':
                 ret = self._parse_enum(token, tokens)
+
+                for enum in enums:
+                    assert all(token.name != field.name
+                               for field in enum.fields), (
+                        ("'{}' is already defined in global scope").format(
+                            token.name))
+
                 rep['enums'].append(ret)
                 enums[token.name] = token
 
@@ -305,9 +312,9 @@ class Parser(object):
             default = None
             enum_default = None
             found = False
-            for entry in enums[token.type].fields:
+            for value, entry in enums[token.type].fields.items():
                 if token.default == entry.name:
-                    default = entry.value
+                    default = value
                     enum_default = entry.full_name
                     found = True
                     break
@@ -364,10 +371,19 @@ class Parser(object):
 
             elif token.token_type == 'ENUM':
                 token.full_name = current_message.full_name + token.name
-                current_message.enums[token.name] = self._parse_enum(
+                ret = self._parse_enum(
                     token,
                     tokens
                 )
+
+                for enum in current_message.enums:
+                    assert all(token.name != field.name
+                               for field in enum.fields), (
+                        ("'{}' is already defined in '{}' by enum "
+                        "'{}'").format(
+                            token.name, current_message.name, enum.name))
+
+                current_message.enums[token.name] = ret
                 # updates the dictionary of known/parsed enums
                 enums[token.name] = current_message.enums[token.name]
 
@@ -452,13 +468,12 @@ class Parser(object):
         assert token.index > 0, (
             "non-positive field index on line {}: '{}'".format(
                 token.line + 1, self.lines[token.line]))
-        for field in current_message.fields:
-            assert token.name != field.name, (
-                "'{}' is already defined in message '{}'".format(
-                    token.name, current_message.name))
-            assert token.index != field.index, (
-                "Field index {} in '{}' is already used by '{}'".format(
-                    token.index, current_message.name, field.name))
+        assert token.index not in current_message.fields, (
+            "Field index {} in '{}' is already used by '{}'".format(
+                token.index, current_message.name, field.name))
+        assert token.name not in current_message.namespace, (
+            "'{}' is already defined in message '{}'".format(
+                token.name, current_message.name))
 
         if messages.get(token.type) is not None:
             # retrieves the type "full_name"
@@ -478,7 +493,8 @@ class Parser(object):
                 token.type not in {'string', 'bytes'}):
             token.message_name = token.type
             token.type = 'message'
-        current_message.fields.append(token)
+        current_message.fields[token.index] = token
+        current_message.namespace[token.name] = token
 
     def _parse_oneof(
             self,
@@ -552,7 +568,7 @@ class Parser(object):
                     token.line + 1, self.lines[token.line],
                     token.token_type))
 
-    def _parse_enum(self, current, tokens):
+    def _parse_enum(self, current, tokens, current_message=None):
         token = next(tokens)
         assert token.token_type == 'LBRACE', (
             "missing opening paren on line {}: '{}'".format(
@@ -570,17 +586,19 @@ class Parser(object):
                 token.full_name = "%s_%s" % (current.full_name, token.name)
                 self._parse_enum_field(token, tokens)
 
-                for field in current.fields:
-                    assert token.name != field.name, (
-                        "'{}' is already defined in enum '{}'".format(
-                            token.name, current.name))
-                    # protoc allows value collisions with allow_alias option;
-                    # revisit once options are implemented
-                    assert token.value != field.value, (
-                        "Enum value {} in '{}' is already used by '{}'".format(
-                            token.value, current.name, field.name))
+                if current_message:
+                    assert token.name not in current_message.namespace, (
+                        "'{}' is already defined in message '{}'".format(
+                            token.name, current_message.name))
+                # protoc allows value collisions with allow_alias option;
+                # revisit once options are implemented
+                assert token.value not in current.fields, (
+                    "Enum value {} in '{}' is already used".format(
+                        token.value, current.name))
 
-                current.fields.append(token)
+                current.fields[token.value] = token
+                if current_message:
+                    current_message.namespace[token.name] = token
 
             else:
                 assert token.token_type == 'RBRACE', (
@@ -627,7 +645,7 @@ class Parser(object):
                 return current
 
     def add_cython_info(self, message):
-        for field in message.fields:
+        for field in message.fields.values():
             field.list_type = self.list_type_map.get(field.type, 'TypedList')
             field.fixed_width = (field.type in {
                 'float', 'double', 'fixed32', 'sfixed32', 'fixed64', 'sfixed64'
@@ -703,7 +721,8 @@ class Parser(object):
             self.messages = {}
             self.enums = {}
             self.oneofs = {}
-            self.fields = []
+            self.fields = {}
+            self.namespace = {}
 
     class Modifier(Token):
         token_type = 'MODIFIER'
@@ -822,7 +841,7 @@ class Parser(object):
         def __init__(self, line, name):
             self.line = line
             self.name = name
-            self.fields = []
+            self.fields = {}
             # full_name may later be overridden with parent hierarchy
             self.full_name = name
 
