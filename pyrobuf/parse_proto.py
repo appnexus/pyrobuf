@@ -193,6 +193,7 @@ class Parser(object):
         imported = {'messages': {}, 'enums': {}}
         messages = {}
         includes = includes or []
+        scope = {}
 
         for token in tokens:
             if token.token_type == 'OPTION':
@@ -231,22 +232,29 @@ class Parser(object):
                 )
 
             elif token.token_type == 'MESSAGE':
-                rep['messages'].append(
-                    self._parse_message(
-                        token, tokens, messages, enums.copy(), imported['enums']
-                    )
+                ret = self._parse_message(
+                        token, tokens, messages, enums.copy(),
+                        imported['enums']
                 )
 
+                assert token.name not in scope, (
+                    "'{}' is already defined in global scope".format(
+                        token.name))
+
+                scope[token.name] = ret
+                rep['messages'].append(ret)
+
             elif token.token_type == 'ENUM':
-                ret = self._parse_enum(token, tokens)
+                try:
+                    rep['enums'].append(
+                        self._parse_enum(token, tokens, scope)
+                    )
+                except AssertionError as e:
+                    message, *rest = e.args
+                    message += " in global scope"
+                    e.args = (message, *rest)
+                    raise
 
-                for enum in enums:
-                    assert all(token.name != field.name
-                               for field in enum.fields), (
-                        ("'{}' is already defined in global scope").format(
-                            token.name))
-
-                rep['enums'].append(ret)
                 enums[token.name] = token
 
             elif token.token_type == 'EXTEND':
@@ -359,31 +367,37 @@ class Parser(object):
         for token in tokens:
             if token.token_type == 'MESSAGE':
                 token.full_name = current_message.full_name + token.name
-                current_message.messages[token.name] = self._parse_message(
+                ret = self._parse_message(
                     token,
                     tokens,
                     messages,
                     enums.copy(),
                     imported_enums
                 )
+
+                assert token.name not in current_message.namespace, (
+                    "'{}' is already defined in message '{}'".format(
+                        token.name, current_message.name))
+
+                current_message.messages[token.name] = ret
+                current_message.namespace[token.name] = ret
                 # updates the dictionary of known/parsed messages.
                 messages[token.name] = current_message.messages[token.name]
 
             elif token.token_type == 'ENUM':
                 token.full_name = current_message.full_name + token.name
-                ret = self._parse_enum(
-                    token,
-                    tokens
-                )
+                try:
+                    current_message.enums[token.name] = self._parse_enum(
+                        token,
+                        tokens,
+                        current_message.namespace
+                    )
+                except AssertionError as e:
+                    message, *rest = e.args
+                    message += " in message '{}'".format(current_message.name)
+                    e.args = (message, *rest)
+                    raise
 
-                for enum in current_message.enums:
-                    assert all(token.name != field.name
-                               for field in enum.fields), (
-                        ("'{}' is already defined in '{}' by enum "
-                        "'{}'").format(
-                            token.name, current_message.name, enum.name))
-
-                current_message.enums[token.name] = ret
                 # updates the dictionary of known/parsed enums
                 enums[token.name] = current_message.enums[token.name]
 
@@ -568,7 +582,7 @@ class Parser(object):
                     token.line + 1, self.lines[token.line],
                     token.token_type))
 
-    def _parse_enum(self, current, tokens, current_message=None):
+    def _parse_enum(self, current, tokens, scope):
         token = next(tokens)
         assert token.token_type == 'LBRACE', (
             "missing opening paren on line {}: '{}'".format(
@@ -586,10 +600,8 @@ class Parser(object):
                 token.full_name = "%s_%s" % (current.full_name, token.name)
                 self._parse_enum_field(token, tokens)
 
-                if current_message:
-                    assert token.name not in current_message.namespace, (
-                        "'{}' is already defined in message '{}'".format(
-                            token.name, current_message.name))
+                assert token.name not in scope, (
+                    "'{}' is already defined".format(token.name))
                 # protoc allows value collisions with allow_alias option;
                 # revisit once options are implemented
                 assert token.value not in current.fields, (
@@ -597,8 +609,7 @@ class Parser(object):
                         token.value, current.name))
 
                 current.fields[token.value] = token
-                if current_message:
-                    current_message.namespace[token.name] = token
+                scope[token.name] = token
 
             else:
                 assert token.token_type == 'RBRACE', (
