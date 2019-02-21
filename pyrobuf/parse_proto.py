@@ -448,6 +448,18 @@ class Parser(object):
 
             token.modifier = previous.value
         self._parse_field(token, tokens)
+
+        assert token.index > 0, (
+            "non-positive field index on line {}: '{}'".format(
+                token.line + 1, self.lines[token.line]))
+        for field in current_message.fields:
+            assert token.name != field.name, (
+                "'{}' is already defined in message '{}'".format(
+                    token.name, current_message.name))
+            assert token.index != field.index, (
+                "Field index {} in '{}' is already used by '{}'".format(
+                    token.index, current_message.name, field.name))
+
         if messages.get(token.type) is not None:
             # retrieves the type "full_name"
             token.message_name = messages.get(token.type).full_name
@@ -546,10 +558,28 @@ class Parser(object):
             "missing opening paren on line {}: '{}'".format(
                 token.line + 1, self.lines[token.line]))
 
-        for token in tokens:
+        for num, token in enumerate(tokens):
             if token.token_type == 'ENUM_FIELD':
+                if self.syntax == 3 and num == 0:
+                    assert token.value == 0, (
+                        ("expected zero as first enum element on line {}, "
+                        "got {}: '{}'").format(
+                            token.line + 1, token.value,
+                            self.lines[token.line]))
+
                 token.full_name = "%s_%s" % (current.full_name, token.name)
                 self._parse_enum_field(token, tokens)
+
+                for field in current.fields:
+                    assert token.name != field.name, (
+                        "'{}' is already defined in enum '{}'".format(
+                            token.name, current.name))
+                    # protoc allows value collisions with allow_alias option;
+                    # revisit once options are implemented
+                    assert token.value != field.value, (
+                        "Enum value {} in '{}' is already used by '{}'".format(
+                            token.value, current.name, field.name))
+
                 current.fields.append(token)
 
             else:
