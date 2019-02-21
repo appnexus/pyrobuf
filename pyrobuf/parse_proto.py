@@ -484,7 +484,8 @@ class Parser(object):
                 token.line + 1, self.lines[token.line]))
         assert token.index not in current_message.fields, (
             "Field index {} in '{}' is already used by '{}'".format(
-                token.index, current_message.name, field.name))
+                token.index, current_message.name,
+                current_message.fields[token.index].name))
         assert token.name not in current_message.namespace, (
             "'{}' is already defined in message '{}'".format(
                 token.name, current_message.name))
