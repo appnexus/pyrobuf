@@ -590,12 +590,14 @@ class Parser(object):
 
         for num, token in enumerate(tokens):
             if token.token_type == 'ENUM_FIELD':
-                if self.syntax == 3 and num == 0:
-                    assert token.value == 0, (
-                        ("expected zero as first enum element on line {}, "
-                        "got {}: '{}'").format(
-                            token.line + 1, token.value,
-                            self.lines[token.line]))
+                if num == 0:
+                    if self.syntax == 3:
+                        assert token.value == 0, (
+                            ("expected zero as first enum element on line {}, "
+                            "got {}: '{}'").format(
+                                token.line + 1, token.value,
+                                self.lines[token.line]))
+                    current.default = token
 
                 token.full_name = "%s_%s" % (current.full_name, token.name)
                 self._parse_enum_field(token, tokens)
@@ -853,6 +855,7 @@ class Parser(object):
             self.line = line
             self.name = name
             self.fields = {}
+            self.default = None
             # full_name may later be overridden with parent hierarchy
             self.full_name = name
 
