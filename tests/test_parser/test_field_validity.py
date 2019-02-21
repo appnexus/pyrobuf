@@ -26,7 +26,7 @@ nonzero_first_value_proto3 = """
 syntax = "proto3";
 
 enum TestNonzeroFirstValue {
-    nonzer0 = 1;
+    nonzero = 1;
 }
 """
 
@@ -43,6 +43,42 @@ enum TestEValueCollision {
     same_value = 0;
 }
 """
+
+global_enum_to_message_collision_proto = """
+enum TestEnum {
+    dupe_name = 0;
+}
+message dupe_name {
+}
+"""
+
+enum_to_field_collision_proto = """
+message TestEnumToFieldCollision {
+    enum TestEnum {
+        dupe_name = 0;
+    }
+    int32 dupe_name = 1;
+}
+"""
+
+recursive_message_to_enum_collision_proto = """
+message RecursiveMessage {
+    message dupe_name {
+    }
+    enum TestEnum {
+        dupe_name = 0;
+    }
+}
+"""
+
+recursive_message_to_field_collision_proto = """
+message RecursiveMessage {
+    message dupe_name {
+    }
+    int32 dupe_name = 1;
+}
+"""
+
 
 
 class FieldValidityTest(unittest.TestCase):
@@ -69,6 +105,23 @@ class FieldValidityTest(unittest.TestCase):
     def test_enum_value_collision(self):
         with self.assertRaises(AssertionError):
             Parser(value_collision_proto).parse()
-            
+
+    def test_global_enum_to_message_collision(self):
+        with self.assertRaises(AssertionError):
+            Parser(global_enum_to_message_collision_proto).parse()
+
+    def test_enum_to_field_collision(self):
+        with self.assertRaises(AssertionError):
+            Parser(enum_to_field_collision_proto).parse()
+
+    def test_recursive_message_to_enum_collision(self):
+        with self.assertRaises(AssertionError):
+            Parser(recursive_message_to_enum_collision_proto).parse()
+
+    def test_recursive_message_to_field_collision(self):
+        with self.assertRaises(AssertionError):
+            Parser(recursive_message_to_field_collision_proto).parse()
+
+
 if __name__ == "__main__":
     unittest.main()
