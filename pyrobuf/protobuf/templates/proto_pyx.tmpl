@@ -644,7 +644,7 @@ cdef class {{ message.full_name }}:
         pass
     {%- endif %}
 
-    {%- for field in message.fields|dictsort() %}
+    {%- for index, field in message.fields|dictsort() %}
         # {{ field.name }}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
