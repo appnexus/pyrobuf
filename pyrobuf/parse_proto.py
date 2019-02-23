@@ -245,16 +245,9 @@ class Parser(object):
                 rep['messages'].append(ret)
 
             elif token.token_type == 'ENUM':
-                try:
-                    rep['enums'].append(
-                        self._parse_enum(token, tokens, scope)
-                    )
-                except AssertionError as e:
-                    message, *rest = e.args
-                    message += " in global scope"
-                    e.args = (message, *rest)
-                    raise
-
+                rep['enums'].append(
+                    self._parse_enum(token, tokens, scope)
+                )
                 enums[token.name] = token
 
             elif token.token_type == 'EXTEND':
@@ -386,18 +379,12 @@ class Parser(object):
 
             elif token.token_type == 'ENUM':
                 token.full_name = current_message.full_name + token.name
-                try:
-                    current_message.enums[token.name] = self._parse_enum(
-                        token,
-                        tokens,
-                        current_message.namespace
-                    )
-                except AssertionError as e:
-                    message, *rest = e.args
-                    message += " in message '{}'".format(current_message.name)
-                    e.args = (message, *rest)
-                    raise
-
+                current_message.enums[token.name] = self._parse_enum(
+                    token,
+                    tokens,
+                    current_message.namespace,
+                    current_message
+                )
                 # updates the dictionary of known/parsed enums
                 enums[token.name] = current_message.enums[token.name]
 
@@ -583,7 +570,7 @@ class Parser(object):
                     token.line + 1, self.lines[token.line],
                     token.token_type))
 
-    def _parse_enum(self, current, tokens, scope):
+    def _parse_enum(self, current, tokens, scope, current_message=None):
         token = next(tokens)
         assert token.token_type == 'LBRACE', (
             "missing opening paren on line {}: '{}'".format(
@@ -595,7 +582,7 @@ class Parser(object):
                     if self.syntax == 3:
                         assert token.value == 0, (
                             ("expected zero as first enum element on line {}, "
-                            "got {}: '{}'").format(
+                             "got {}: '{}'").format(
                                 token.line + 1, token.value,
                                 self.lines[token.line]))
                     current.default = token
@@ -604,7 +591,9 @@ class Parser(object):
                 self._parse_enum_field(token, tokens)
 
                 assert token.name not in scope, (
-                    "'{}' is already defined".format(token.name))
+                    "'{}' is already defined in {}".format(
+                        token.name,
+                        "'{}'".format(current_message.name) if current_message else "global scope"))
                 # protoc allows value collisions with allow_alias option;
                 # revisit once options are implemented
                 assert token.value not in current.fields, (
