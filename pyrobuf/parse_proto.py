@@ -193,6 +193,7 @@ class Parser(object):
         imported = {'messages': {}, 'enums': {}}
         messages = {}
         includes = includes or []
+        scope = {}
 
         for token in tokens:
             if token.token_type == 'OPTION':
@@ -231,15 +232,22 @@ class Parser(object):
                 )
 
             elif token.token_type == 'MESSAGE':
-                rep['messages'].append(
-                    self._parse_message(
-                        token, tokens, messages, enums.copy(), imported['enums']
-                    )
+                ret = self._parse_message(
+                        token, tokens, messages, enums.copy(),
+                        imported['enums']
                 )
 
+                assert token.name not in scope, (
+                    "'{}' is already defined in global scope".format(
+                        token.name))
+
+                scope[token.name] = ret
+                rep['messages'].append(ret)
+
             elif token.token_type == 'ENUM':
-                ret = self._parse_enum(token, tokens)
-                rep['enums'].append(ret)
+                rep['enums'].append(
+                    self._parse_enum(token, tokens, scope)
+                )
                 enums[token.name] = token
 
             elif token.token_type == 'EXTEND':
@@ -305,9 +313,9 @@ class Parser(object):
             default = None
             enum_default = None
             found = False
-            for entry in enums[token.type].fields:
+            for value, entry in enums[token.type].fields.items():
                 if token.default == entry.name:
-                    default = entry.value
+                    default = value
                     enum_default = entry.full_name
                     found = True
                     break
@@ -352,13 +360,20 @@ class Parser(object):
         for token in tokens:
             if token.token_type == 'MESSAGE':
                 token.full_name = current_message.full_name + token.name
-                current_message.messages[token.name] = self._parse_message(
+                ret = self._parse_message(
                     token,
                     tokens,
                     messages,
                     enums.copy(),
                     imported_enums
                 )
+
+                assert token.name not in current_message.namespace, (
+                    "'{}' is already defined in message '{}'".format(
+                        token.name, current_message.name))
+
+                current_message.messages[token.name] = ret
+                current_message.namespace[token.name] = ret
                 # updates the dictionary of known/parsed messages.
                 messages[token.name] = current_message.messages[token.name]
 
@@ -366,7 +381,9 @@ class Parser(object):
                 token.full_name = current_message.full_name + token.name
                 current_message.enums[token.name] = self._parse_enum(
                     token,
-                    tokens
+                    tokens,
+                    current_message.namespace,
+                    current_message
                 )
                 # updates the dictionary of known/parsed enums
                 enums[token.name] = current_message.enums[token.name]
@@ -448,6 +465,18 @@ class Parser(object):
 
             token.modifier = previous.value
         self._parse_field(token, tokens)
+
+        assert token.index > 0, (
+            "non-positive field index on line {}: '{}'".format(
+                token.line + 1, self.lines[token.line]))
+        assert token.index not in current_message.fields, (
+            "Field index {} in '{}' is already used by '{}'".format(
+                token.index, current_message.name,
+                current_message.fields[token.index].name))
+        assert token.name not in current_message.namespace, (
+            "'{}' is already defined in message '{}'".format(
+                token.name, current_message.name))
+
         if messages.get(token.type) is not None:
             # retrieves the type "full_name"
             token.message_name = messages.get(token.type).full_name
@@ -466,7 +495,8 @@ class Parser(object):
                 token.type not in {'string', 'bytes'}):
             token.message_name = token.type
             token.type = 'message'
-        current_message.fields.append(token)
+        current_message.fields[token.index] = token
+        current_message.namespace[token.name] = token
 
     def _parse_oneof(
             self,
@@ -540,17 +570,38 @@ class Parser(object):
                     token.line + 1, self.lines[token.line],
                     token.token_type))
 
-    def _parse_enum(self, current, tokens):
+    def _parse_enum(self, current, tokens, scope, current_message=None):
         token = next(tokens)
         assert token.token_type == 'LBRACE', (
             "missing opening paren on line {}: '{}'".format(
                 token.line + 1, self.lines[token.line]))
 
-        for token in tokens:
+        for num, token in enumerate(tokens):
             if token.token_type == 'ENUM_FIELD':
+                if num == 0:
+                    if self.syntax == 3:
+                        assert token.value == 0, (
+                            ("expected zero as first enum element on line {}, "
+                             "got {}: '{}'").format(
+                                token.line + 1, token.value,
+                                self.lines[token.line]))
+                    current.default = token
+
                 token.full_name = "%s_%s" % (current.full_name, token.name)
                 self._parse_enum_field(token, tokens)
-                current.fields.append(token)
+
+                assert token.name not in scope, (
+                    "'{}' is already defined in {}".format(
+                        token.name,
+                        "'{}'".format(current_message.name) if current_message else "global scope"))
+                # protoc allows value collisions with allow_alias option;
+                # revisit once options are implemented
+                assert token.value not in current.fields, (
+                    "Enum value {} in '{}' is already used".format(
+                        token.value, current.name))
+
+                current.fields[token.value] = token
+                scope[token.name] = token
 
             else:
                 assert token.token_type == 'RBRACE', (
@@ -597,7 +648,7 @@ class Parser(object):
                 return current
 
     def add_cython_info(self, message):
-        for field in message.fields:
+        for field in message.fields.values():
             field.list_type = self.list_type_map.get(field.type, 'TypedList')
             field.fixed_width = (field.type in {
                 'float', 'double', 'fixed32', 'sfixed32', 'fixed64', 'sfixed64'
@@ -673,7 +724,8 @@ class Parser(object):
             self.messages = {}
             self.enums = {}
             self.oneofs = {}
-            self.fields = []
+            self.fields = {}
+            self.namespace = {}
 
     class Modifier(Token):
         token_type = 'MODIFIER'
@@ -792,7 +844,8 @@ class Parser(object):
         def __init__(self, line, name):
             self.line = line
             self.name = name
-            self.fields = []
+            self.fields = {}
+            self.default = None
             # full_name may later be overridden with parent hierarchy
             self.full_name = name
 

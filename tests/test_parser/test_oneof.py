@@ -25,7 +25,7 @@ class TestOneOf(object):
         message = result['messages'][0]
 
         # assert that all field are listed in the message
-        assert [f.name for f in message.fields] == ['vip', 'url', 'name']
+        assert [f.name for f in message.fields.values()] == ['vip', 'url', 'name']
 
         # assert that the oneofs list their child field names
         assert len(message.oneofs) == 1

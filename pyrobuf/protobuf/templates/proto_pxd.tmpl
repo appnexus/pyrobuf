@@ -14,7 +14,7 @@ from {{ import }}_proto cimport *
 {%- macro classdef(message) %}
 cdef class {{ message.full_name }}:
 
-{% for field in message.fields|sort(attribute='index') -%}
+{% for index, field in message.fields|dictsort() -%}
     {%- if field.modifier == 'repeated' %}
     cdef {{ field.list_type }} _{{ field.name }}
     {%- elif field.type == 'string' and version_major == 2 %}
@@ -72,8 +72,8 @@ cdef class {{ message.full_name }}:
 
 {%- macro enumdef(name, enum) %}
 cdef enum _{{ name }}:
-    {%- for field in enum.fields %}
-    _{{ field.full_name }} = {{ field.value }}
+    {%- for value, field in enum.fields.items() %}
+    _{{ field.full_name }} = {{ value }}
     {%- endfor %}
 {%- endmacro %}
 

@@ -54,10 +54,10 @@ class TestMapField(object):
         message = result['messages'][1]
 
         # assert that all field are listed in the message
-        assert [f.name for f in message.fields] == ['tenant_name', 'scopes']
+        assert [f.name for f in message.fields.values()] == ['tenant_name', 'scopes']
 
         # assert things about the scope map field
-        scopes_field = message.fields[1]
+        scopes_field = message.fields[2]
         assert scopes_field.name == 'scopes'
         assert scopes_field.token_type == 'MAP_FIELD'
         assert scopes_field.key_type == 'string'
@@ -70,10 +70,10 @@ class TestMapField(object):
         message = result['messages'][0]
 
         # assert that all field are listed in the message
-        assert [f.name for f in message.fields] == ['tenant_name', 'scopes']
+        assert [f.name for f in message.fields.values()] == ['tenant_name', 'scopes']
 
         # assert things about the ips map field
-        scopes_field = message.fields[1]
+        scopes_field = message.fields[2]
         assert scopes_field.name == 'scopes'
         assert scopes_field.token_type == 'MAP_FIELD'
         assert scopes_field.key_type == 'int'
@@ -85,10 +85,10 @@ class TestMapField(object):
         message = result['messages'][0]
 
         # assert that all field are listed in the message
-        assert [f.name for f in message.fields] == ['tenant_name', 'scopes']
+        assert [f.name for f in message.fields.values()] == ['tenant_name', 'scopes']
 
         # assert things about the ips map field
-        scopes_field = message.fields[1]
+        scopes_field = message.fields[2]
         assert scopes_field.name == 'scopes'
         assert scopes_field.token_type == 'MAP_FIELD'
         assert scopes_field.key_type == 'int'

@@ -14,7 +14,7 @@ from {{ import }}_proto cimport *
 {%- endfor %}
 
 {%- macro message_enum_fields_def(enum) %}
-    {%- for field in enum.fields %}
+    {%- for field in enum.fields.values() %}
     {{ field.name }} = _{{ field.full_name }}
     {%- endfor %}
 {%- endmacro %}
@@ -26,11 +26,11 @@ cdef class {{ message.full_name }}:
     def __cinit__(self):
         self._listener = <PyObject *>null_listener
 
-    {% if (message.fields|selectattr('type', 'equalto', 'message')|first is defined or
-           message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined) -%}
+    {% if (message.fields.values()|selectattr('type', 'equalto', 'message')|first is defined or
+           message.fields.values()|selectattr('modifier', 'equalto', 'repeated')|first is defined) -%}
     def __dealloc__(self):
         # Remove any references to self from child messages or repeated fields
-    {%- for field in message.fields %}
+    {%- for field in message.fields.values() %}
         {%- if field.modifier == 'repeated' or field.type == 'message' %}
         if self._{{ field.name }} is not None:
             self._{{ field.name }}._listener = <PyObject *>null_listener
@@ -43,17 +43,17 @@ cdef class {{ message.full_name }}:
         if kwargs:
             for field_name, field_value in kwargs.{%- if version_major == 2 -%} iter {%- endif -%} items():
                 try:
-            {%- if message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|first is defined %}
-                    if field_name in ('{{ message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
+            {%- if message.fields.values()|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|first is defined %}
+                    if field_name in ('{{ message.fields.values()|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
                         getattr(self, field_name).MergeFrom(field_value)
             {%- endif %}
-            {%- if message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
-                    {% if message.fields|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|first is defined -%}el{%- endif -%}
-                    if field_name in ('{{ message.fields|selectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
+            {%- if message.fields.values()|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+                    {% if message.fields.values()|selectattr('type', 'equalto', 'message')|rejectattr('modifier', 'equalto', 'repeated')|first is defined -%}el{%- endif -%}
+                    if field_name in ('{{ message.fields.values()|selectattr('modifier', 'equalto', 'repeated')|join("','", attribute='name') }}',):
                         getattr(self, field_name).extend(field_value)
             {%- endif %}
-            {%- if (message.fields|selectattr('type', 'equalto', 'message')|first is defined or
-                    message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined) %}
+            {%- if (message.fields.values()|selectattr('type', 'equalto', 'message')|first is defined or
+                    message.fields.values()|selectattr('modifier', 'equalto', 'repeated')|first is defined) %}
                     else:
                         setattr(self, field_name, field_value)
             {%- else %}
@@ -64,13 +64,13 @@ cdef class {{ message.full_name }}:
         return
 
     def __str__(self):
-        fields = [{%- for field in message.fields %}
+        fields = [{%- for field in message.fields.values() %}
                       {%- if field.type != 'message' %}
                           '{{field.name}}',
                           {%- endif %}
                       {%- endfor %}]
         components = ['{0}: {1}'.format(field, getattr(self, field)) for field in fields]
-        messages = [{%- for field in message.fields %}
+        messages = [{%- for field in message.fields.values() %}
                         {%- if field.type == 'message' %}
                             '{{field.name}}',
                         {%- endif %}
@@ -84,7 +84,7 @@ cdef class {{ message.full_name }}:
 
     cpdef void reset(self):
         # reset values and populate defaults
-    {% for field in message.fields %}
+    {% for field in message.fields.values() %}
         {%- if field.type != 'message' and field.modifier != 'repeated' %}
         self._{{ field.name }}_isSet = False
         {%- else %}
@@ -123,14 +123,14 @@ cdef class {{ message.full_name }}:
         {%- elif field.type == 'bytes' %}
         self._{{ field.name }} = b""
         {%- elif field.type == 'enum' and field.enum_def != None %}
-        self._{{ field.name }} = _{{ field.enum_def.fields[0].full_name }}
+        self._{{ field.name }} = _{{ field.enum_def.default.full_name }}
         {%- else %}
         self._{{ field.name }} = 0
         {%- endif %}
     {%- endfor %}
         return
 
-    {% for field in message.fields|sort(attribute='index') %}
+    {% for index, field in message.fields|dictsort() %}
     @property
     def {{ field.name }}(self):
         {%- if field.deprecated|default(false) == true %}
@@ -185,11 +185,11 @@ cdef class {{ message.full_name }}:
             {%- endif %}
         for val in value:
             {%- if field.type == 'enum' and field.enum_def != None %}
-                {%- for enum_field in field.enum_def.fields %}
+                {%- for value, enum_field in field.enum_def.fields.items() %}
                     {%- if loop.index == 1 %}
-            if val == {{ enum_field.value }}:
+            if val == {{ value }}:
                     {%- else %}
-            elif val == {{ enum_field.value }}:
+            elif val == {{ value }}:
                     {%- endif %}
                 self._{{ field.name }}.append(_{{ enum_field.full_name }})
                 {% endfor %}
@@ -221,11 +221,11 @@ cdef class {{ message.full_name }}:
             {%- endif %}
         {%- else %}
             {%- if field.type == 'enum' and field.enum_def != None %}
-                {%- for enum_field in field.enum_def.fields %}
+                {%- for value, enum_field in field.enum_def.fields.items() %}
                     {%- if loop.index == 1 %}
-        if value == {{ enum_field.value }}:
+        if value == {{ value }}:
                     {%- else %}
-        elif value == {{ enum_field.value }}:
+        elif value == {{ value }}:
                     {%- endif %}
             self._{{ field.name }} = _{{ enum_field.full_name }}
                 {% endfor %}
@@ -263,13 +263,13 @@ cdef class {{ message.full_name }}:
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size, bint cache):
         cdef int current_offset = 0
         cdef int64_t key
-    {%- if message.fields|selectattr('type', 'equalto', 'message')|first is defined or
-           message.fields|selectattr('type', 'equalto', 'string')|first is defined or
-           message.fields|selectattr('type', 'equalto', 'bytes')|first is defined %}
+    {%- if message.fields.values()|selectattr('type', 'equalto', 'message')|first is defined or
+           message.fields.values()|selectattr('type', 'equalto', 'string')|first is defined or
+           message.fields.values()|selectattr('type', 'equalto', 'bytes')|first is defined %}
         cdef int64_t field_size
     {%- endif %}
 
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         {%- if field.modifier == 'repeated' and field.packed|default(false) == true %}
         cdef int64_t {{ field.name }}_marker
         {%- endif %}
@@ -290,7 +290,7 @@ cdef class {{ message.full_name }}:
         while current_offset < size:
             key = get_varint64(memory, &current_offset)
 
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
             # {{ field.name }}
         {%- if loop.index == 1 %}
             if key == {{ field.get_key() }}:
@@ -400,7 +400,7 @@ cdef class {{ message.full_name }}:
 
     cpdef void ClearField(self, field_name):
         """Clears the contents of a given field."""
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         {%- if loop.index == 1 %}
         if field_name == '{{ field.name }}':
         {%- else %}
@@ -446,12 +446,12 @@ cdef class {{ message.full_name }}:
             {%- elif field.type == 'bytes' %}
             self._{{ field.name }} = b""
             {%- elif field.type == 'enum' and field.enum_def != None %}
-            self._{{ field.name }} = _{{ field.enum_def.fields[0].full_name }}
+            self._{{ field.name }} = _{{ field.enum_def.default.full_name }}
             {%- else %}
             self._{{ field.name }} = 0
             {%- endif %}
     {%- endfor %}
-    {%- if message.fields|first is defined %}
+    {%- if message.fields|count > 0 %}
         else:
             raise ValueError('Protocol message has no "%s" field.' % field_name)
 
@@ -479,7 +479,7 @@ cdef class {{ message.full_name }}:
         Params:
             field_name (str): The name of the field to check.
         """
-    {%- for field in message.fields|rejectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+    {%- for field in message.fields.values()|rejectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
         if field_name == '{{ field.name }}':
         {%- if field.type == 'message' %}
             return self._{{ field.name }} is not None and self._{{ field.name }}._is_present_in_parent
@@ -497,14 +497,14 @@ cdef class {{ message.full_name }}:
             bool: True if the message is initialized (i.e. all of its required
                 fields are set).
         """
-    {%- if message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+    {%- if message.fields.values()|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
         cdef int i
     {%- endif %}
-    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+    {%- for field in message.fields.values()|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
         cdef {{ field.message_name }} {{ field.name }}_msg
     {%- endfor %}
 
-    {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+    {% for field in message.fields.values()|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         {%- if field.type == 'message' %}
         if self._{{ field.name }} is None or not self._{{ field.name }}.IsInitialized():
         {%- else %}
@@ -513,12 +513,12 @@ cdef class {{ message.full_name }}:
             return False
     {%- endfor %}
 
-    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
+    {%- for field in message.fields.values()|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
         if self._{{ field.name }} is not None and self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
             return False
     {%- endfor %}
 
-    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+    {%- for field in message.fields.values()|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
         for i in range(len(self._{{ field.name }})):
             {{ field.name }}_msg = <{{ field.message_name }}>self._{{ field.name }}[i]
             if not {{ field.name }}_msg.IsInitialized():
@@ -534,10 +534,10 @@ cdef class {{ message.full_name }}:
         Params:
             other_msg: Message to merge into the current message.
         """
-    {%- if message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+    {%- if message.fields.values()|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
         cdef int i
     {%- endif %}
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
         cdef {{ field.message_name }} {{ field.name }}_elt
         {%- endif %}
@@ -546,7 +546,7 @@ cdef class {{ message.full_name }}:
         if self is other_msg:
             return
 
-    {% for field in message.fields|sort(attribute='index') %}
+    {% for index, field in message.fields|dictsort() %}
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
         for i in range(len(other_msg._{{ field.name }})):
             {{ field.name }}_elt = {{ field.message_name }}()
@@ -637,14 +637,14 @@ cdef class {{ message.full_name }}:
         return message
 
     cdef void _protobuf_serialize(self, bytearray buf, bint cache):
-    {%- if message.fields|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+    {%- if message.fields.values()|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
         cdef ssize_t length
     {%- endif %}
     {%- if message.fields|count == 0 %}
         pass
     {%- endif %}
 
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         # {{ field.name }}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
@@ -769,14 +769,14 @@ cdef class {{ message.full_name }}:
         Returns:
             bytes: a byte string of binary data
         """
-    {%- if message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
+    {%- if message.fields.values()|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|first is defined %}
         cdef int i
     {%- endif %}
-    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+    {%- for field in message.fields.values()|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
         cdef {{ field.message_name }} {{ field.name }}_msg
     {%- endfor %}
 
-    {% for field in message.fields|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+    {% for field in message.fields.values()|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         {%- if field.type == 'message' %}
         if self._{{ field.name }} is None or not self._{{ field.name }}.IsInitialized():
         {%- else %}
@@ -785,12 +785,12 @@ cdef class {{ message.full_name }}:
             raise Exception("required field '{{ field.name }}' not initialized and does not have default")
     {%- endfor %}
 
-    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
+    {%- for field in message.fields.values()|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'optional')|sort(attribute='index') %}
         if self._{{ field.name }} is not None and self._{{ field.name }}._is_present_in_parent and not self._{{ field.name }}.IsInitialized():
             raise Exception("Message {{ message.full_name }} is missing required field: {{ field.name }}")
     {%- endfor %}
 
-    {%- for field in message.fields|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
+    {%- for field in message.fields.values()|selectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'repeated')|sort(attribute='index') %}
         for i in range(len(self._{{ field.name }})):
             {{ field.name }}_msg = <{{ field.message_name }}>self._{{ field.name }}[i]
             if not {{ field.name }}_msg.IsInitialized():
@@ -876,7 +876,7 @@ cdef class {{ message.full_name }}:
 
         assert type(d) == dict
 
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         try:
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
             for {{ field.name }}_dict in d["{{ field.name }}"]:
@@ -897,7 +897,7 @@ cdef class {{ message.full_name }}:
         self._Modified()
 
     {#- The recursive calls to ParseFromDict will check required fields of sub-messages including repeated messages #}
-    {%- for field in message.fields|rejectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+    {%- for field in message.fields.values()|rejectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         if not self._{{ field.name }}_isSet:
             raise Exception("required field '{{ field.name }}' not initialized and does not have default")
     {%- endfor %}
@@ -914,12 +914,12 @@ cdef class {{ message.full_name }}:
         out = {}
 
     {#- The recursive calls to SerializeToDict will check required fields of sub-messages including repeated messages #}
-    {%- for field in message.fields|rejectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
+    {%- for field in message.fields.values()|rejectattr('type', 'equalto', 'message')|selectattr('modifier', 'equalto', 'required')|selectattr('default', 'none')|sort(attribute='index') %}
         if not self._{{ field.name }}_isSet:
             raise Exception("required field '{{ field.name }}' not initialized and does not have default")
     {%- endfor %}
 
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
         if len(self.{{ field.name }}) > 0:
             out["{{ field.name }}"] = [m.SerializeToDict() for m in self.{{ field.name }}]
@@ -950,7 +950,7 @@ cdef class {{ message.full_name }}:
         """
         out = {}
 
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         {%- if field.modifier == 'repeated' and field.type == 'message' %}
         if len(self.{{ field.name }}) > 0:
             out["{{ field.name }}"] = [m.SerializePartialToDict() for m in self.{{ field.name }}]
@@ -979,7 +979,7 @@ cdef class {{ message.full_name }}:
         Returns:
             iterator
         """
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         yield '{{ field.name }}', self.{{ field.name }}
     {%- endfor %}
 
@@ -990,7 +990,7 @@ cdef class {{ message.full_name }}:
         Returns:
             iterator
         """
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         yield '{{ field.name }}'
     {%- endfor %}
 
@@ -1001,7 +1001,7 @@ cdef class {{ message.full_name }}:
         Returns:
             iterator
         """
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         yield self.{{ field.name }}
     {%- endfor %}
 
@@ -1016,7 +1016,7 @@ cdef class {{ message.full_name }}:
         Returns:
             iterator
         """
-    {%- for field in message.fields|sort(attribute='index') %}
+    {%- for index, field in message.fields|dictsort() %}
         def setter(value):
             self.{{ field.name }} = value
         yield setter
@@ -1035,7 +1035,7 @@ class DecodeError(Exception):
 {%- endfor %}
 
 {%- macro enum_fields_def(enum) %}
-{%- for field in enum.fields %}
+{%- for field in enum.fields.values() %}
 {{ field.name }} = _{{ field.full_name }}
 {%- endfor %}
 {%- endmacro %}
