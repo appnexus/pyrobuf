@@ -30,10 +30,10 @@ cdef class {{ message.full_name }}:
     {%- else %}
     cdef {{ field.c_type }} _{{ field.name }}
     {%- endif %}
+{%- endfor %}
 
-    {%- if field.modifier != 'repeated' and field.type != 'message' %}
-    cdef bint _{{ field.name}}_isSet
-    {%endif%}
+{% for i in range(message.num_field_bitmaps) %}
+    cdef uint64_t __field_bitmap{{ i }}
 {%- endfor %}
 
     cdef public bint _is_present_in_parent

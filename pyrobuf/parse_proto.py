@@ -648,7 +648,9 @@ class Parser(object):
                 return current
 
     def add_cython_info(self, message):
-        for field in message.fields.values():
+        for index, field in message.fields.items():
+            field.bitmap_idx = (index - 1) // 64
+            field.bitmap_mask = 1 << ((index - 1) % 64)
             field.list_type = self.list_type_map.get(field.type, 'TypedList')
             field.fixed_width = (field.type in {
                 'float', 'double', 'fixed32', 'sfixed32', 'fixed64', 'sfixed64'
@@ -664,6 +666,9 @@ class Parser(object):
             if field.var_width:
                 field.getter = self.getter_map[field.type]
                 field.setter = self.setter_map[field.type]
+
+        # Determine number of bitmap fields needed to record which fields have been set
+        message.num_field_bitmaps = len(message.fields) // 64 + (1 if len(message.fields) % 64 > 0 else 0)
 
         for submessage in message.messages.values():
             self.add_cython_info(submessage)
@@ -726,6 +731,7 @@ class Parser(object):
             self.oneofs = {}
             self.fields = {}
             self.namespace = {}
+            self.num_field_bitmaps = 0
 
     class Modifier(Token):
         token_type = 'MODIFIER'
