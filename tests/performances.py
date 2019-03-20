@@ -59,6 +59,14 @@ def main():
     end = time.time()
     print("Pyrobuf took %f seconds to deserialize" % (end - start))
 
+    start = time.time()
+    for i in range(100000):
+        assert t2.HasField('field')
+        assert t2.HasField('string_field')
+
+    end = time.time()
+    print("HasField took %f seconds" % (end - start))
+
 
 if __name__ == "__main__":
     main()
