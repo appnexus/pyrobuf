@@ -34,7 +34,7 @@ class Parser(object):
         ('SKIP', r'\s'),
         ('SEMICOLON', r';'),
         ('NUMERIC', r'(-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)'),
-        ('STRING', r'((?:".*")|(?:\'.*\'))'),
+        ('STRING', r'("(?:\\.|[^"\\])*"|\'(?:\\.|[^"\\])*\')'),
         ('BOOLEAN', r'(true|false)'),
         ('ENUM_FIELD_WITH_VALUE', r'([A-Za-z_][0-9A-Za-z_]*)\s*=\s*(0x[0-9A-Fa-f]+|-\d+|\d+)'),
         ('ENUM_FIELD', r'([A-Za-z_][0-9A-Za-z_]*)')
@@ -296,9 +296,8 @@ class Parser(object):
                     found = True
                     break
 
-            assert found, ('Enum type "{}" has no value named "{}" on line {}: '
-                           '{}'.format(token.type, token.default,
-                                       token.line + 1, self.lines[token.line]))
+            assert found, "Enum type '{}' has no value named '{}' on line {}: {}".format(
+                token.type, token.default, token.line + 1, self.lines[token.line])
             token.default = default
             token.enum_default = enum_default
 
@@ -322,18 +321,16 @@ class Parser(object):
         token = next(tokens)
         previous = self.LBrace(-1)
 
-        assert token.token_type == 'LBRACE', (
-            "missing opening brace on line {}: '{}'".format(
-                token.line + 1, self.lines[token.line]))
+        assert token.token_type == 'LBRACE', "missing opening brace on line {}: '{}'".format(
+            token.line + 1, self.lines[token.line])
 
         for token in tokens:
             if token.token_type == 'MESSAGE':
                 token.full_name = current_message.full_name + token.name
                 ret = self._parse_message(token, tokens, messages, enums.copy(), imported_enums)
 
-                assert token.name not in current_message.namespace, (
-                    "'{}' is already defined in message '{}'".format(
-                        token.name, current_message.name))
+                assert token.name not in current_message.namespace, "'{}' is already defined in message '{}'".format(
+                    token.name, current_message.name)
 
                 current_message.messages[token.name] = ret
                 current_message.namespace[token.name] = ret
@@ -376,45 +373,34 @@ class Parser(object):
                 continue
 
             else:
-                assert token.token_type == 'RBRACE', (
-                    "unexpected {} token on line {}: '{}'".format(
-                        token.token_type, token.line + 1,
-                        self.lines[token.line]))
+                assert token.token_type == 'RBRACE', "unexpected {} token on line {}: '{}'".format(
+                    token.token_type, token.line + 1, self.lines[token.line])
                 return current_message
 
             previous = token
 
-        raise Exception("unexpected EOF on line {}: '{}'".format(
-            token.line + 1, self.lines[token.line]))
+        raise Exception("unexpected EOF on line {}: '{}'".format(token.line + 1, self.lines[token.line]))
 
     def _parse_field_token(self, token, previous, tokens, current_message, messages, enums, imported_enums):
         """Parse FIELD and MAP_FIELD token types"""
         if self.syntax == 2:
-            assert previous.token_type == 'MODIFIER', (
-                "Need modifier for field on line {}: {}".format(
-                    token.line + 1, self.lines[token.line]))
+            assert previous.token_type == 'MODIFIER', "Need modifier for field on line {}: {}".format(
+                token.line + 1, self.lines[token.line])
         if previous.token_type == 'MODIFIER':
             # Map fields does not accept any modifiers
-            assert token.token_type == 'FIELD', (
-                "Illegal modifier '{}' for map field on line {}: {}".format(
-                    previous.value,
-                    token.line + 1,
-                    self.lines[token.line],
-                ))
+            assert token.token_type == 'FIELD', "Illegal modifier '{}' for map field on line {}: {}".format(
+                previous.value, token.line + 1, self.lines[token.line])
 
             token.modifier = previous.value
         self._parse_field(token, tokens)
 
         assert token.index > 0, (
-            "non-positive field index on line {}: '{}'".format(
-                token.line + 1, self.lines[token.line]))
+            "non-positive field index on line {}: '{}'".format(token.line + 1, self.lines[token.line]))
         assert token.index not in current_message.fields, (
             "Field index {} in '{}' is already used by '{}'".format(
-                token.index, current_message.name,
-                current_message.fields[token.index].name))
+                token.index, current_message.name, current_message.fields[token.index].name))
         assert token.name not in current_message.namespace, (
-            "'{}' is already defined in message '{}'".format(
-                token.name, current_message.name))
+            "'{}' is already defined in message '{}'".format(token.name, current_message.name))
 
         if messages.get(token.type) is not None:
             # retrieves the type "full_name"
@@ -430,10 +416,10 @@ class Parser(object):
         elif imported_enums.get(token.type) is not None:
             self._process_token_enum(token, imported_enums)
 
-        elif (token.type not in self.scalars) and (
-                token.type not in {'string', 'bytes'}):
+        elif (token.type not in self.scalars) and (token.type not in {'string', 'bytes'}):
             token.message_name = token.type
             token.type = 'message'
+
         current_message.fields[token.index] = token
         current_message.namespace[token.name] = token
 
@@ -492,12 +478,18 @@ class Parser(object):
         token = next(tokens)
 
         if token.token_type == 'ENUM_FIELD':
+            # This will get updated later
+            field.default = token.full_name
             return
         elif token.token_type == 'NUMERIC':
-            assert field.type in self.scalars, "attempting to set numeric as default on line {}: '{}'".format(
-                token.line + 1, self.lines[token.line])
+            assert field.type in self.scalars, \
+                "attempting to set numeric as default for non-numeric field on line {}: '{}'".format(
+                    token.line + 1, self.lines[token.line])
             if field.type not in self.floats:
-                assert int(token.value) == token.value
+                assert int(token.value) == token.value, \
+                    "attempting to set integer non-integer default for integer field on line {}: '{}'".format(
+                        token.line + 1, self.lines[token.line])
+                token.value = int(token.value)
         elif token.token_type == 'STRING':
             assert field.type in {'string', 'bytes'}, "attempting to set string as default on line {}: '{}'".format(
                 token.line + 1, self.lines[token.line])
@@ -508,6 +500,7 @@ class Parser(object):
         field.default = token.value
 
     def _parse_custom(self, field, tokens):
+        """Parse a custom option and return whether or not we hit the closing RBRACKET"""
         token = next(tokens)
 
         if token.token_type == 'STRING':
@@ -522,15 +515,15 @@ class Parser(object):
                     assert token.token_type == 'RBRACKET'
                     return True
         else:
-            assert token.token_type in {'NUMERIC', 'BOOLEAN'}
+            assert token.token_type in {'NUMERIC', 'BOOLEAN'}, "unexpected custom option value on line {}: '{}'".format(
+                token.line + 1, self.lines[token.line])
             field.value = token.value
             return False
 
     def _parse_enum(self, current, tokens, scope, current_message=None):
         token = next(tokens)
-        assert token.token_type == 'LBRACE', (
-            "missing opening paren on line {}: '{}'".format(
-                token.line + 1, self.lines[token.line]))
+        assert token.token_type == 'LBRACE', "missing opening paren on line {}: '{}'".format(
+            token.line + 1, self.lines[token.line])
 
         for num, token in enumerate(tokens):
             if token.token_type == 'ENUM_FIELD':
@@ -574,23 +567,18 @@ class Parser(object):
                 elif token.token_type == 'COMMA':
                     continue
                 else:
-                    assert token.token_type == 'RBRACKET', (
-                        "unexpected {} token on line {}: '{}'".format(
-                            token.token_type, token.line + 1,
-                            self.lines[token.line]))
+                    assert token.token_type == 'RBRACKET', "unexpected {} token on line {}: '{}'".format(
+                        token.token_type, token.line + 1, self.lines[token.line])
                     return
 
         else:
-            assert token.token_type == 'SEMICOLON', (
-                "expected ; or modifier on line {}, got {}: '{}'".format(
-                    token.line + 1, token.token_type,
-                    self.lines[token.line]))
+            assert token.token_type == 'SEMICOLON', "expected ; or modifier on line {}, got {}: '{}'".format(
+                token.line + 1, token.token_type, self.lines[token.line])
 
     def _parse_extend(self, current, tokens):
         token = next(tokens)
-        assert token.token_type == 'LBRACE', (
-            "missing opening paren on line {}: '{}'".format(
-                token.line + 1, self.lines[token.line]))
+        assert token.token_type == 'LBRACE', "missing opening paren on line {}: '{}'".format(
+            token.line + 1, self.lines[token.line])
 
         # For now, just find the closing brace and return
         for token in tokens:
@@ -631,11 +619,7 @@ class Parser(object):
         mapping = cls.get_token_type_to_token_class_map()
         for token_type in cls.parsable_tokens:
             if token_type not in mapping:
-                raise NotImplementedError(
-                    "Parsable token {} has no repr class defined.".format(
-                        token_type
-                    )
-                )
+                raise NotImplementedError("Parsable token {} has no repr class defined.".format(token_type))
 
     class Token(object):
         token_type = None
