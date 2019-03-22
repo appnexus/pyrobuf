@@ -519,7 +519,7 @@ class Parser(object):
 
     def _parse_enum(self, current, tokens, scope, current_message=None):
         token = next(tokens)
-        assert token.token_type == 'LBRACE', "missing opening paren on line {}: '{}'".format(
+        assert token.token_type == 'LBRACE', "missing opening brace on line {}: '{}'".format(
             token.line + 1, self.lines[token.line])
 
         for num, token in enumerate(tokens):
@@ -530,13 +530,11 @@ class Parser(object):
                             token.line + 1, token.value, self.lines[token.line])
                     current.default = token
 
-                token.full_name = "%s_%s" % (current.full_name, token.name)
-                self._parse_enum_field(token, tokens)
+                token.full_name = "{}_{}".format(current.full_name, token.name)
 
-                assert token.name not in scope, (
-                    "'{}' is already defined in {}".format(
-                        token.name,
-                        "'{}'".format(current_message.name) if current_message else "global scope"))
+                assert token.name not in scope, "'{}' is already defined in {}".format(
+                    token.name, "'{}'".format(current_message.name) if current_message else "global scope")
+
                 # protoc allows value collisions with allow_alias option;
                 # revisit once options are implemented
                 assert token.value not in current.fields, "Enum value {} in '{}' is already used".format(
@@ -545,8 +543,9 @@ class Parser(object):
                 current.fields[token.value] = token
                 scope[token.name] = token
 
+                self._parse_enum_field(token, tokens)
             else:
-                assert token.token_type == 'RBRACE', "unexpected %s token on line {}: '{}'".format(
+                assert token.token_type == 'RBRACE', "unexpected {} token on line {}: '{}'".format(
                     token.token_type, token.line + 1, self.lines[token.line])
                 return current
 
@@ -559,8 +558,8 @@ class Parser(object):
         if token.token_type == 'LBRACKET':
             for token in tokens:
                 if token.token_type == 'CUSTOM':
-                    # Ignore custom modifiers for now
-                    continue
+                    if self._parse_custom(field, tokens):
+                        return
                 elif token.token_type == 'COMMA':
                     continue
                 else:
