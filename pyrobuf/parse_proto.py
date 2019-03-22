@@ -153,10 +153,8 @@ class Parser(object):
             subm = self.token_getter[token_type](m.group(token_type))
             vals = subm.groups()
 
-            assert token_type not in disabled_token_types, (
-                        "Disabled token '{}' found on line {}: {}".format(
-                            token_type, line + 1,
-                            self.lines[line]))
+            assert token_type not in disabled_token_types, "Disabled token '{}' found on line {}: {}".format(
+                token_type, line + 1, self.lines[line])
 
             # ENUM_FIELD_WITH_VALUE has different regex
             # but same class as ENUM_FIELD
@@ -195,8 +193,7 @@ class Parser(object):
                 elif 'proto3' == token.value:
                     self.syntax = 3
                 else:
-                    raise Exception("Unexpected syntax value '{}'".format(
-                        token.value))
+                    raise Exception("Unexpected syntax value '{}'".format(token.value))
 
             elif token.token_type == 'IMPORT':
                 # Ignore google meta messages
