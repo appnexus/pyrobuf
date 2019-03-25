@@ -12,44 +12,61 @@ lib_path = os.path.join(BUILD, [name for name in os.listdir(BUILD)
 if lib_path not in sys.path:
     sys.path.insert(0, lib_path)
 
-import messages.test_message_pb2 as google_test
+GOOGLE = True
+
+try:
+    import messages.test_message_pb2 as google_test
+except ImportError:
+    GOOGLE = False
+
 import test_message_proto as an_test
 
 
 def main():
-    t1 = create_google_test()
+    if GOOGLE:
+        t1 = create_google_test()
+
     t2 = create_an_test()
+    buf = ""
 
-    buf1 = ""
-    buf2 = bytearray()
+    if GOOGLE:
+        start = time.time()
+        for i in range(100000):
+            buf = t1.SerializeToString()
+
+        end = time.time()
+        print("Google took %f seconds to serialize" % (end - start))
 
     start = time.time()
-    for i in xrange(100000):
-        buf1 = t1.SerializeToString()
-    
-    end = time.time()
-    print("Google took %f seconds to serialize" % (end - start))
-
-    start = time.time()
-    for i in xrange(100000):
-        buf2 = t2.SerializeToString()
+    for i in range(100000):
+        buf = t2.SerializeToString()
 
     end = time.time()
     print("Pyrobuf took %f seconds to serialize" % (end - start))
 
-    start = time.time()
-    for i in xrange(100000):
-        t1.ParseFromString(buf1)
+    if GOOGLE:
+        start = time.time()
+        for i in range(100000):
+            t1.ParseFromString(buf)
 
-    end = time.time()
-    print("Google took %f seconds to deserialize" % (end - start))
+        end = time.time()
+        print("Google took %f seconds to deserialize" % (end - start))
 
     start = time.time()
-    for i in xrange(100000):
-        t2.ParseFromString(buf1)
+    for i in range(100000):
+        t2.ParseFromString(buf)
 
     end = time.time()
     print("Pyrobuf took %f seconds to deserialize" % (end - start))
+
+    start = time.time()
+    for i in range(100000):
+        assert t2.HasField('field')
+        assert t2.HasField('string_field')
+
+    end = time.time()
+    print("HasField took %f seconds" % (end - start))
+
 
 if __name__ == "__main__":
     main()
