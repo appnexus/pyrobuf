@@ -1,0 +1,12 @@
+message TestCustomOptions {
+    optional int64 field1 = 1 [ (my_options).custom1 = 1 ];
+    optional string field2 = 2
+        [ (my_options).custom1 = 2,
+          (my_options).custom2 = "foo",
+          default = "bar" ];
+    enum CustomEnum {
+        VALUE0 = 0 [ (my_options).custom1 = 3, (my_options).custom2 = "baz" ];
+        VALUE1 = 1;
+    }
+    optional CustomEnum field3 = 3 [ default = VALUE1, (my_options).custom1 = 4 ];
+}
