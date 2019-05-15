@@ -16,3 +16,4 @@ tests/build/
 /.tox
 pyrobuf/src/pyrobuf_defs.pxi
 .pytest_cache
+.mypy_cache

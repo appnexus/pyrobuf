@@ -8,8 +8,8 @@ class Parser(object):
 
     # Tokens ordered roughly by priority
     tokens = [
-        ('COMMENT_OL', r'\/\/.*?\n'),
-        ('COMMENT_ML', r'\/\*(?:.|[\r\n])*?\*\/'),
+        ('COMMENT_OL', r'\/\/(.*?)\n'),
+        ('COMMENT_ML', r'\/\*((?:.|[\r\n])*?)\*\/'),
         ('OPTION', r'option\s+((?:.|[\n\r])*?);'),
         ('IMPORT', r'import\s+"(.+?).proto"\s*;'),
         ('MESSAGE', r'message\s+([A-Za-z_][0-9A-Za-z_]*)'),
@@ -41,6 +41,8 @@ class Parser(object):
     ]
 
     parsable_tokens = (
+        'COMMENT_OL',
+        'COMMENT_ML',
         'OPTION',
         'SYNTAX',
         'IMPORT',
@@ -93,6 +95,24 @@ class Parser(object):
         'bytes':    'BytesList'
     }
 
+    py_type_map = {
+        'float':    'float',
+        'double':   'float',
+        'int32':    'int',
+        'sint32':   'int',
+        'sfixed32': 'int',
+        'uint32':   'int',
+        'fixed32':  'int',
+        'int64':    'int',
+        'sint64':   'int',
+        'sfixed64': 'int',
+        'uint64':   'int',
+        'fixed64':  'int',
+        'bool':     'bool',
+        'string':   'str',
+        'bytes':    'bytes'
+    }
+
     c_type_map = {
         'float':    'float',
         'double':   'double',
@@ -140,6 +160,7 @@ class Parser(object):
     def __init__(self, string):
         self.string = string
         self.lines = string.split('\n')
+        self._lastComment = None
 
     def tokenize(self, disabled_token_types):
         token_type_to_token_class = self.get_token_type_to_token_class_map()
@@ -173,6 +194,22 @@ class Parser(object):
             raise Exception("Unexpected character '{}' on line {}: '{}'".format(
                 self.string[pos], line + 1, self.lines[line]))
 
+    def _handleComment(self, token, previous_token):
+        if token.token_type == 'MESSAGE' or token.token_type == 'ENUM' :
+            token.comment = self._lastComment              
+        self._lastComment = None
+
+        if token.token_type != "COMMENT_OL" and token.token_type != "COMMENT_ML":            
+            return False
+
+        # use only regular comments, ignore normal, development comments
+        if token.comment[0] == '*' or token.comment[0] == '/':
+            if previous_token.token_type == "FIELD" or previous_token.token_type == "ENUM_FIELD":
+                previous_token.comment = token.comment[1:].strip()
+            else:
+                self._lastComment = token.comment[1:].strip()
+        return True
+
     def parse(self, cython_info=True, fname='', includes=None, disabled_tokens=()):
         self.verify_parsable_tokens()
         tokens = self.tokenize(disabled_tokens)
@@ -182,8 +219,12 @@ class Parser(object):
         messages = {}
         includes = includes or []
         scope = {}
+        previous = self.LBrace(-1)  
 
         for token in tokens:
+            if self._handleComment(token,previous):
+                continue
+
             if token.token_type == 'OPTION':
                 continue
 
@@ -322,6 +363,10 @@ class Parser(object):
             token.line + 1, self.lines[token.line])
 
         for token in tokens:
+            if self._handleComment(token, previous):
+                previous = token
+                continue
+
             if token.token_type == 'MESSAGE':
                 token.full_name = current_message.full_name + token.name
                 ret = self._parse_message(token, tokens, messages, enums.copy(), imported_enums)
@@ -521,8 +566,13 @@ class Parser(object):
         token = next(tokens)
         assert token.token_type == 'LBRACE', "missing opening brace on line {}: '{}'".format(
             token.line + 1, self.lines[token.line])
+        previous = self.LBrace(-1) 
 
         for num, token in enumerate(tokens):
+            if self._handleComment(token,previous):
+                previous = token
+                continue
+
             if token.token_type == 'ENUM_FIELD':
                 if num == 0:
                     if self.syntax == 3:
@@ -548,7 +598,8 @@ class Parser(object):
                 assert token.token_type == 'RBRACE', "unexpected {} token on line {}: '{}'".format(
                     token.token_type, token.line + 1, self.lines[token.line])
                 return current
-
+            
+            previous = token
         raise Exception("unexpected EOF on line {}: '{}'".format(
             token.line + 1, self.lines[token.line]))
 
@@ -627,6 +678,19 @@ class Parser(object):
         line = -1
         type = None
 
+    class Comment_OL(Token):
+        token_type = 'COMMENT_OL'
+        def __init__(self, line, comment):            
+            self.line = line
+            self.comment = comment
+
+    class Comment_ML(Token):
+        token_type = 'COMMENT_ML'
+        def __init__(self, line, comment):
+            
+            self.line = line
+            self.comment = comment
+
     class Option(Token):
         token_type = 'OPTION'
 
@@ -654,6 +718,7 @@ class Parser(object):
         def __init__(self, line, name):
             self.line = line
             self.name = name
+            self.comment = None
             # full_name may later be overridden with parent hierarchy
             self.full_name = name
             self.messages = {}
@@ -678,6 +743,8 @@ class Parser(object):
             self.modifier = None
             self.type = ftype
             self.name = name
+            # comment for attriute in class docstring
+            self.comment = None
             self.index = int(index)
             self.default = None
             self.packed = False
@@ -694,6 +761,16 @@ class Parser(object):
                 return (self.index << 3) | 5
             else:
                 return (self.index << 3) | 0
+
+        def get_python_type(self):
+            prefix =""
+            if self.modifier == 'repeated':
+                prefix = "list of "
+            if self.type == "message":
+                return prefix + self.message_name
+            if self.type == "enum" :
+                return prefix + self.enum_name                
+            return prefix + Parser.py_type_map[self.type]
 
     class MapField(Token):
         token_type = 'MAP_FIELD'
@@ -780,6 +857,7 @@ class Parser(object):
         def __init__(self, line, name):
             self.line = line
             self.name = name
+            self.comment = None
             self.fields = {}
             self.default = None
             # full_name may later be overridden with parent hierarchy

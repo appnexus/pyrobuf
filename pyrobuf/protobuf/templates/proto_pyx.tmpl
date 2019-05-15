@@ -8,6 +8,7 @@ from pyrobuf_util cimport *
 import base64
 import json
 import warnings
+import enum
 
 {%- for import in imports %}
 from {{ import }}_proto cimport *
@@ -21,8 +22,19 @@ from {{ import }}_proto cimport *
 
 
 {%- macro classdef(message) %}
-cdef class {{ message.full_name }}:
-
+cdef class {{ message.full_name }}:   
+    """
+    {%- if message.comment != None %} 
+    {{message.comment}}    
+    {%- endif %}
+    {%- if message.fields.values()|first is defined %} 
+    Attributes
+    ----------
+    {%- for field in message.fields.values() %}
+    - `{{field.name}}`: {{field.get_python_type()}}{%- if field.modifier != 'required'%},optional{%- endif %} {% if field.comment != None %} \&ndash; {{field.comment}} {%- endif %}
+    {%- endfor %}
+    {%- endif %}
+    """    
     def __cinit__(self):
         self._listener = <PyObject *>null_listener
 
@@ -134,6 +146,9 @@ cdef class {{ message.full_name }}:
     {% for index, field in message.fields|dictsort() %}
     @property
     def {{ field.name }}(self):
+        {%- if field.comment != None %}
+        """{{field.comment}}"""
+        {%- endif %}
         {%- if field.deprecated|default(false) == true %}
         warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
         {%- endif %}
@@ -147,7 +162,7 @@ cdef class {{ message.full_name }}:
         return self._{{ field.name }}
 
     @{{ field.name }}.setter
-    def {{ field.name }}(self, value):
+    def {{ field.name }}(self, value):        
         {%- if field.deprecated|default(false) == true %}
         warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
         {%- endif %}
@@ -1036,9 +1051,18 @@ class DecodeError(Exception):
 {%- endfor %}
 
 {%- macro enum_fields_def(enum) %}
-{%- for field in enum.fields.values() %}
-{{ field.name }} = _{{ field.full_name }}
-{%- endfor %}
+class {{enum.name}}(enum.Enum):   
+    """
+    {%- if enum.comment != None %}
+    {{enum.comment}} 
+    {%- endif %}    
+    {%for field in enum.fields.values()|sort(attribute='name') %}        
+    - `{{field.name}}` {% if field.comment != None %} \&ndash; {{field.comment}} {%- endif %}
+    {%-endfor %}
+    """   
+    {%- for field in enum.fields.values() %}    
+    {{ field.name }} = _{{ field.full_name }} {%- if field.comment != None %} # {{field.comment}}{%- endif %}
+    {%- endfor %}
 {%- endmacro %}
 
 {%- for enum in enums %}
