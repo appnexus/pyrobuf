@@ -14,9 +14,21 @@ import enum
 from {{ import }}_proto cimport *
 {%- endfor %}
 
-{%- macro message_enum_fields_def(enum) %}
-    {%- for field in enum.fields.values() %}
-    {{ field.name }} = _{{ field.full_name }}
+
+{%- macro enum_fields_def(enum) %}
+class {{enum.full_name}}(enum.Enum):   
+    """
+    {%- if enum.comment != None %}
+    {{enum.comment}} 
+    {%- endif %}
+    Enum Constants
+    --------------    
+    {%for field in enum.fields.values()|sort(attribute='name') %}        
+    - `{{field.name}}` {% if field.comment != None %} \&ndash; {{field.comment}} {%- endif %}
+    {%-endfor %}
+    """   
+    {%- for field in enum.fields.values() %}    
+    {{ field.name }} = _{{ field.full_name }} {%- if field.comment != None %} # {{field.comment}}{%- endif %}
     {%- endfor %}
 {%- endmacro %}
 
@@ -1022,7 +1034,7 @@ cdef class {{ message.full_name }}:
     {%- endfor %}
 
     {% for message_enum_name, message_enum in message.enums.items() %}
-        {{ message_enum_fields_def(message_enum) }}
+        {{ enum_fields_def(message_enum) }}
     {% endfor %}
 
     def Setters(self):
@@ -1049,21 +1061,6 @@ class DecodeError(Exception):
 {%- for message in messages %}
 {{ classdef(message) }}
 {%- endfor %}
-
-{%- macro enum_fields_def(enum) %}
-class {{enum.name}}(enum.Enum):   
-    """
-    {%- if enum.comment != None %}
-    {{enum.comment}} 
-    {%- endif %}    
-    {%for field in enum.fields.values()|sort(attribute='name') %}        
-    - `{{field.name}}` {% if field.comment != None %} \&ndash; {{field.comment}} {%- endif %}
-    {%-endfor %}
-    """   
-    {%- for field in enum.fields.values() %}    
-    {{ field.name }} = _{{ field.full_name }} {%- if field.comment != None %} # {{field.comment}}{%- endif %}
-    {%- endfor %}
-{%- endmacro %}
 
 {%- for enum in enums %}
 {{ enum_fields_def(enum) }}
