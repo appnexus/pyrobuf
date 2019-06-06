@@ -567,18 +567,20 @@ class Parser(object):
         assert token.token_type == 'LBRACE', "missing opening brace on line {}: '{}'".format(
             token.line + 1, self.lines[token.line])
         previous = self.LBrace(-1) 
+        setDefault = False
 
-        for num, token in enumerate(tokens):
+        for token in tokens:
             if self._handleComment(token,previous):
                 previous = token
                 continue
 
             if token.token_type == 'ENUM_FIELD':
-                if num == 0:
+                if (setDefault is False):
                     if self.syntax == 3:
                         assert token.value == 0, "expected zero as first enum element on line {}, got {}: '{}'".format(
                             token.line + 1, token.value, self.lines[token.line])
                     current.default = token
+                    setDefault = True
 
                 token.full_name = "{}_{}".format(current.full_name, token.name)
 
