@@ -5,6 +5,8 @@ import sys
 from setuptools import setup
 
 from Cython.Build import cythonize
+from Cython.Distutils import build_ext
+from pathlib import Path
 from jinja2 import Environment, PackageLoader
 
 from pyrobuf.parse_proto import Parser, Proto3Parser
@@ -16,6 +18,14 @@ else:
 
 _VM = sys.version_info.major
 
+
+class BasePackagePatch_BuildExt(build_ext):
+    """ Create __init__.py for base package, after build
+    """
+    def run(self):
+        build_ext.run(self)
+        filename = Path(self.build_lib).joinpath(self.package).joinpath('__init__.py')
+        filename.touch(exist_ok=True)
 
 class Compiler(object):
 
@@ -91,9 +101,14 @@ class Compiler(object):
             self._package()
 
         setup(name='pyrobuf-generated',
-              ext_modules=cythonize(self._pyx_files,
-                                    include_path=self.include_path),
-              script_args=script_args)
+               ext_modules=cythonize(self._pyx_files,
+                                     include_path=self.include_path),
+               ext_package= 'pyrogen',
+               # This base package option is needed, to use mypy also as package: pyrogen-stubs
+               # I'm still unclear why __init__.py is not automatically generated. Maybe a bug?
+               # With this build_ext adaption it works. CT_02Jul19
+               cmdclass= dict(build_ext=BasePackagePatch_BuildExt),
+               script_args=script_args)
 
     def extend(self, dist):
         self._compile_spec()
