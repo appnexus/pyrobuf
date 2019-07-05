@@ -474,6 +474,10 @@ class Parser(object):
         # setting previous as a place holder for the inner fields parsing
         previous = self.LBrace(-1)
         for token in tokens:
+            if self._handleComment(token,previous):
+                previous = token
+                continue
+
             if token.token_type == 'FIELD':
                 # fields will be added to the proper message by the following
                 # parser function that takes care of fields generally
