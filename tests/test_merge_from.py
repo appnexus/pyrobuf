@@ -1,6 +1,7 @@
 import unittest
 
 Test = None
+TestEnumField = None
 TestSs1 = None
 TestSs3 = None
 
@@ -8,8 +9,8 @@ TestSs3 = None
 class MergeFromTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        global Test, TestSs1, TestSs3
-        from test_message_proto import Test, TestSs1, TestSs3
+        global Test, TestEnumField, TestSs1, TestSs3
+        from test_message_proto import Test, TestEnumField, TestSs1, TestSs3
 
     def test_merge_from_wrong_type_raises_type_error(self):
         dest = Test()
@@ -49,9 +50,9 @@ class MergeFromTest(unittest.TestCase):
     def test_merge_from_does_set_enum_field_that_is_set_in_source(self):
         source = Test()
         dest = Test()
-        source.enum_field = Test.TEST_ENUM_FIELD_2
+        source.enum_field = TestEnumField.TEST_ENUM_FIELD_2.value
         dest.MergeFrom(source)
-        self.assertEqual(dest.enum_field, Test.TEST_ENUM_FIELD_2)
+        self.assertEqual(dest.enum_field, TestEnumField.TEST_ENUM_FIELD_2.value)
 
     def test_merge_from_does_merge_message_field_that_is_set_in_source(self):
         source = TestSs3()
