@@ -16,37 +16,37 @@ from {{ import }}_proto cimport *
 
 
 {%- macro enum_fields_def(enum) %}
-class {{enum.full_name}}(enum.Enum):   
+class {{enum.full_name}}(enum.Enum):
     """
     {%- if enum.comment != None %}
-    {{enum.comment}} 
+    {{enum.comment}}
     {%- endif %}
     Enum Constants
-    --------------    
-    {%for field in enum.fields.values()|sort(attribute='name') %}        
+    --------------
+    {%for field in enum.fields.values()|sort(attribute='name') %}
     - `{{field.name}}` {% if field.comment != None %} \&ndash; {{field.comment}} {%- endif %}
     {%-endfor %}
-    """   
-    {%- for field in enum.fields.values() %}    
+    """
+    {%- for field in enum.fields.values() %}
     {{ field.name }} = _{{ field.full_name }} {%- if field.comment != None %} # {{field.comment}}{%- endif %}
     {%- endfor %}
 {%- endmacro %}
 
 
 {%- macro classdef(message) %}
-cdef class {{ message.full_name }}:   
+cdef class {{ message.full_name }}:
     """
-    {%- if message.comment != None %} 
-    {{message.comment}}    
+    {%- if message.comment != None %}
+    {{message.comment}}
     {%- endif %}
-    {%- if message.fields.values()|first is defined %} 
+    {%- if message.fields.values()|first is defined %}
     Attributes
     ----------
     {%- for field in message.fields.values() %}
     - `{{field.name}}`: {{field.get_python_type()}}{%- if field.modifier != 'required'%},optional{%- endif %} {% if field.comment != None %} \&ndash; {{field.comment}} {%- endif %}
     {%- endfor %}
     {%- endif %}
-    """    
+    """
     def __cinit__(self):
         self._listener = <PyObject *>null_listener
 
@@ -174,7 +174,7 @@ cdef class {{ message.full_name }}:
         return self._{{ field.name }}
 
     @{{ field.name }}.setter
-    def {{ field.name }}(self, value):        
+    def {{ field.name }}(self, value):
         {%- if field.deprecated|default(false) == true %}
         warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
         {%- endif %}
@@ -1033,10 +1033,6 @@ cdef class {{ message.full_name }}:
         yield self.{{ field.name }}
     {%- endfor %}
 
-    {% for message_enum_name, message_enum in message.enums.items() %}
-        {{ enum_fields_def(message_enum) }}
-    {% endfor %}
-
     def Setters(self):
         """
         Iterator over functions to set the fields in a message.
@@ -1049,6 +1045,10 @@ cdef class {{ message.full_name }}:
             self.{{ field.name }} = value
         yield setter
     {%- endfor %}
+
+    {% for message_enum_name, message_enum in message.enums.items() %}
+{{ enum_fields_def(message_enum) }}
+    {% endfor %}
 
     {% for message_name, message_message in message.messages.items() %}
 {{ classdef(message_message) }}
