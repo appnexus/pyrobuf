@@ -10,7 +10,7 @@ class MergeFromTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global TestIsInitialized, SubMessage, TestWithRequiredSubMessage
-        from test_is_initialized_proto import TestIsInitialized, SubMessage, TestWithRequiredSubMessage
+        from pyrogen.test_is_initialized_proto import TestIsInitialized, SubMessage, TestWithRequiredSubMessage
 
     def test_new_message_is_not_initialized(self):
         message = TestIsInitialized()

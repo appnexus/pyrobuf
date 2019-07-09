@@ -8,7 +8,7 @@ class TestCustomOptionsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global TestCustomOptions
-        from test_custom_options_proto import TestCustomOptions
+        from pyrogen.test_custom_options_proto import TestCustomOptions
 
     def test_fields(self):
         test = TestCustomOptions()

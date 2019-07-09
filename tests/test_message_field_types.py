@@ -7,7 +7,7 @@ class MessageFieldTypesTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global TestFieldTypes
-        from test_message_field_types_proto import TestFieldTypes
+        from pyrogen.test_message_field_types_proto import TestFieldTypes
 
     def test_bytes_payload_serialize_to_string(self):
         message = TestFieldTypes()

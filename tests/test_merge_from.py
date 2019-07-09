@@ -10,7 +10,7 @@ class MergeFromTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global Test, TestEnumField, TestSs1, TestSs3
-        from test_message_proto import Test, TestEnumField, TestSs1, TestSs3
+        from pyrogen.test_message_proto import Test, TestEnumField, TestSs1, TestSs3
 
     def test_merge_from_wrong_type_raises_type_error(self):
         dest = Test()

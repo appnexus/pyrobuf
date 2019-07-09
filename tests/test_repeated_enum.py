@@ -8,7 +8,7 @@ class RepeatedEnumTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global TestRepeatedEnum
-        from test_repeated_enum_proto import TestRepeatedEnum
+        from pyrogen.test_repeated_enum_proto import TestRepeatedEnum
 
     def test_repeated_enum_serde(self):
         message1 = TestRepeatedEnum()

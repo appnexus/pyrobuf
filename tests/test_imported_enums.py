@@ -12,8 +12,8 @@ class ImportedEnumsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global Status, MessageID, ExposesInternalEnumConstantsMessageinternal_enum, UsesImportedEnumsMessage
-        from test_multi_messages_toplevel_enums_proto import Status, MessageID
-        from test_imported_enums_proto import UsesImportedEnumsMessage, ExposesInternalEnumConstantsMessageinternal_enum
+        from pyrogen.test_multi_messages_toplevel_enums_proto import Status, MessageID
+        from pyrogen.test_imported_enums_proto import UsesImportedEnumsMessage, ExposesInternalEnumConstantsMessageinternal_enum
 
     def test_message_id_has_default_of_msg_one(self):
         message = UsesImportedEnumsMessage()

@@ -11,7 +11,7 @@ class TestUnicodeStrings(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global Test, TestSs1, TestFieldTypes
-        from test_message_proto import Test, TestSs1
+        from pyrogen.test_message_proto import Test, TestSs1
 
     def test_unicode_string_parse_from_string(self):
         message = Test.FromString(b'\x1a\x08\xce\x91\xce\x92\xce\x93\xce\x94')
