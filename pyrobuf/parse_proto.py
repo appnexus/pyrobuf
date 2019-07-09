@@ -195,11 +195,11 @@ class Parser(object):
                 self.string[pos], line + 1, self.lines[line]))
 
     def _handleComment(self, token, previous_token):
-        if token.token_type == 'MESSAGE' or token.token_type == 'ENUM' :
-            token.comment = self._lastComment              
+        if token.token_type == 'MESSAGE' or token.token_type == 'ENUM':
+            token.comment = self._lastComment
         self._lastComment = None
 
-        if token.token_type != "COMMENT_OL" and token.token_type != "COMMENT_ML":            
+        if token.token_type != "COMMENT_OL" and token.token_type != "COMMENT_ML":
             return False
 
         # use only regular comments, ignore normal, development comments
@@ -219,10 +219,10 @@ class Parser(object):
         messages = {}
         includes = includes or []
         scope = {}
-        previous = self.LBrace(-1)  
+        previous = self.LBrace(-1)
 
         for token in tokens:
-            if self._handleComment(token,previous):
+            if self._handleComment(token, previous):
                 continue
 
             if token.token_type == 'OPTION':
@@ -686,14 +686,13 @@ class Parser(object):
 
     class Comment_OL(Token):
         token_type = 'COMMENT_OL'
-        def __init__(self, line, comment):            
+        def __init__(self, line, comment):
             self.line = line
             self.comment = comment
 
     class Comment_ML(Token):
         token_type = 'COMMENT_ML'
         def __init__(self, line, comment):
-            
             self.line = line
             self.comment = comment
 
@@ -749,7 +748,7 @@ class Parser(object):
             self.modifier = None
             self.type = ftype
             self.name = name
-            # comment for attriute in class docstring
+            # comment for attribute in class docstring
             self.comment = None
             self.index = int(index)
             self.default = None
@@ -775,7 +774,7 @@ class Parser(object):
             if self.type == "message":
                 return prefix + self.message_name
             if self.type == "enum" :
-                return prefix + self.enum_name                
+                return prefix + self.enum_name
             return prefix + Parser.py_type_map[self.type]
 
     class MapField(Token):
