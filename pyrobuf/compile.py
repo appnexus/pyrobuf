@@ -24,7 +24,7 @@ class BasePackagePatch_BuildExt(build_ext):
     """
     def run(self):
         build_ext.run(self)
-        filename = Path(self.build_lib).joinpath(self.package).joinpath('__init__.py')
+        filename = Path(self.build_lib).joinpath('pyrogen').joinpath('__init__.py')
         filename.touch(exist_ok=True)
 
 class Compiler(object):
@@ -37,7 +37,7 @@ class Compiler(object):
                  proto3=False, force=False, package=None, includes=None,
                  clean=False):
         self.sources = sources
-        self.out = out
+        self.out = os.path.join(out, 'pyrogen')
         self.build = build
         self.install = install
         self.force = force
@@ -45,7 +45,7 @@ class Compiler(object):
         self.includes = includes or []
         self.clean = clean
         here = os.path.dirname(os.path.abspath(__file__))
-        self.include_path = [os.path.join(here, 'src'), self.out]
+        self.include_path = [os.path.join(here, 'src'), out]
         self._generated = set()
         self._messages = []
         self._pyx_files = []
@@ -103,10 +103,6 @@ class Compiler(object):
         setup(name='pyrobuf-generated',
                ext_modules=cythonize(self._pyx_files,
                                      include_path=self.include_path),
-               ext_package= 'pyrogen',
-               # This base package option is needed, to use mypy also as package: pyrogen-stubs
-               # I'm still unclear why __init__.py is not automatically generated. Maybe a bug?
-               # With this build_ext adaption it works. CT_02Jul19
                cmdclass= dict(build_ext=BasePackagePatch_BuildExt),
                script_args=script_args)
 
@@ -125,6 +121,8 @@ class Compiler(object):
     def _compile_spec(self):
         try:
             os.makedirs(self.out)
+            filename = Path(self.out).joinpath('__init__.py')
+            filename.touch(exist_ok=True)
         except _FileExistsError:
             pass
 

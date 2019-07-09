@@ -11,7 +11,7 @@ import warnings
 import enum
 
 {%- for import in imports %}
-from {{ import }}_proto cimport *
+from pyrogen.{{ import }}_proto cimport *
 {%- endfor %}
 
 

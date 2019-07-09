@@ -8,7 +8,7 @@ from pyrobuf_util cimport *
 import json
 
 {%- for import in imports %}
-from {{ import }}_proto cimport *
+from pyrogen.{{ import }}_proto cimport *
 {%- endfor %}
 
 {%- macro classdef(message) %}
