@@ -195,18 +195,21 @@ class Parser(object):
                 self.string[pos], line + 1, self.lines[line]))
 
     def _handleComment(self, token, previous_token):
-        if token.token_type == 'MESSAGE' or token.token_type == 'ENUM':
+        if token.token_type == 'MESSAGE' or  token.token_type == 'FIELD' or token.token_type == 'ENUM' or token.token_type == 'ENUM_FIELD':
             token.comment = self._lastComment
-        self._lastComment = None
+        if token.token_type != 'MODIFIER':
+            self._lastComment = None
 
         if token.token_type != "COMMENT_OL" and token.token_type != "COMMENT_ML":
             return False
 
-        # use only regular comments, ignore normal, development comments
-        if len(token.comment) and ( token.comment[0] == '*' or token.comment[0] == '/'):
-            if previous_token.token_type == "FIELD" or previous_token.token_type == "ENUM_FIELD":
-                previous_token.comment = token.comment[1:].strip()
-            else:
+        if token.comment:
+            # use only regular comments, ignore normal, development comments
+            if token.comment[0] == '*' or token.comment[0] == '/':
+                if previous_token.token_type == "FIELD" or previous_token.token_type == "ENUM_FIELD":
+                    if token.line == previous_token.line:
+                        previous_token.comment = token.comment[1:].strip()
+                        return True
                 self._lastComment = token.comment[1:].strip()
         return True
 
