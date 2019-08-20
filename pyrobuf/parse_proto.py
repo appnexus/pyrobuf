@@ -203,7 +203,7 @@ class Parser(object):
             return False
 
         # use only regular comments, ignore normal, development comments
-        if token.comment[0] == '*' or token.comment[0] == '/':
+        if len(token.comment) and ( token.comment[0] == '*' or token.comment[0] == '/'):
             if previous_token.token_type == "FIELD" or previous_token.token_type == "ENUM_FIELD":
                 previous_token.comment = token.comment[1:].strip()
             else:
