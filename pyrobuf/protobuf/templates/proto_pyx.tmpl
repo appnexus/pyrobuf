@@ -159,7 +159,7 @@ cdef class {{ message.full_name }}:
     @property
     def {{ field.name }}(self):
         {%- if field.comment != None %}
-        """{{field.comment}}"""
+        """{{field.comment}} """
         {%- endif %}
         {%- if field.deprecated|default(false) == true %}
         warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
