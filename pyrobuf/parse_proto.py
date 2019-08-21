@@ -194,7 +194,23 @@ class Parser(object):
             raise Exception("Unexpected character '{}' on line {}: '{}'".format(
                 self.string[pos], line + 1, self.lines[line]))
 
-    def _handleComment(self, token, previous_token):
+    def _regular_comment(self, comment):
+        if comment[0] == '*':
+            # remove asterisk and trim block comment
+            block_comment = ""
+            for line in comment.splitlines():
+                resline = line.strip()
+                if resline:
+                    if resline[0] == '*':
+                        block_comment += resline[1:].lstrip()
+                    else:
+                        block_comment += resline
+                    block_comment += '\n'
+            return block_comment.strip()
+
+        return comment[1:].strip()
+
+    def _handle_comment(self, token, previous_token):
         if token.token_type == 'MESSAGE' or  token.token_type == 'FIELD' or token.token_type == 'ENUM' or token.token_type == 'ENUM_FIELD':
             token.comment = self._lastComment
         if token.token_type != 'MODIFIER':
@@ -208,9 +224,9 @@ class Parser(object):
             if token.comment[0] == '*' or token.comment[0] == '/':
                 if previous_token.token_type == "FIELD" or previous_token.token_type == "ENUM_FIELD":
                     if token.line == previous_token.line:
-                        previous_token.comment = token.comment[1:].strip()
+                        previous_token.comment = self._regular_comment(token.comment)
                         return True
-                self._lastComment = token.comment[1:].strip()
+                self._lastComment = self._regular_comment(token.comment)
         return True
 
     def parse(self, cython_info=True, fname='', includes=None, disabled_tokens=()):
@@ -225,7 +241,7 @@ class Parser(object):
         previous = self.LBrace(-1)
 
         for token in tokens:
-            if self._handleComment(token, previous):
+            if self._handle_comment(token, previous):
                 continue
 
             if token.token_type == 'OPTION':
@@ -366,7 +382,7 @@ class Parser(object):
             token.line + 1, self.lines[token.line])
 
         for token in tokens:
-            if self._handleComment(token, previous):
+            if self._handle_comment(token, previous):
                 previous = token
                 continue
 
@@ -477,7 +493,7 @@ class Parser(object):
         # setting previous as a place holder for the inner fields parsing
         previous = self.LBrace(-1)
         for token in tokens:
-            if self._handleComment(token,previous):
+            if self._handle_comment(token,previous):
                 previous = token
                 continue
 
@@ -573,11 +589,11 @@ class Parser(object):
         token = next(tokens)
         assert token.token_type == 'LBRACE', "missing opening brace on line {}: '{}'".format(
             token.line + 1, self.lines[token.line])
-        previous = self.LBrace(-1) 
+        previous = self.LBrace(-1)
         setDefault = False
 
         for token in tokens:
-            if self._handleComment(token,previous):
+            if self._handle_comment(token,previous):
                 previous = token
                 continue
 
@@ -607,7 +623,7 @@ class Parser(object):
                 assert token.token_type == 'RBRACE', "unexpected {} token on line {}: '{}'".format(
                     token.token_type, token.line + 1, self.lines[token.line])
                 return current
-            
+
             previous = token
         raise Exception("unexpected EOF on line {}: '{}'".format(
             token.line + 1, self.lines[token.line]))

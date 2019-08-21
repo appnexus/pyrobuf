@@ -1,0 +1,26 @@
+// normal development comments
+// next lines is a empty line comment syntax test
+//
+
+/// Message with line comment
+message TestLineMessageComment {
+}
+
+/** Message with block comment in one line */
+message TestBlockMessageCommentLine {
+}
+
+/**
+ * Message with block comment
+ */
+message TestBlockMessageComment {
+}
+
+/**
+* Message with multiline block comment
+*
+* More details
+* "stop"
+*/
+message TestBlockMessageComments{
+}
