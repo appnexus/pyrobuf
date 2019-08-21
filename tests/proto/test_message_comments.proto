@@ -24,3 +24,20 @@ message TestBlockMessageComment {
 */
 message TestBlockMessageComments{
 }
+
+message TestFieldMessageCommentStandard{
+    required int32 hello = 1; /// Hello comment
+}
+
+message TestFieldMessageCommentBefore{
+    /// Hello comment before definition
+    required int32 hello = 1;
+}
+
+message TestFieldMessageCommentLong{
+    /** 
+    * Hello long block comment
+    * with several lines
+    */
+    required int32 hello = 1;
+}
