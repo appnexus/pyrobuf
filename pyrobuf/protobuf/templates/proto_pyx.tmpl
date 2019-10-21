@@ -24,7 +24,7 @@ class {{enum.full_name}}(enum.Enum):
     Enum Constants
     --------------
     {%for field in enum.fields.values()|sort(attribute='name') %}
-    - `{{field.name}}` {% if field.comment != None %} \&ndash; {{field.comment}} {%- endif %}
+    - `{{field.name}}` {% if field.comment != None %} &ndash; {{field.comment}} {%- endif %}
     {%-endfor %}
     """
     {%- for field in enum.fields.values() %}
@@ -43,7 +43,7 @@ cdef class {{ message.full_name }}:
     Attributes
     ----------
     {%- for field in message.fields.values() %}
-    - `{{field.name}}`: {{field.get_python_type()}}{%- if field.modifier != 'required'%},optional{%- endif %} {% if field.comment != None %} \&ndash; {{field.comment}} {%- endif %}
+    - `{{field.name}}:` {{field.get_python_type()}}{%- if field.modifier != 'required'%},optional{%- endif %} {% if field.comment != None %} &ndash; {{field.comment}} {%- endif %}
     {%- endfor %}
     {%- endif %}
     """
