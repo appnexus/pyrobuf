@@ -274,7 +274,7 @@ Pyrobuf took 0.455732 seconds to deserialize
 
 ### Differences from the Google library
 
-If pyrobuf is missing a feature from protoc that you need, let us know! We are
+If pyrobuf has missing a feature from protoc that you need, let us know! We are
 trying to make it as easy as possible for you to help make pyrobuf better.
 
 For the most part, Pyrobuf should be a drag-and-drop replacement for the Google
