@@ -33,6 +33,7 @@ class Parser(object):
         ('COMMA', r','),
         ('SKIP', r'\s'),
         ('SEMICOLON', r';'),
+        ('HEXVALUE', r'(0x[0-9A-Fa-f]+)'),
         ('NUMERIC', r'(-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)'),
         ('STRING', r'("(?:\\.|[^"\\])*"|\'(?:\\.|[^"\\])*\')'),
         ('BOOLEAN', r'(true|false)'),
@@ -546,8 +547,12 @@ class Parser(object):
             # This will get updated later
             field.default = token.full_name
             return
+        elif token.token_type == 'HEXVALUE':
+            assert field.type in self.scalars.difference({'bool', 'enum'}), \
+                "attempting to set hex value as default for non-numeric field on line {}: '{}'".format(
+                token.line + 1, self.lines[token.line])
         elif token.token_type == 'NUMERIC':
-            assert field.type in self.scalars, \
+            assert field.type in self.scalars.difference({'bool', 'enum'}), \
                 "attempting to set numeric as default for non-numeric field on line {}: '{}'".format(
                     token.line + 1, self.lines[token.line])
             if field.type not in self.floats:
@@ -906,6 +911,13 @@ class Parser(object):
         def __init__(self, line, value):
             self.line = line
             self.value = float(value)
+
+    class HexValue(Token):
+        token_type = 'HEXVALUE'
+
+        def __init__(self, line, value):
+            self.line = line
+            self.value = int(value, 16)
 
     class String(Token):
         token_type = 'STRING'
