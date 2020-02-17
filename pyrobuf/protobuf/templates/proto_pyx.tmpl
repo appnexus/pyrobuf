@@ -1,6 +1,5 @@
 from libc.stdint cimport *
 from libc.string cimport *
-from cpython.ref cimport PyObject
 
 from pyrobuf_list cimport *
 from pyrobuf_util cimport *
@@ -24,7 +23,7 @@ from {{ import }}_proto cimport *
 cdef class {{ message.full_name }}:
 
     def __cinit__(self):
-        self._listener = <PyObject *>null_listener
+        self._listener = None
 
     {% if (message.fields.values()|selectattr('type', 'equalto', 'message')|first is defined or
            message.fields.values()|selectattr('modifier', 'equalto', 'repeated')|first is defined) -%}
@@ -33,7 +32,7 @@ cdef class {{ message.full_name }}:
     {%- for field in message.fields.values() %}
         {%- if field.modifier == 'repeated' or field.type == 'message' %}
         if self._{{ field.name }} is not None:
-            self._{{ field.name }}._listener = <PyObject *>null_listener
+            self._{{ field.name }}._listener = None
         {%- endif %}
     {%- endfor %}
     {%- endif %}
@@ -90,22 +89,22 @@ cdef class {{ message.full_name }}:
     {% for field in message.fields.values() %}
         {%- if field.type == 'message' or field.modifier == 'repeated' %}
         if self._{{ field.name }} is not None:
-            self._{{ field.name }}._listener = <PyObject *>null_listener
+            self._{{ field.name }}._listener = None
         {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
         self._{{ field.name }} = TypedList.__new__(TypedList)
         self._{{ field.name }}._list_type = {{ field.message_name }}
-        self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }}._listener = self._Modified
             {%- elif field.type == 'string' %}
         self._{{ field.name }} = StringList.__new__(StringList)
-        self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }}._listener = self._Modified
             {%- elif field.type == 'bytes' %}
         self._{{ field.name }} = BytesList.__new__(BytesList)
-        self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }}._listener = self._Modified
             {%- else %}
         self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }})
-        self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }}._listener = self._Modified
             {%- endif %}
         {%- elif field.type == 'message' %}
         self._{{ field.name }} = None
@@ -142,7 +141,7 @@ cdef class {{ message.full_name }}:
         if self._{{ field.name }} is None:
             self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
             self._{{ field.name }}.reset()
-            self._{{ field.name }}._listener = <PyObject *>self
+            self._{{ field.name }}._listener = self._Modified
         {%- endif %}
         return self._{{ field.name }}
 
@@ -155,19 +154,19 @@ cdef class {{ message.full_name }}:
         self.__field_bitmap{{ field.bitmap_idx }} |= {{ field.bitmap_mask }}
         {%- else %}
         if self._{{ field.name }} is not None:
-            self._{{ field.name }}._listener = <PyObject *>null_listener
+            self._{{ field.name }}._listener = None
         {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
         self._{{ field.name }} = TypedList.__new__(TypedList)
         self._{{ field.name }}._list_type = {{ field.message_name }}
-        self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }}._listener = self._Modified
             {%- elif field.type == 'string' %}
         self._{{ field.name }} = StringList.__new__(StringList)
-        self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }}._listener = self._Modified
             {%- elif field.type == 'bytes' %}
         self._{{ field.name }} = BytesList.__new__(BytesList)
-        self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }}._listener = self._Modified
             {%- else %}
         cdef {{ field.c_type }}[:] memview
         cdef int memview_available = 0
@@ -178,11 +177,11 @@ cdef class {{ message.full_name }}:
             pass
         cdef int i
         if memview_available == 1:
-            self._{{ field.name }} = {{ field.list_type }}(memview.size, listener=self)
+            self._{{ field.name }} = {{ field.list_type }}(memview.size, listener=self._Modified)
             for i in range(memview.size):
                 self._{{ field.name }}.append(memview[i])
             return
-        self._{{ field.name }} = {{ field.list_type }}(listener=self)
+        self._{{ field.name }} = {{ field.list_type }}(listener=self._Modified)
             {%- endif %}
         for val in value:
             {%- if field.type == 'enum' and field.enum_def != None %}
@@ -255,7 +254,7 @@ cdef class {{ message.full_name }}:
         self._{{ field.name }} = value
             {%- endif %}
             {%- if field.type == 'message' %}
-        self._{{ field.name }}._listener = <PyObject *>self
+        self._{{ field.name }}._listener = self._Modified
             {%- endif %}
         {%- endif %}
         self._Modified()
@@ -353,7 +352,7 @@ cdef class {{ message.full_name }}:
                 field_size = get_varint64(memory, &current_offset)
                 if self._{{ field.name }} is None:
                     self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
-                    self._{{ field.name }}._listener = <PyObject *>self
+                    self._{{ field.name }}._listener = self._Modified
                 self._{{ field.name }}.reset()
                 if cache:
                     self._{{ field.name }}._cached_serialization = bytes(memory[current_offset:current_offset+field_size])
@@ -411,24 +410,24 @@ cdef class {{ message.full_name }}:
             self.__field_bitmap{{ field.bitmap_idx }} &= ~{{ field.bitmap_mask }}
             {%- elif field.type == 'message' %}
             if self._{{ field.name }} is not None:
-                self._{{ field.name }}._listener = <PyObject *>null_listener
+                self._{{ field.name }}._listener = None
             {%- else %}
-            self._{{ field.name }}._listener = <PyObject *>null_listener
+            self._{{ field.name }}._listener = None
             {%- endif -%}
             {%- if field.modifier == 'repeated' %}
                 {%- if field.type == 'message' %}
             self._{{ field.name }} = TypedList.__new__(TypedList)
             self._{{ field.name }}._list_type = {{ field.message_name }}
-            self._{{ field.name }}._listener = <PyObject *>self
+            self._{{ field.name }}._listener = self._Modified
                 {%- elif field.type == 'string' %}
             self._{{ field.name }} = StringList.__new__(StringList)
-            self._{{ field.name }}._listener = <PyObject *>self
+            self._{{ field.name }}._listener = self._Modified
                 {%- elif field.type == 'bytes' %}
             self._{{ field.name }} = BytesList.__new__(BytesList)
-            self._{{ field.name }}._listener = <PyObject *>self
+            self._{{ field.name }}._listener = self._Modified
                 {%- else %}
             self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }})
-            self._{{ field.name }}._listener = <PyObject *>self
+            self._{{ field.name }}._listener = self._Modified
                 {%- endif %}
             {%- elif field.type == 'message' %}
             self._{{ field.name }} = None
@@ -562,7 +561,7 @@ cdef class {{ message.full_name }}:
             if self._{{ field.name }} is None:
                 self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
                 self._{{ field.name }}.reset()
-                self._{{ field.name }}._listener = <PyObject *>self
+                self._{{ field.name }}._listener = self._Modified
             self._{{ field.name }}.MergeFrom(other_msg._{{ field.name }})
         {%- else %}
         if other_msg.__field_bitmap{{ field.bitmap_idx }} & {{ field.bitmap_mask }} == {{ field.bitmap_mask }}:
@@ -760,7 +759,8 @@ cdef class {{ message.full_name }}:
 
     cpdef void _Modified(self):
         self._is_present_in_parent = True
-        (<object> self._listener)._Modified()
+        if self._listener is not None:
+            self._listener()
         self._cached_serialization = None
 
     cpdef bytes SerializeToString(self, bint cache=False):

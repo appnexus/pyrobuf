@@ -39,7 +39,7 @@ cdef class {{ message.full_name }}:
     cdef public bint _is_present_in_parent
     cdef bytes _cached_serialization
 
-    cdef PyObject *_listener
+    cdef object _listener
 
     cpdef void reset(self)
 
