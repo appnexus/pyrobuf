@@ -54,11 +54,17 @@ cdef class {{ message.full_name }}:
     cpdef bytes SerializeToString(self, bint cache=*)
     cpdef bytes SerializePartialToString(self)
 
+    cdef void _clearfield(self, field_name)
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size, bint cache)
 
     cdef void _protobuf_serialize(self, bytearray buf, bint cache)
 
     cpdef void _Modified(self)
+    {%- for oneof in message.oneofs.values() %}
+        {%- for oneof_field in oneof.fields %}
+    cpdef void _ModifiedOneof_{{ oneof_field }}(self)
+        {%- endfor %}
+    {%- endfor %}
 
     {%- for enum_name, enum in message.enums.items() %}
 {{ enumdef(enum.full_name, enum) }}

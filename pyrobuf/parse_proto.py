@@ -65,7 +65,7 @@ class Parser(object):
 
     # These tokens are parsed by the parser but are not supported by the
     # code that build the C extension files and definitions
-    unsupported_tokens = ('MAP_FIELD', 'ONEOF',)
+    unsupported_tokens = ('MAP_FIELD',)
 
     scalars = {
         'double', 'float', 'int32', 'int64', 'uint32', 'uint64', 'sint32', 'sint64',

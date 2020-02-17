@@ -141,7 +141,11 @@ cdef class {{ message.full_name }}:
         if self._{{ field.name }} is None:
             self._{{ field.name }} = {{ field.message_name }}.__new__({{ field.message_name }})
             self._{{ field.name }}.reset()
+            {%- if field.name in (message.oneofs.values() | sum(attribute='fields', start=[])) %}
+            self._{{ field.name }}._listener = self._ModifiedOneof_{{ field.name }}
+            {%- else %}
             self._{{ field.name }}._listener = self._Modified
+            {%- endif %}
         {%- endif %}
         return self._{{ field.name }}
 
@@ -150,6 +154,15 @@ cdef class {{ message.full_name }}:
         {%- if field.deprecated|default(false) == true %}
         warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
         {%- endif %}
+        {%- for oneof in message.oneofs.values() %}
+            {%- if field.name in oneof.fields %}
+                {%- for oneof_sibling in oneof.fields %}
+                    {%- if field.name != oneof_sibling %}
+        self._clearfield("{{ oneof_sibling }}")
+                    {%- endif %}
+                {%- endfor %}
+            {%- endif %}
+        {%- endfor %}
         {%- if field.type != 'message' and field.modifier != 'repeated' %}
         self.__field_bitmap{{ field.bitmap_idx }} |= {{ field.bitmap_mask }}
         {%- else %}
@@ -400,6 +413,10 @@ cdef class {{ message.full_name }}:
 
     cpdef void ClearField(self, field_name):
         """Clears the contents of a given field."""
+        self._clearfield(field_name)
+        self._Modified()
+
+    cdef void _clearfield(self, field_name):
     {%- for index, field in message.fields|dictsort() %}
         {%- if loop.index == 1 %}
         if field_name == '{{ field.name }}':
@@ -454,8 +471,6 @@ cdef class {{ message.full_name }}:
     {%- if message.fields|count > 0 %}
         else:
             raise ValueError('Protocol message has no "%s" field.' % field_name)
-
-        self._Modified()
     {%- else %}
         raise ValueError('Protocol message has no "%s" field.' % field_name)
     {%- endif %}
@@ -762,6 +777,19 @@ cdef class {{ message.full_name }}:
         if self._listener is not None:
             self._listener()
         self._cached_serialization = None
+
+    {% for oneof in message.oneofs.values() %}
+        {%- for oneof_field in oneof.fields %}
+    cpdef void _ModifiedOneof_{{ oneof_field }}(self):
+            {%- for oneof_sibling in oneof.fields %}
+                {%- if oneof_sibling != oneof_field %}
+        self._clearfield("{{ oneof_sibling }}")
+                {%- endif %}
+            {%- endfor %}
+
+        self._Modified()
+        {%- endfor %}
+    {%- endfor %}
 
     cpdef bytes SerializeToString(self, bint cache=False):
         """
