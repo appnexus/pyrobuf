@@ -24,6 +24,7 @@ class Parser(object):
         ('MAP_FIELD', r'map<([A-Za-z][0-9A-Za-z_]+),\s*([A-Za-z][0-9A-Za-z_]+)>\s+([A-Za-z][0-9A-Za-z_]*)\s*=\s*(\d+)'),
         ('DEFAULT', r'default\s*='),
         ('PACKED', r'packed\s*=\s*(true|false)'),
+        ('RESERVED', r'reserved\s*([0-9A-Za-z_]+\s*,?\s*)+;'),
         ('DEPRECATED', r'deprecated\s*=\s*(true|false)'),
         ('CUSTOM', r'(\([A-Za-z][0-9A-Za-z_]*\).[A-Za-z][0-9A-Za-z_]*)\s*='),
         ('LBRACKET', r'\['),
@@ -366,6 +367,11 @@ class Parser(object):
 
             elif token.token_type == 'OPTION':
                 # Just ignore options for now, but don't error
+                previous = token
+                continue
+
+            elif token.token_type == 'RESERVED':
+                # Ignore reserved fields (don't validate that they aren't repeated)
                 previous = token
                 continue
 
