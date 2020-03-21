@@ -74,9 +74,8 @@ Improving testing is in the cards.
 
 You may very well be able to just use pyrobuf as is... just pip it!
 
-```
-$ pip install pyrobuf
-```
+    $ pip install pyrobuf
+
 Should do the trick!
 
 To check, you may want to make sure the following command does not raise an
@@ -86,9 +85,7 @@ exception:
 
 If it does raise an exception try:
 
-```
-$ pip install pyrobuf -v -v -v --upgrade --force --no-cache
-```
+    $ pip install pyrobuf -v -v -v --upgrade --force --no-cache
 
 
 ### Compiling
@@ -96,8 +93,7 @@ $ pip install pyrobuf -v -v -v --upgrade --force --no-cache
 When you `pip install pyrobuf` you get the pyrobuf CLI tool ...:
 
     $ pyrobuf --help
-    usage: pyrobuf [-h] [--out-dir OUT_DIR] [--build-dir BUILD_DIR] [--install]
-                   source
+    usage: pyrobuf [-h] [--out-dir OUT_DIR] [--build-dir BUILD_DIR] [--install] source
 
     a Cython based protobuf compiler
 
@@ -112,7 +108,7 @@ When you `pip install pyrobuf` you get the pyrobuf CLI tool ...:
       --install             install the extension [default: False]
       --package             the name of the package to install to
 
-If you do not want to have to deal with setuptools entry_points idiosyncrasies
+If you do not want to have to deal with setuptools entry\_points idiosyncrasies
 you can also do:
 
     $ python -m pyrobuf --help
@@ -122,76 +118,65 @@ you can also do:
 
 Suppose you have installed `test_message.proto` which contains a spec for the
 message `Test`. In Python, you can import your new message class by running:
-```
-from test_message_proto import Test
-```
+
+    from test_message_proto import Test
 
 With the message class imported, we can create a new message:
-```
-test = Test()
-```
+
+    test = Test()
 
 Now that we have instantiated a message `test`, we can fill individual fields:
-```
->>> test.field = 5
->>> test.req_field = 2
->>> test.string_field = "hello!"
->>> test.list_fieldx.append(12)
->>> test.test_ref.field2 = 3.14
-```
+
+    >>> test.field = 5
+    >>> test.req_field = 2
+    >>> test.string_field = "hello!"
+    >>> test.list_fieldx.append(12)
+    >>> test.test_ref.field2 = 3.14
 
 And access those same fields:
-```
->>> test.string_field
-'hello!'
-```
+
+    >>> test.string_field
+    'hello!'
 
 Once we have at least filled out any "required" fields, we can serialize to a
 byte array:
-```
->>> test.SerializeToString()
-bytearray(b'\x10\x05\x1a\x06hello! \x0c2\t\x19\x1f\x85\xebQ\xb8\x1e\t@P\x02')
-```
+
+    bytearray(b'\x10\x05\x1a\x06hello! \x0c2\t\x19\x1f\x85\xebQ\xb8\x1e\t@P\x02')
 
 We can also deserialize a protobuf message to our message instance:
-```
->>> test.ParseFromString('\x10\x05\x1a\x06hello! \x0c2\t\x19\x1f\x85\xebQ\xb8\x1e\t@P\x02')
-25
-```
+
+    >>> test.ParseFromString('\x10\x05\x1a\x06hello! \x0c2\t\x19\x1f\x85\xebQ\xb8\x1e\t@P\x02')
+    25
+
 Note that the `ParseFromString` method returns the number of bytes consumed.
 
 In addition to serializing and deserializing to and from protobuf messages,
 Pyrobuf also allows us to serialize and deserialize to and from JSON and native
 Python dictionaries:
-```
->>> test.SerializeToJson()
-'{"field": 5, "req_field": 2, "list_fieldx": [12], "string_field": "hello!", "test_ref": {"field2": 3.14}}'
 
->>> test.ParseFromJson('{"field": 5, "req_field": 2, "list_fieldx": [12], "string_field": "hello!", "test_ref": {"field2": 3.14}}')
+    >>> test.SerializeToJson()
+    '{"field": 5, "req_field": 2, "list_fieldx": [12], "string_field": "hello!", "test_ref": {"field2": 3.14}}'
 
->>> test.SerializeToDict()
-{'field': 5,
- 'list_fieldx': [12],
- 'req_field': 2,
- 'string_field': 'hello!',
- 'test_ref': {'field2': 3.14}}
+    >>> test.ParseFromJson('{"field": 5, "req_field": 2, "list_fieldx": [12], "string_field": "hello!", "test_ref": {"field2": 3.14}}')
 
->>> test.ParseFromDict({'field': 5, 'list_fieldx': [12], 'req_field': 2, 'string_field': 'hello!', 'test_ref': {'field2': 3.14}})
-```
+    >>> test.SerializeToDict()
+    {'field': 5,
+     'list_fieldx': [12],
+     'req_field': 2,
+     'string_field': 'hello!',
+     'test_ref': {'field2': 3.14}}
 
 Finally, the `pyrobuf_util` module contains functions for encoding and decoding integers.
 
-```
->>> import pyrobuf_util
->>> pyrobuf_util.to_varint(2**16-1)
-bytearray(b'\xff\xff\x03')
->>> pyrobuf_util.from_varint(b'\xff\xff\x03', offset=0)
-(65535L, 3)
->>> pyrobuf_util.to_signed_varint(-2**16)
-bytearray(b'\xff\xff\x07')
->>> pyrobuf_util.from_signed_varint(b'\xff\xff\x07', offset=0)
-(-65536L, 3)
-```
+    >>> import pyrobuf_util
+    >>> pyrobuf_util.to_varint(2**16-1)
+    bytearray(b'\xff\xff\x03')
+    >>> pyrobuf_util.from_varint(b'\xff\xff\x03', offset=0)
+    (65535L, 3)
+    >>> pyrobuf_util.to_signed_varint(-2**16)
+    bytearray(b'\xff\xff\x07')
+    >>> pyrobuf_util.from_signed_varint(b'\xff\xff\x07', offset=0)
+    (-65536L, 3)
 
 The `from_varint` and `from_signed_varint` functions return both the decoded integer and
 the offset of the first byte after the encoded integer in the source data.
@@ -201,76 +186,67 @@ the offset of the first byte after the encoded integer in the source data.
 If you are compiling multiple messages or a directory of messages and don't want them
 all to be built to their own separate package but instead want a single namespace
 containing all your messages, you can specify a package name:
-```
-pyrobuf /path/to/proto/specs --install --package=my_messages
-```
+
+    pyrobuf /path/to/proto/specs --install --package=my_messages
 
 Then you can import your message classes from the `my_messages` pakcage:
-```
->>> from my_messages import MyMessage1, MyMessage2
-```
+
+    >>> from my_messages import MyMessage1, MyMessage2
 
 ### Distributing a Python Package with Pyrobuf Modules
 
 Suppose you have a Python package called 'sample' arranged on disk as follows:
-```
-sample/
-    proto/
-        my_message.proto
+
     sample/
-        __init__.py
-    setup.py
-```
+        proto/
+            my_message.proto
+        sample/
+            __init__.py
+        setup.py
 
 Pyrobuf adds a new setup keyword `pyrobuf_modules` which can be used to specify either
 individual protobuf files or folders containing protobuf files. For example, the `setup.py`
 file could look like this:
- 
-```
+
 from setuptools import setup, find_packages
 
-setup(
-    name="sample",
-    version="0.1",
-    packages=find_packages(),
-    description="A sample package",
-    install_requires=['pyrobuf'],
-    setup_requires=['pyrobuf'],
-    pyrobuf_modules="proto"
-)
-```
+    setup(
+        name="sample",
+        version="0.1",
+        packages=find_packages(),
+        description="A sample package",
+        install_requires=['pyrobuf'],
+        setup_requires=['pyrobuf'],
+        pyrobuf_modules="proto"
+    )
 
 In addition to the package "sample", setuptools will also build a package named
-"sample_proto" which will contain the compiled Protobuf messages.
+"sample\_proto" which will contain the compiled Protobuf messages.
 
 Once installed this sample package can be used as follows:
 
-```
->>> from sample_proto import MyMessage
->>> my_message = MyMessage()
-```
+    >>> from sample_proto import MyMessage
+    >>> my_message = MyMessage()
 
 ### Performance
 
 On my development machine (Ubuntu 14.04), Pyrobuf is roughly 2.0x as fast as
 Google's library for message serialization and 2.3x as fast for message
 deserialization when using the C++ backend for Google's library:
-```
-> python tests/perf_test.py
-Google took 1.649168 seconds to serialize
-Pyrobuf took 0.825525 seconds to serialize
-Google took 1.113041 seconds to deserialize
-Pyrobuf took 0.466113 seconds to deserialize
-```
+
+    > python tests/perf_test.py
+    Google took 1.649168 seconds to serialize
+    Pyrobuf took 0.825525 seconds to serialize
+    Google took 1.113041 seconds to deserialize
+    Pyrobuf took 0.466113 seconds to deserialize
 
 When not using the C++ backend, Pyrobuf is roughly 25x as fast for serialization
 and 55x as fast for deserialization:
-```
-Google took 20.215662 seconds to serialize
-Pyrobuf took 0.819555 seconds to serialize
-Google took 24.990137 seconds to deserialize
-Pyrobuf took 0.455732 seconds to deserialize
-```
+
+    Google took 20.215662 seconds to serialize
+    Pyrobuf took 0.819555 seconds to serialize
+    Google took 24.990137 seconds to deserialize
+    Pyrobuf took 0.455732 seconds to deserialize
 
 ### Differences from the Google library
 
