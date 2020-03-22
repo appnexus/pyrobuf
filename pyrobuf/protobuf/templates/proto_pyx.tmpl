@@ -144,7 +144,11 @@ cdef class {{ message.full_name }}:
             self._{{ field.name }}.reset()
             self._{{ field.name }}._listener = <PyObject *>self
         {%- endif %}
+        {%- if field.type == "bool" %}
+        return bool(self._{{ field.name }})
+        {%- else %}
         return self._{{ field.name }}
+        {%- endif %}
 
     @{{ field.name }}.setter
     def {{ field.name }}(self, value):
