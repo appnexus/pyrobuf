@@ -23,3 +23,11 @@ class BoolFieldTest(unittest.TestCase):
         self.assertIs(message.bool_list[0], False)
         message.bool_list.append(True)
         self.assertIs(message.bool_list[1], True)
+
+    def test_serde(self):
+        t1 = TestBool()
+        t2 = TestBool()
+        buf1 = t1.SerializeToString()
+        t2.ParseFromString(buf1)
+        buf2 = t2.SerializeToString()
+        self.assertEqual(buf1, buf2)
