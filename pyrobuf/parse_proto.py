@@ -192,6 +192,7 @@ class Parser(object):
                     self.syntax = 2
                 elif 'proto3' == token.value:
                     self.syntax = 3
+                    self.unsupported_tokens = ('MAP_FIELD',)
                 else:
                     raise Exception("Unexpected syntax value '{}'".format(token.value))
 
@@ -251,7 +252,8 @@ class Parser(object):
         return rep
 
     @classmethod
-    def parse_from_filename(cls, fname, includes, disabled_tokens=unsupported_tokens):
+    def parse_from_filename(cls, fname, includes, disabled_tokens=None):
+        disabled_tokens = disabled_tokens or cls.unsupported_tokens
         with open(fname, 'r') as fp:
             s = fp.read()
 
@@ -857,3 +859,4 @@ class Parser(object):
 
 class Proto3Parser(Parser):
     syntax = 3
+    unsupported_tokens = ('MAP_FIELD',)

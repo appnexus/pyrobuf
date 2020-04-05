@@ -285,3 +285,9 @@ cdef bint skip_generic(const unsigned char *memory, int *offset, int size, int w
         return False
 
     return offset[0] <= size
+
+cdef noop_listener():
+    """
+    Do nothing.
+    """
+    return

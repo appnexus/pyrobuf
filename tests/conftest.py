@@ -13,6 +13,11 @@ def pytest_sessionstart(session):
     compiler = Compiler(proto, out='tests/out', build='tests/build')
     compiler.compile()
 
+    proto3 = [os.path.join(here, 'proto3', filename)
+             for filename in os.listdir(os.path.join(here, 'proto3'))]
+    compiler3 = Compiler(proto3, proto3=True, out='tests/out', build='tests/build')
+    compiler3.compile()
+
     # Add test directory into path
     if here not in sys.path:
         sys.path.append(here)

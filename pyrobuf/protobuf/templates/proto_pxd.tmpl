@@ -30,6 +30,7 @@ cdef class {{ message.full_name }}:
     {%- else %}
     cdef {{ field.c_type }} _{{ field.name }}
     {%- endif %}
+    cpdef _{{ field.name }}__reset(self)
 {%- endfor %}
 
 {% for i in range(message.num_field_bitmaps) %}
@@ -39,7 +40,7 @@ cdef class {{ message.full_name }}:
     cdef public bint _is_present_in_parent
     cdef bytes _cached_serialization
 
-    cdef PyObject *_listener
+    cdef object _listener
 
     cpdef void reset(self)
 
@@ -54,11 +55,17 @@ cdef class {{ message.full_name }}:
     cpdef bytes SerializeToString(self, bint cache=*)
     cpdef bytes SerializePartialToString(self)
 
+    cdef void _clearfield(self, field_name)
     cdef int _protobuf_deserialize(self, const unsigned char *memory, int size, bint cache)
 
     cdef void _protobuf_serialize(self, bytearray buf, bint cache)
 
     cpdef void _Modified(self)
+    {%- for oneof in message.oneofs.values() %}
+        {%- for oneof_field in oneof.fields %}
+    cpdef void _ModifiedOneof_{{ oneof_field }}(self)
+        {%- endfor %}
+    {%- endfor %}
 
     {%- for enum_name, enum in message.enums.items() %}
 {{ enumdef(enum.full_name, enum) }}
