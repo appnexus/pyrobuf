@@ -18,12 +18,11 @@ from {{ import }}_proto cimport *
     {%- endfor %}
 {%- endmacro %}
 
-
 {%- macro classdef(message) %}
 cdef class {{ message.full_name }}:
 
     def __cinit__(self):
-        self._listener = None
+        self._listener = noop_listener
 
     {% if (message.fields.values()|selectattr('type', 'equalto', 'message')|first is defined or
            message.fields.values()|selectattr('modifier', 'equalto', 'repeated')|first is defined) -%}
@@ -32,7 +31,7 @@ cdef class {{ message.full_name }}:
     {%- for field in message.fields.values() %}
         {%- if field.modifier == 'repeated' or field.type == 'message' %}
         if self._{{ field.name }} is not None:
-            self._{{ field.name }}._listener = None
+            self._{{ field.name }}._listener = noop_listener
         {%- endif %}
     {%- endfor %}
     {%- endif %}
@@ -81,15 +80,11 @@ cdef class {{ message.full_name }}:
             components.append('}')
         return '\n'.join(components)
 
-    cpdef void reset(self):
-        # reset values and populate defaults
-    {% for i in range(message.num_field_bitmaps) %}
-        self.__field_bitmap{{ i }} = 0
-    {%- endfor %}
     {% for field in message.fields.values() %}
+    cpdef _{{ field.name }}__reset(self):
         {%- if field.type == 'message' or field.modifier == 'repeated' %}
         if self._{{ field.name }} is not None:
-            self._{{ field.name }}._listener = None
+            self._{{ field.name }}._listener = noop_listener
         {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
@@ -127,6 +122,18 @@ cdef class {{ message.full_name }}:
         {%- else %}
         self._{{ field.name }} = 0
         {%- endif %}
+        {%- if field.type != 'message' and field.modifier != 'repeated' %}
+        self.__field_bitmap{{ field.bitmap_idx }} &= ~{{ field.bitmap_mask }}
+        {%- else %}
+        if self._{{ field.name }} is not None:
+            self._{{ field.name }}._listener = noop_listener
+        {%- endif -%}
+    {%- endfor %}
+
+    cpdef void reset(self):
+        # reset values and populate defaults
+    {% for field in message.fields.values() %}
+        self._{{ field.name }}__reset()
     {%- endfor %}
         return
 
@@ -167,7 +174,7 @@ cdef class {{ message.full_name }}:
         self.__field_bitmap{{ field.bitmap_idx }} |= {{ field.bitmap_mask }}
         {%- else %}
         if self._{{ field.name }} is not None:
-            self._{{ field.name }}._listener = None
+            self._{{ field.name }}._listener = noop_listener
         {%- endif -%}
         {%- if field.modifier == 'repeated' %}
             {%- if field.type == 'message' %}
@@ -423,50 +430,7 @@ cdef class {{ message.full_name }}:
         {%- else %}
         elif field_name == '{{ field.name }}':
         {%- endif %}
-            {%- if field.type != 'message' and field.modifier != 'repeated' %}
-            self.__field_bitmap{{ field.bitmap_idx }} &= ~{{ field.bitmap_mask }}
-            {%- elif field.type == 'message' %}
-            if self._{{ field.name }} is not None:
-                self._{{ field.name }}._listener = None
-            {%- else %}
-            self._{{ field.name }}._listener = None
-            {%- endif -%}
-            {%- if field.modifier == 'repeated' %}
-                {%- if field.type == 'message' %}
-            self._{{ field.name }} = TypedList.__new__(TypedList)
-            self._{{ field.name }}._list_type = {{ field.message_name }}
-            self._{{ field.name }}._listener = self._Modified
-                {%- elif field.type == 'string' %}
-            self._{{ field.name }} = StringList.__new__(StringList)
-            self._{{ field.name }}._listener = self._Modified
-                {%- elif field.type == 'bytes' %}
-            self._{{ field.name }} = BytesList.__new__(BytesList)
-            self._{{ field.name }}._listener = self._Modified
-                {%- else %}
-            self._{{ field.name }} = {{ field.list_type }}.__new__({{ field.list_type }})
-            self._{{ field.name }}._listener = self._Modified
-                {%- endif %}
-            {%- elif field.type == 'message' %}
-            self._{{ field.name }} = None
-            {%- elif field.default != None %}
-                {%- if field.type == 'string' %}
-            self._{{ field.name }} = {% if version_major == 2 %}u{% endif %}{{ field.default }}
-                {%- elif field.type == 'bytes' %}
-            self._{{ field.name }} = b{{ field.default }}
-                {%- elif field.type == 'enum' %}
-            self._{{ field.name }} = _{{ field.enum_default }}
-                {%- else %}
-            self._{{ field.name }} = {{ field.default }}
-                {%- endif %}
-            {%- elif field.type == 'string' %}
-            self._{{ field.name }} = {% if version_major == 2 %}u{% endif %}""
-            {%- elif field.type == 'bytes' %}
-            self._{{ field.name }} = b""
-            {%- elif field.type == 'enum' and field.enum_def != None %}
-            self._{{ field.name }} = _{{ field.enum_def.default.full_name }}
-            {%- else %}
-            self._{{ field.name }} = 0
-            {%- endif %}
+            self._{{ field.name }}__reset()
     {%- endfor %}
     {%- if message.fields|count > 0 %}
         else:
@@ -774,8 +738,7 @@ cdef class {{ message.full_name }}:
 
     cpdef void _Modified(self):
         self._is_present_in_parent = True
-        if self._listener is not None:
-            self._listener()
+        self._listener()
         self._cached_serialization = None
 
     {% for oneof in message.oneofs.values() %}
