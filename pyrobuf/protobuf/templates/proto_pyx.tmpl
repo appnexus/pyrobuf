@@ -124,11 +124,8 @@ cdef class {{ message.full_name }}:
         {%- endif %}
         {%- if field.type != 'message' and field.modifier != 'repeated' %}
         self.__field_bitmap{{ field.bitmap_idx }} &= ~{{ field.bitmap_mask }}
-        {%- else %}
-        if self._{{ field.name }} is not None:
-            self._{{ field.name }}._listener = noop_listener
         {%- endif -%}
-    {%- endfor %}
+    {% endfor %}
 
     cpdef void reset(self):
         # reset values and populate defaults
@@ -153,6 +150,7 @@ cdef class {{ message.full_name }}:
             {%- else %}
             self._{{ field.name }}._listener = self._Modified
             {%- endif %}
+            self._listener()
         {%- endif %}
         return self._{{ field.name }}
 
