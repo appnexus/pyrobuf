@@ -152,7 +152,11 @@ cdef class {{ message.full_name }}:
             {%- endif %}
             self._listener()
         {%- endif %}
+        {%- if field.type == "bool" %}
+        return bool(self._{{ field.name }})
+        {%- else %}
         return self._{{ field.name }}
+        {%- endif %}
 
     @{{ field.name }}.setter
     def {{ field.name }}(self, value):
