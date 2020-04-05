@@ -88,7 +88,8 @@ class PyrobufDistribution(Distribution):
             'Uint32List':   'uint32_t',
             'Int64List':    'int64_t',
             'Uint64List':   'uint64_t',
-            'CharList':     'char'
+            'CharList':     'char',
+            'BintList':     'bint',
         }
 
         format_map = {

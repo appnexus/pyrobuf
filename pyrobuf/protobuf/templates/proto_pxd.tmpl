@@ -27,6 +27,8 @@ cdef class {{ message.full_name }}:
     cdef {{ field.message_name }} _{{ field.name }}
     {%- elif field.type == 'enum' %}
     cdef _{{ field.enum_name }} _{{ field.name }}
+    {%- elif field.type == 'bool' %}
+    cdef bint _{{ field.name }}
     {%- else %}
     cdef {{ field.c_type }} _{{ field.name }}
     {%- endif %}

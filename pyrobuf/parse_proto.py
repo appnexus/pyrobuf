@@ -83,7 +83,7 @@ class Parser(object):
         'sfixed32': 'Int32List',
         'uint32':   'Uint32List',
         'fixed32':  'Uint32List',
-        'bool':     'Uint32List',
+        'bool':     'BintList',
         'int64':    'Int64List',
         'sint64':   'Int64List',
         'sfixed64': 'Int64List',

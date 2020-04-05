@@ -1,0 +1,4 @@
+message TestBool {
+	optional bool bool_field = 1;
+	repeated bool bool_list = 2;
+}
