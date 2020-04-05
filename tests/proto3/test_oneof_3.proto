@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+message SubMsg {
+	int64 some_field = 1;
+}
+
+message TestOneof {
+	uint32 always_field = 1;
+	oneof the_oneof {
+		int64 oneof_int64 = 2;
+		string oneof_string = 3;
+		float oneof_float = 4;
+		SubMsg oneof_submsg = 5;
+	}
+}

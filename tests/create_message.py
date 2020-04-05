@@ -5,9 +5,12 @@ if sys.version_info.major == 2:
     import messages.test_message_pb2 as google_test
 
 
-def create_an_test():
+def create_an_test(protover=2):
     # print LIB
-    import test_message_proto as an_test
+    if protover == 2:
+        import test_message_proto as an_test
+    elif protover == 3:
+        import test_message_3_proto as an_test
     test = an_test.Test()
     test.timestamp = 539395200
     test.field = 10689
