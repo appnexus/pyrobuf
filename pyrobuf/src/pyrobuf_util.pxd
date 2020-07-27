@@ -21,3 +21,5 @@ cdef int set_signed_varint32(int32_t varint, bytearray buf)
 cdef int set_signed_varint64(int64_t varint, bytearray buf)
 
 cdef bint skip_generic(const unsigned char *memory, int *offset, int size, int wire_type)
+
+cdef noop_listener()

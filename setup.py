@@ -10,7 +10,7 @@ import platform
 import sys
 
 
-VERSION = "0.9.0.7"
+VERSION = "0.9.3.7"
 HERE = os.path.dirname(os.path.abspath(__file__))
 PYROBUF_DEFS_PXI = "pyrobuf_defs.pxi"
 PYROBUF_LIST_PXD = "pyrobuf_list.pxd"
@@ -88,7 +88,8 @@ class PyrobufDistribution(Distribution):
             'Uint32List':   'uint32_t',
             'Int64List':    'int64_t',
             'Uint64List':   'uint64_t',
-            'CharList':     'char'
+            'CharList':     'char',
+            'BintList':     'bint',
         }
 
         format_map = {

@@ -14,6 +14,8 @@ GOOGLE_SERIALIZED_MESSAGE = b'\x08\x80\x89\x9a\x81\x02\x10\xc1S\x1a\tgo goats! \
 
 
 class MessageTest(unittest.TestCase):
+    def create_msg(self):
+        return create_an_test(protover=2)
 
     def test_ser_deser(self):
         if sys.version_info.major == 2:
@@ -22,7 +24,7 @@ class MessageTest(unittest.TestCase):
         else:
             buf1 = GOOGLE_SERIALIZED_MESSAGE
 
-        t2 = create_an_test()
+        t2 = self.create_msg()
         buf2 = t2.SerializeToString()
 
         self.assertEqual(buf1, buf2)
@@ -39,18 +41,24 @@ class MessageTest(unittest.TestCase):
         self.assertEqual(buf1, buf2)
 
     def test_json(self):
-        test = create_an_test()
+        test = self.create_msg()
         json = test.SerializeToJson()
 
         test.ParseFromJson(json)
         self.assertEqual(json, test.SerializeToJson())
 
     def test_dict(self):
-        test = create_an_test()
+        test = self.create_msg()
         the_dict = test.SerializeToDict()
 
         test.ParseFromDict(the_dict)
         self.assertEqual(the_dict, test.SerializeToDict())
+
+
+class Message3Test(MessageTest):
+    def create_msg(self):
+        return create_an_test(protover=3)
+
 
 if __name__ == "__main__":
     unittest.main()

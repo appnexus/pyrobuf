@@ -4,25 +4,11 @@ from cpython.ref cimport PyObject
 from cpython.object cimport Py_EQ, Py_NE
 
 
-cdef class NullListener:
-    property _is_present_in_parent:
-        def __get__(self):
-            return True
-
-    cpdef void _Modified(self):
-        return
-
-cdef public NullListener null_listener = NullListener()
-
-
 cdef class TypedList(list):
 
     def __init__(self, type list_type, object listener=None):
         self._list_type = list_type
-        if listener is None:
-            self._listener = <PyObject *>null_listener
-        else:
-            self._listener = <PyObject *>listener
+        self._listener = listener
 
     property list_type:
         def __get__(self):
@@ -35,9 +21,8 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).__setitem__(i, x)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
 {% if version_major != 3 %}
     def __setslice__(self, i, j, x):
@@ -48,17 +33,15 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).__setslice__(i, j, x)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 {%- endif %}
 
     def add(self, **kwargs):
         elt = self._list_type(**kwargs)
         super(TypedList, self).append(elt)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
         return elt
 
     def append(self, x):
@@ -68,9 +51,8 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).append(x)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     def extend(self, x):
         for i in x:
@@ -78,9 +60,8 @@ cdef class TypedList(list):
             elt.MergeFrom(i)
             super(TypedList, self).append(elt)
 
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     def insert(self, i, x):
         try:
@@ -89,18 +70,14 @@ cdef class TypedList(list):
             raise Exception("type mismatch")
 
         super(TypedList, self).insert(i, x)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
 
 cdef class BytesList(list):
 
     def __init__(self, object listener=None):
-        if listener is None:
-            self._listener = <PyObject *>null_listener
-        else:
-            self._listener = <PyObject *>listener
+        self._listener = listener
 
     def __setitem__(self, i, x):
         cdef list values
@@ -123,9 +100,8 @@ cdef class BytesList(list):
         else:
             raise TypeError("list indices must be integers, not %s" % type(i).__name__)
 
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
 {% if version_major == 2 %}
     def __setslice__(self, i, j, x):
@@ -138,9 +114,8 @@ cdef class BytesList(list):
                 raise TypeError("%r has type %s, but expected one of: (%s,)" % (val, type(val), str))
 
         list.__setslice__(self, i, j, values)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 {%- endif %}
 
     def append(self, x):
@@ -148,9 +123,8 @@ cdef class BytesList(list):
             raise TypeError("%r has type %s, but expected one of: (%s,)" % (x, type(x), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
 
         list.append(self, x)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     def extend(self, x):
         for val in x:
@@ -158,9 +132,8 @@ cdef class BytesList(list):
                 raise TypeError("%r has type %s, but expected one of: (%s,)" % (val, type(val), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
             list.append(self, val)
 
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     def insert(self, i, x):
 
@@ -168,18 +141,14 @@ cdef class BytesList(list):
             raise TypeError("%r has type %s, but expected one of: (%s,)" % (x, type(x), {% if version_major == 2 %}str{% else %}bytes{% endif %}))
 
         list.insert(self, i, x)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
 
 cdef class StringList(list):
 
     def __init__(self, object listener=None):
-        if listener is None:
-            self._listener = <PyObject *>null_listener
-        else:
-            self._listener = <PyObject *>listener
+        self._listener = listener
 
     def __setitem__(self, i, x):
         cdef list values
@@ -227,9 +196,8 @@ cdef class StringList(list):
         else:
             raise TypeError("list indices must be integers, not %s" % type(i).__name__)
 
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
 {% if version_major == 2 %}
     def __setslice__(self, i, j, x):
@@ -244,9 +212,8 @@ cdef class StringList(list):
                 raise TypeError("%r has type %s, but expected one of: (%s, %s)" % (val, type(val), str, unicode))
 
         list.__setslice__(self, i, j, values)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 {%- endif %}
 
     def append(self, x):
@@ -269,9 +236,8 @@ cdef class StringList(list):
         {%- endif %}
 
         list.append(self, value)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     def extend(self, x):
         cdef {% if version_major == 2 %}unicode{% else %}str{% endif %} value
@@ -294,9 +260,8 @@ cdef class StringList(list):
             {%- endif %}
             list.append(self, value)
 
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     def insert(self, i, x):
         cdef {% if version_major == 2 %}unicode{% else %}str{% endif %} value
@@ -318,9 +283,8 @@ cdef class StringList(list):
         {%- endif %}
 
         list.insert(self, i, value)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
 
 {% macro scalar_list(name, type, format) %}
@@ -333,10 +297,7 @@ cdef class {{ name }}:
 
         self._n_items = 0
         self._size = size
-        if listener is None:
-            self._listener = <PyObject *>null_listener
-        else:
-            self._listener = <PyObject *>listener
+        self._listener = listener
 
     def __dealloc__(self):
         PyMem_Free(self._data)
@@ -361,9 +322,8 @@ cdef class {{ name }}:
             self._data[j] = self._data[j + 1]
 
         self._n_items -= 1
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     def __getitem__(self, int i):
         if i < 0:
@@ -394,9 +354,8 @@ cdef class {{ name }}:
             raise IndexError("list index out of range")
 
         self._data[i] = x
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     def __str__(self):
         return str(list(self))
@@ -448,17 +407,15 @@ cdef class {{ name }}:
 
     cpdef append(self, {{ type }} x):
         self._append(x)
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     cpdef extend(self, x):
         for i in x:
             self._append(i)
 
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     cpdef insert(self, int i, {{ type }} x):
         cdef {{ type }} *mem
@@ -483,18 +440,16 @@ cdef class {{ name }}:
 
         self._data[i] = x
         self._n_items += 1
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     cpdef pop(self):
         if self._n_items == 0:
             raise IndexError("pop from empty list")
 
         self._n_items -= 1
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
         return self._data[self._n_items]
 
     cpdef remove(self, {{ type }} x):
@@ -512,11 +467,10 @@ cdef class {{ name }}:
 
         for j in range(i, self._n_items):
             self._data[j] = self._data[j + 1]
-        
+
         self._n_items -= 1
-        listener = <object>self._listener
-        if not listener._is_present_in_parent:
-            listener._Modified()
+        if self._listener is not None:
+            self._listener()
 
     cdef void _append(self, {{ type }} x):
         cdef {{ type }} *mem

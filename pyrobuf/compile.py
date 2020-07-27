@@ -100,7 +100,7 @@ class Compiler(object):
         if self.package is not None:
             self._package()
 
-        setup(name='pyrobuf-generated',
+        setup(name='pyrobuf-generated' if not self.package else self.package,
                ext_modules=cythonize(self._pyx_files,
                                      include_path=self.include_path),
                cmdclass= dict(build_ext=BasePackagePatch_BuildExt),
