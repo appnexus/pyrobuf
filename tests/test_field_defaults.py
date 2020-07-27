@@ -9,7 +9,7 @@ class DecimalDefaultsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global TestDecimalDefaultsMessage
-        from pyrogen.test_field_defaults_proto import TestDecimalDefaultsMessage
+        from test_field_defaults_proto import TestDecimalDefaultsMessage
 
     def setUp(self):
         self.message = TestDecimalDefaultsMessage()
@@ -61,7 +61,7 @@ class StringDefaultsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global TestStringDefaultsMessage
-        from pyrogen.test_field_defaults_proto import TestStringDefaultsMessage
+        from test_field_defaults_proto import TestStringDefaultsMessage
 
     def setUp(self):
         self.message = TestStringDefaultsMessage()

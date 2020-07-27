@@ -7,7 +7,7 @@ if sys.version_info.major == 2:
 
 def create_an_test():
     # print LIB
-    import pyrogen.test_message_proto as an_test
+    import test_message_proto as an_test
     test = an_test.Test()
     test.timestamp = 539395200
     test.field = 10689

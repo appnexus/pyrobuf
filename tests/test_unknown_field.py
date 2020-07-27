@@ -15,7 +15,7 @@ class MessageTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global TestTruncated
-        from pyrogen.test_truncated_proto import TestTruncated
+        from test_truncated_proto import TestTruncated
 
     def test_deser(self):
         test = TestTruncated()

@@ -16,7 +16,7 @@ class NestedTest(unittest.TestCase):
         global M
         global MN
         global MN2
-        from pyrogen.test_nested_issue55_proto import M, MN, MN2
+        from test_nested_issue55_proto import M, MN, MN2
 
     def test_use_nested(self):
         """

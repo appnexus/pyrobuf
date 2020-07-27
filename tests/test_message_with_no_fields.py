@@ -7,7 +7,7 @@ class EmptyMessageTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global EmptyMessageWithNoFields
-        from pyrogen.test_message_field_types_proto import EmptyMessageWithNoFields
+        from test_message_field_types_proto import EmptyMessageWithNoFields
 
     def setUp(self):
         self.message = EmptyMessageWithNoFields()

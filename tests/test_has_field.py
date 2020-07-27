@@ -11,8 +11,8 @@ class HasFieldTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global Test, TestRef, TestSs1, TestSs1Thing
-        from pyrogen.test_ref_message_proto import TestRef
-        from pyrogen.test_message_proto import Test, TestSs1, TestSs1Thing
+        from test_ref_message_proto import TestRef
+        from test_message_proto import Test, TestSs1, TestSs1Thing
 
     def test_has_field_for_repeated_field_raises_value_error(self):
         message = Test()

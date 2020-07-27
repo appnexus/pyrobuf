@@ -19,8 +19,8 @@ def pytest_sessionstart(session):
 
     # Insert built messages into path
     build = os.path.join(here, 'build')
-    lib_path = os.path.join(build, "lib.{0}-{1}".format(get_platform(),
-                                                        sys.version[0:3]))
+    lib_path = os.path.join(build, "lib.{0}-{1}".format(get_platform(),sys.version[0:3]))
+    lib_path = os.path.join(lib_path,'pyrogen')
 
     if lib_path not in sys.path:
         sys.path.insert(0, lib_path)

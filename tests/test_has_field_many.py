@@ -1,5 +1,5 @@
 def test_has_field():
-    from pyrogen.test_many_fields_proto import TestManyFields
+    from test_many_fields_proto import TestManyFields
     test = TestManyFields()
 
     # Assert HasField false on clean message

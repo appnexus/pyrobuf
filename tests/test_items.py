@@ -8,7 +8,7 @@ class ItemsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global Test
-        from pyrogen.test_message_proto import Test
+        from test_message_proto import Test
 
     def test_fields(self):
         test = create_an_test()

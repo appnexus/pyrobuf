@@ -4,7 +4,7 @@ import warnings
 
 class DecimalDefaultsTest(unittest.TestCase):
     def setUp(self):
-        from pyrogen.test_message_field_types_proto import TestDeprecatedField
+        from test_message_field_types_proto import TestDeprecatedField
         warnings.filterwarnings("error")
         self.message = TestDeprecatedField()
 

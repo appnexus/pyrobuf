@@ -9,7 +9,7 @@ class MergeFromTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global Test, TestSs1, TestSs3
-        from pyrogen.test_message_proto import Test, TestSs1, TestSs3
+        from test_message_proto import Test, TestSs1, TestSs3
 
     def test_message_init_with_bad_keyword_arg_raises_value_error(self):
         self.assertRaises(ValueError, Test, non_existant=3)

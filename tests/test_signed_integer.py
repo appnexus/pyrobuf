@@ -18,7 +18,7 @@ def gen_rand_uint64():
 
 
 def test_int32():
-    from pyrogen.test_signed_integer_proto import Int
+    from test_signed_integer_proto import Int
     a = Int()
     v = gen_rand_int32()
     a.Int32 = v
@@ -26,7 +26,7 @@ def test_int32():
 
 
 def test_int64():
-    from pyrogen.test_signed_integer_proto import Int
+    from test_signed_integer_proto import Int
     a = Int()
     v = gen_rand_int64()
     a.Int64 = v
@@ -34,7 +34,7 @@ def test_int64():
 
 
 def test_uint32():
-    from pyrogen.test_signed_integer_proto import Int
+    from test_signed_integer_proto import Int
     a = Int()
     v = gen_rand_uint32()
     a.UInt32 = v
@@ -42,7 +42,7 @@ def test_uint32():
 
 
 def test_uint64():
-    from pyrogen.test_signed_integer_proto import Int
+    from test_signed_integer_proto import Int
     a = Int()
     v = gen_rand_uint64()
     a.UInt64 = v
@@ -50,7 +50,7 @@ def test_uint64():
 
 
 def test_sint32():
-    from pyrogen.test_signed_integer_proto import Int
+    from test_signed_integer_proto import Int
     a = Int()
     v = gen_rand_int32()
     a.SInt32 = v
@@ -58,7 +58,7 @@ def test_sint32():
 
 
 def test_sint64():
-    from pyrogen.test_signed_integer_proto import Int
+    from test_signed_integer_proto import Int
     a = Int()
     v = gen_rand_int64()
     a.SInt64 = v
