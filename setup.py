@@ -10,7 +10,7 @@ import platform
 import sys
 
 
-VERSION = "0.9.3.7"
+VERSION = "0.9.3.8"
 HERE = os.path.dirname(os.path.abspath(__file__))
 PYROBUF_DEFS_PXI = "pyrobuf_defs.pxi"
 PYROBUF_LIST_PXD = "pyrobuf_list.pxd"

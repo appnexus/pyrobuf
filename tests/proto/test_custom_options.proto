@@ -9,4 +9,5 @@ message TestCustomOptions {
         VALUE1 = 1;
     }
     optional CustomEnum field3 = 3 [ default = VALUE1, (my_options).custom1 = 4 ];
+    optional double field4 = 4 [ (my_option)= 3.4 ];
 }

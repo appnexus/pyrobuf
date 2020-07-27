@@ -25,7 +25,7 @@ class Parser(object):
         ('DEFAULT', r'default\s*='),
         ('PACKED', r'packed\s*=\s*(true|false)'),
         ('DEPRECATED', r'deprecated\s*=\s*(true|false)'),
-        ('CUSTOM', r'(\([A-Za-z][0-9A-Za-z_]*\).[A-Za-z][0-9A-Za-z_]*)\s*='),
+        ('CUSTOM', r'(\([A-Za-z][0-9A-Za-z_]*\)(?:.[A-Za-z][0-9A-Za-z_]*)?)\s*='),
         ('LBRACKET', r'\['),
         ('RBRACKET', r'\]\s*;'),
         ('LBRACE', r'\{'),
