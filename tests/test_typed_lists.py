@@ -8,8 +8,8 @@ class MergeFromTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         global Test, TestRef
-        from test_ref_message_proto import TestRef
         from test_message_proto import Test
+        from test_ref_message_proto import TestRef
 
     def test_extend_with_generic_list(self):
         t = Test()
