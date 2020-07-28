@@ -3,6 +3,7 @@ import glob
 import os
 import sys
 from setuptools import setup
+from datetime import datetime
 
 from Cython.Build import cythonize
 from Cython.Distutils import build_ext
@@ -18,6 +19,9 @@ else:
 
 _VM = sys.version_info.major
 
+THE_TIME = datetime.now()
+VERSION = f'''{THE_TIME.year}.{THE_TIME.month}.{THE_TIME.day}'''\
+          f'''{THE_TIME.hour*3600+THE_TIME.minute*60+THE_TIME.second}'''
 
 class BasePackagePatch_BuildExt(build_ext):
     """ Create __init__.py for base package, after build
@@ -101,10 +105,11 @@ class Compiler(object):
             self._package()
 
         setup(name='pyrobuf-generated' if not self.package else self.package,
-               ext_modules=cythonize(self._pyx_files,
+              version=VERSION,
+              ext_modules=cythonize(self._pyx_files,
                                      include_path=self.include_path),
-               cmdclass= dict(build_ext=BasePackagePatch_BuildExt),
-               script_args=script_args)
+              cmdclass= dict(build_ext=BasePackagePatch_BuildExt),
+              script_args=script_args)
 
     def extend(self, dist):
         self._compile_spec()
