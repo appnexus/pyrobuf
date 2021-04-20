@@ -153,7 +153,7 @@ setup(
     url='https://github.com/appnexus/pyrobuf',
     author='AppNexus',
     tests_require=['pytest'] + (['protobuf >= 2.6.0, <3'] if sys.version_info.major == 2 else []),
-    setup_requires=['jinja2 >= 2.8', 'cython >= 0.23', 'pytest-runner'],
-    install_requires=['jinja2 >= 2.8', 'cython >= 0.23'],
+    setup_requires=['jinja2 == 2.11.3', 'cython >= 0.23', 'pytest-runner'],
+    install_requires=['jinja2 == 2.11.3', 'cython >= 0.23'],
     zip_safe=False,
 )
