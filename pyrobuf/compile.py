@@ -1,8 +1,11 @@
 import argparse
+import atexit
 import glob
 import os
 import sys
 from setuptools import setup
+from setuptools.command.install import install
+from setuptools.dist import Distribution
 from datetime import datetime
 
 from Cython.Build import cythonize
@@ -23,6 +26,14 @@ THE_TIME = datetime.now()
 VERSION = f'''{THE_TIME.year}.{THE_TIME.month}.{THE_TIME.day}'''\
           f'''{THE_TIME.hour*3600+THE_TIME.minute*60+THE_TIME.second}'''
 
+def _post_install(*args):
+    bdist_wheel_cmd = args[0].get_command_obj('bdist_wheel')
+    tag = '-'.join(bdist_wheel_cmd.get_tag())
+    os.system(f'python -m pip install --force-reinstall ./dist/{bdist_wheel_cmd.wheel_dist_name}-{tag}.whl')
+class new_install(install):
+    def __init__(self, *args, **kwargs):
+        super(new_install, self).__init__(*args, **kwargs)
+        atexit.register(_post_install, *args)
 class BasePackagePatch_BuildExt(build_ext):
     """ Create __init__.py for base package, after build
     """
@@ -91,10 +102,11 @@ class Compiler(object):
                    clean=args.clean)
 
     def compile(self):
-        script_args = ['build', '--build-base={0}'.format(self.build)]
+        script_args = ['build', '--build-base={0}'.format(self.build), 'bdist_wheel']
 
+        cmds = dict(build_ext=BasePackagePatch_BuildExt)
         if self.install:
-            script_args.append('install')
+            cmds['install'] = new_install
 
         if self.force:
             script_args.append('--force')
@@ -108,7 +120,7 @@ class Compiler(object):
               version=VERSION,
               ext_modules=cythonize(self._pyx_files,
                                      include_path=self.include_path),
-              cmdclass= dict(build_ext=BasePackagePatch_BuildExt),
+              cmdclass=cmds,
               script_args=script_args)
 
     def extend(self, dist):
