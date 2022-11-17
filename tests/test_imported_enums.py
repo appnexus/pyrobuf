@@ -17,12 +17,12 @@ class ImportedEnumsTest(unittest.TestCase):
 
     def test_message_id_has_default_of_msg_one(self):
         message = UsesImportedEnumsMessage()
-        self.assertEqual(message.message_id, MessageID.MSG_ONE.value)
+        self.assertEqual(message.message_id, MessageID.MSG_ONE)
 
     def test_status_has_default_of_close(self):
         message = UsesImportedEnumsMessage()
-        self.assertEqual(message.status, Status.CLOSE.value)
+        self.assertEqual(message.status, Status.CLOSE)
 
     def test_internal_enum_constants_exposed(self):
-        self.assertEqual(ExposesInternalEnumConstantsMessageinternal_enum.INTERNAL.value, 0)
-        self.assertEqual(ExposesInternalEnumConstantsMessageinternal_enum.EXTERNAL.value, 1)
+        self.assertEqual(ExposesInternalEnumConstantsMessageinternal_enum.INTERNAL, 0)
+        self.assertEqual(ExposesInternalEnumConstantsMessageinternal_enum.EXTERNAL, 1)

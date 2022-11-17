@@ -50,9 +50,9 @@ class MergeFromTest(unittest.TestCase):
     def test_merge_from_does_set_enum_field_that_is_set_in_source(self):
         source = Test()
         dest = Test()
-        source.enum_field = TestEnumField.TEST_ENUM_FIELD_2.value
+        source.enum_field = TestEnumField.TEST_ENUM_FIELD_2
         dest.MergeFrom(source)
-        self.assertEqual(dest.enum_field, TestEnumField.TEST_ENUM_FIELD_2.value)
+        self.assertEqual(dest.enum_field, TestEnumField.TEST_ENUM_FIELD_2)
 
     def test_merge_from_does_merge_message_field_that_is_set_in_source(self):
         source = TestSs3()

@@ -15,36 +15,14 @@ from pyrogen.{{ import }}_proto cimport *
 
 
 {%- macro enum_fields_def(enum) %}
-class {{enum.full_name}}(enum.Enum):
-    """
-    {%- if enum.comment != None %}
-    {{enum.comment}}
-    {%- endif %}
-    Enum Constants
-    --------------
-    {%for field in enum.fields.values()|sort(attribute='name') %}
-    - `{{field.name}}` {% if field.comment != None %} &ndash; {{field.comment}} {%- endif %}
-    {%-endfor %}
-    """
+class {{enum.full_name}}(enum.IntEnum):
     {%- for field in enum.fields.values() %}
-    {{ field.name }} = _{{ field.full_name }} {%- if field.comment != None %} # {{field.comment}}{%- endif %}
+    {{ field.name }} = _{{ field.full_name }}
     {%- endfor %}
 {%- endmacro %}
 
 {%- macro classdef(message) %}
 cdef class {{ message.full_name }}:
-    """
-    {%- if message.comment != None %}
-    {{message.comment}}
-    {%- endif %}
-    {%- if message.fields.values()|first is defined %}
-    Attributes
-    ----------
-    {%- for field in message.fields.values() %}
-    - `{{field.name}}:` {{field.get_python_type()}}{%- if field.modifier != 'required'%},optional{%- endif %} {% if field.comment != None %} &ndash; {{field.comment}} {%- endif %}
-    {%- endfor %}
-    {%- endif %}
-    """
     def __cinit__(self):
         self._listener = noop_listener
 
@@ -161,9 +139,6 @@ cdef class {{ message.full_name }}:
     {% for index, field in message.fields|dictsort() %}
     @property
     def {{ field.name }}(self):
-        {%- if field.comment != None %}
-        """{{field.comment}} """
-        {%- endif %}
         {%- if field.deprecated|default(false) == true %}
         warnings.warn("field '{{ field.name }}' is deprecated", DeprecationWarning)
         {%- endif %}
