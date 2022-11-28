@@ -174,7 +174,7 @@ class Parser(object):
             raise Exception("Unexpected character '{}' on line {}: '{}'".format(
                 self.string[pos], line + 1, self.lines[line]))
 
-    def parse(self, cython_info=True, fname='', includes=None, disabled_tokens=()):
+    def parse(self, site_pkg_path=None, cython_info=True, fname='', includes=None, disabled_tokens=()):
         self.verify_parsable_tokens()
         tokens = self.tokenize(disabled_tokens)
         rep = {'imports': [], 'messages': [], 'enums': []}
@@ -205,6 +205,9 @@ class Parser(object):
 
                 rep['imports'].append(token.value)
 
+                if site_pkg_path and os.path.exists(site_pkg_path+token.value+'_proto.pyx'):
+                    continue
+
                 # Google's protoc only supports the use of messages and enums
                 # from direct imports. So messages and enums from indirect
                 # imports are not fetched here.
@@ -212,6 +215,7 @@ class Parser(object):
                     token.value + '.proto',
                     fname,
                     includes,
+                    site_pkg_path,
                     disabled_tokens
                 )
                 imported['messages'].update(
@@ -254,18 +258,18 @@ class Parser(object):
         return rep
 
     @classmethod
-    def parse_from_filename(cls, fname, includes, disabled_tokens=None):
+    def parse_from_filename(cls, fname, includes, site_pkg_path, disabled_tokens=None):
         disabled_tokens = disabled_tokens or cls.unsupported_tokens
         with open(fname, 'r') as fp:
             s = fp.read()
 
         try:
-            return cls(s).parse(fname=fname, includes=includes, disabled_tokens=disabled_tokens)
+            return cls(s).parse(site_pkg_path, fname=fname, includes=includes, disabled_tokens=disabled_tokens)
         except Exception as e:
             print('Exception while parsing {}'.format(fname))
             raise e
 
-    def _parse_import(self, fname, parent_fname, includes, disabled_tokens):
+    def _parse_import(self, fname, parent_fname, includes, site_pkg_path, disabled_tokens):
         actual_fname = fname
         if not os.path.isabs(fname):
             for d in [os.path.dirname(parent_fname)] + includes:
@@ -273,7 +277,7 @@ class Parser(object):
                 if os.path.exists(actual_fname):
                     break
 
-        return self.__class__.parse_from_filename(actual_fname, includes, disabled_tokens)
+        return self.__class__.parse_from_filename(actual_fname, includes, site_pkg_path, disabled_tokens)
 
     def _process_token_enum(self, token, enums):
         """

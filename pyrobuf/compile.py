@@ -1,15 +1,11 @@
 import argparse
-import atexit
 import glob
 import os
 import sys
 from setuptools import setup
-from setuptools.command.install import install
-from setuptools.dist import Distribution
-from datetime import datetime
+from distutils.sysconfig import get_python_lib
 
 from Cython.Build import cythonize
-from Cython.Distutils import build_ext
 from pathlib import Path
 from jinja2 import Environment, PackageLoader
 
@@ -22,26 +18,6 @@ else:
 
 _VM = sys.version_info.major
 
-THE_TIME = datetime.now()
-VERSION = f'''{THE_TIME.year}.{THE_TIME.month}.{THE_TIME.day}'''\
-          f'''{THE_TIME.hour*3600+THE_TIME.minute*60+THE_TIME.second}'''
-
-def _post_install(*args):
-    bdist_wheel_cmd = args[0].get_command_obj('bdist_wheel')
-    tag = '-'.join(bdist_wheel_cmd.get_tag())
-    os.system(f'python -m pip install --force-reinstall ./dist/{bdist_wheel_cmd.wheel_dist_name}-{tag}.whl')
-class new_install(install):
-    def __init__(self, *args, **kwargs):
-        super(new_install, self).__init__(*args, **kwargs)
-        atexit.register(_post_install, *args)
-class BasePackagePatch_BuildExt(build_ext):
-    """ Create __init__.py for base package, after build
-    """
-    def run(self):
-        build_ext.run(self)
-        filename = Path(self.build_lib).joinpath('pyrogen').joinpath('__init__.py')
-        filename.touch(exist_ok=True)
-
 class Compiler(object):
 
     _env = Environment(loader=PackageLoader('pyrobuf.protobuf', 'templates'))
@@ -50,7 +26,7 @@ class Compiler(object):
 
     def __init__(self, sources, out="out", build="build", install=False,
                  proto3=False, force=False, package=None, includes=None,
-                 clean=False):
+                 clean=False, site_pkg=None):
         self.sources = sources
         self.out = os.path.join(out, 'pyrogen')
         self.build = build
@@ -61,6 +37,11 @@ class Compiler(object):
         self.clean = clean
         here = os.path.dirname(os.path.abspath(__file__))
         self.include_path = [os.path.join(here, 'src'), out]
+        self.site_pkg_path= None
+        if site_pkg:
+            site_pkg_path = os.path.join(get_python_lib(),site_pkg)
+            self.include_path.append(site_pkg_path)
+            self.site_pkg_path = os.path.join(site_pkg_path,'pyrogen/')
         self._generated = set()
         self._messages = []
         self._pyx_files = []
@@ -92,6 +73,8 @@ class Compiler(object):
                             help="name of package to compile to")
         parser.add_argument('--include', action='append',
                             help="add directory to includes path")
+        parser.add_argument('--site_pkg', type=str, default=None,
+                            help="build with installed site-package source")
         parser.add_argument('--clean', action='store_true',
                             help="force recompilation of messages")
         args = parser.parse_args()
@@ -99,14 +82,13 @@ class Compiler(object):
         return cls(args.sources, out=args.out_dir, build=args.build_dir,
                    install=args.install, proto3=args.proto3, force=args.force,
                    package=args.package, includes=args.include,
-                   clean=args.clean)
+                   clean=args.clean, site_pkg=args.site_pkg)
 
     def compile(self):
-        script_args = ['build', '--build-base={0}'.format(self.build), 'bdist_wheel']
+        script_args = ['build', '--build-base={0}'.format(self.build)]
 
-        cmds = dict(build_ext=BasePackagePatch_BuildExt)
         if self.install:
-            cmds['install'] = new_install
+            script_args.append('install')
 
         if self.force:
             script_args.append('--force')
@@ -117,10 +99,8 @@ class Compiler(object):
             self._package()
 
         setup(name='pyrobuf-generated' if not self.package else self.package,
-              version=VERSION,
               ext_modules=cythonize(self._pyx_files,
-                                     include_path=self.include_path),
-              cmdclass=cmds,
+                                    include_path=self.include_path),
               script_args=script_args)
 
     def extend(self, dist):
@@ -160,10 +140,14 @@ class Compiler(object):
         print("generating {0}".format(filename))
         self._generated.add(name)
 
-        msg_def = self.parser.parse_from_filename(filename, self.includes)
+        msg_def = self.parser.parse_from_filename(filename, self.includes,self.site_pkg_path)
         self._messages.append(msg_def)
 
         for f in msg_def['imports']:
+
+            if self.site_pkg_path and os.path.exists(self.site_pkg_path+f+'_proto.pyx'):
+                continue
+
             print("parsing dependency '{}'".format(f))
             depends = None
 
@@ -176,7 +160,7 @@ class Compiler(object):
                 self._generate(depends)
             except FileNotFoundError:
                 raise FileNotFoundError("can't find message spec for '{}'"
-                                        .format(f))
+                                    .format(f))
 
         if self.package is None:
             self._write(name, msg_def)
