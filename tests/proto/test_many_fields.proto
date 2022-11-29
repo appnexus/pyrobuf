@@ -128,3 +128,8 @@ message TestManyFields {
     optional int64 field127 = 127;
     optional int64 field128 = 128;
 }
+
+message TestUnusedFieldIndex {
+    optional int64 field64 = 64;
+    optional int64 field65 = 65;
+}

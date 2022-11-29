@@ -598,9 +598,11 @@ class Parser(object):
                 return current
 
     def add_cython_info(self, message):
+        count = 0
         for index, field in message.fields.items():
-            field.bitmap_idx = (index - 1) // 64
-            field.bitmap_mask = 1 << ((index - 1) % 64)
+            field.bitmap_idx = count // 64
+            field.bitmap_mask = 1 << (count % 64)
+            count += 1
             field.list_type = self.list_type_map.get(field.type, 'TypedList')
             field.fixed_width = (field.type in {
                 'float', 'double', 'fixed32', 'sfixed32', 'fixed64', 'sfixed64'
