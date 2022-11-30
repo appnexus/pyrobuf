@@ -3,7 +3,6 @@ import glob
 import os
 import sys
 from setuptools import setup
-from distutils.sysconfig import get_python_lib
 
 from Cython.Build import cythonize
 from pathlib import Path
@@ -17,6 +16,7 @@ else:
     _FileExistsError = OSError
 
 _VM = sys.version_info.major
+
 
 class Compiler(object):
 
@@ -137,7 +137,6 @@ class Compiler(object):
         self._messages.append(msg_def)
 
         for f in msg_def['imports']:
-
             print("parsing dependency '{}'".format(f))
             depends = None
 
@@ -150,7 +149,7 @@ class Compiler(object):
                 self._generate(depends)
             except FileNotFoundError:
                 raise FileNotFoundError("can't find message spec for '{}'"
-                                    .format(f))
+                                        .format(f))
 
         if self.package is None:
             self._write(name, msg_def)

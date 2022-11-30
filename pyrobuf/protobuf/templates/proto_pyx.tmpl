@@ -13,7 +13,6 @@ import enum
 from pyrogen.{{ import }}_proto cimport *
 {%- endfor %}
 
-
 {%- macro enum_fields_def(enum) %}
 class {{enum.full_name}}(enum.IntEnum):
     {%- for field in enum.fields.values() %}
@@ -23,6 +22,7 @@ class {{enum.full_name}}(enum.IntEnum):
 
 {%- macro classdef(message) %}
 cdef class {{ message.full_name }}:
+
     def __cinit__(self):
         self._listener = noop_listener
 
