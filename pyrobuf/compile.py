@@ -26,22 +26,17 @@ class Compiler(object):
 
     def __init__(self, sources, out="out", build="build", install=False,
                  proto3=False, force=False, package=None, includes=None,
-                 clean=False, site_pkg=None):
+                 clean=False):
         self.sources = sources
         self.out = os.path.join(out, 'pyrogen')
         self.build = build
         self.install = install
         self.force = force
         self.package = package
-        self.includes = includes or []
+        self.includes = [os.path.normpath(inc) for inc in includes or []]
         self.clean = clean
         here = os.path.dirname(os.path.abspath(__file__))
         self.include_path = [os.path.join(here, 'src'), out]
-        self.site_pkg_path= None
-        if site_pkg:
-            site_pkg_path = os.path.join(get_python_lib(),site_pkg)
-            self.include_path.append(site_pkg_path)
-            self.site_pkg_path = os.path.join(site_pkg_path,'pyrogen/')
         self._generated = set()
         self._messages = []
         self._pyx_files = []
@@ -73,8 +68,6 @@ class Compiler(object):
                             help="name of package to compile to")
         parser.add_argument('--include', action='append',
                             help="add directory to includes path")
-        parser.add_argument('--site_pkg', type=str, default=None,
-                            help="build with installed site-package source")
         parser.add_argument('--clean', action='store_true',
                             help="force recompilation of messages")
         args = parser.parse_args()
@@ -82,7 +75,7 @@ class Compiler(object):
         return cls(args.sources, out=args.out_dir, build=args.build_dir,
                    install=args.install, proto3=args.proto3, force=args.force,
                    package=args.package, includes=args.include,
-                   clean=args.clean, site_pkg=args.site_pkg)
+                   clean=args.clean)
 
     def compile(self):
         script_args = ['build', '--build-base={0}'.format(self.build)]
@@ -140,13 +133,10 @@ class Compiler(object):
         print("generating {0}".format(filename))
         self._generated.add(name)
 
-        msg_def = self.parser.parse_from_filename(filename, self.includes,self.site_pkg_path)
+        msg_def = self.parser.parse_from_filename(filename, self.includes)
         self._messages.append(msg_def)
 
         for f in msg_def['imports']:
-
-            if self.site_pkg_path and os.path.exists(self.site_pkg_path+f+'_proto.pyx'):
-                continue
 
             print("parsing dependency '{}'".format(f))
             depends = None
@@ -164,6 +154,9 @@ class Compiler(object):
 
         if self.package is None:
             self._write(name, msg_def)
+            if (directory) in self.includes:
+                self._pyx_files.pop()
+                print("skip building {0}".format(filename))
 
     def _write(self, name, msg_def):
         name_pxd = "{}_proto.pxd".format(name)
