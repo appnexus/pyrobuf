@@ -604,7 +604,7 @@ class Parser(object):
                 field.setter = self.setter_map[field.type]
 
         # Determine number of bitmap fields needed to record which fields have been set
-        message.num_field_bitmaps = len(message.fields) // 64 + (1 if len(message.fields) % 64 > 0 else 0)
+        message.field_bitmap_indices = set(f.bitmap_idx for f in message.fields.values())
 
         for submessage in message.messages.values():
             self.add_cython_info(submessage)
