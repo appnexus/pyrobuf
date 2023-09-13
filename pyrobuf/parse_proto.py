@@ -29,6 +29,7 @@ class Parser(object):
         ('LBRACKET', r'\['),
         ('RBRACKET', r'\]\s*;'),
         ('LBRACE', r'\{'),
+        ('KEY_VALUE', r'\:'),
         ('RBRACE', r'\}\s*;{0,1}'),
         ('COMMA', r','),
         ('SKIP', r'\s'),
@@ -58,6 +59,7 @@ class Parser(object):
         'SEMICOLON',
         'ENUM',
         'LBRACE',
+        'KEY_VALUE',
         'RBRACE',
         'EXTENSION',
         'ONEOF',
@@ -461,7 +463,7 @@ class Parser(object):
                 elif token.token_type == 'DEPRECATED':
                     field.deprecated = token.value
                 elif token.token_type == 'CUSTOM':
-                    if self._parse_custom(field, tokens):
+                    if self._parse_custom(field, tokens, token.name):
                         return
                 elif token.token_type == 'COMMA':
                     continue
@@ -504,15 +506,18 @@ class Parser(object):
 
         field.default = token.value
 
-    def _parse_custom(self, field, tokens):
+    def _parse_custom(self, field, tokens, custom_name):
         """Parse a custom option and return whether or not we hit the closing RBRACKET"""
+
+        custom_name= custom_name[1:-1]  # remove ()
+        field.options = dict()
         token = next(tokens)
 
         if token.token_type == 'STRING':
-            field.value = token.value
+            field.options[custom_name] = token.value
             for token in tokens:
                 if token.token_type == 'STRING':
-                    field.value += token.value
+                    field.options[custom_name] += token.value
                     continue
                 elif token.token_type == 'COMMA':
                     return False
@@ -520,9 +525,22 @@ class Parser(object):
                     assert token.token_type == 'RBRACKET'
                     return True
         else:
-            assert token.token_type in {'NUMERIC', 'BOOLEAN'}, "unexpected custom option value on line {}: '{}'".format(
-                token.line + 1, self.lines[token.line])
-            field.value = token.value
+            if token.token_type == 'LBRACE':
+                field.options[custom_name] = dict()
+                while token:
+                    token = next(tokens)
+                    if token.token_type == 'RBRACE':
+                        return False
+                    elif token.token_type == 'KEY_VALUE':
+                        continue
+                    elif hasattr(token,'name'):
+                        key = token.name
+                    elif hasattr(token,'value'):
+                        field.options[custom_name][key]=token.value
+            else:
+                assert token.token_type in {'NUMERIC', 'BOOLEAN'}, "unexpected custom option value on line {}: '{}'".format(
+                    token.line + 1, self.lines[token.line])
+                field.options[custom_name] = token.value
             return False
 
     def _parse_enum(self, current, tokens, scope, current_message=None):
@@ -570,7 +588,7 @@ class Parser(object):
         if token.token_type == 'LBRACKET':
             for token in tokens:
                 if token.token_type == 'CUSTOM':
-                    if self._parse_custom(field, tokens):
+                    if self._parse_custom(field, tokens, token.name):
                         return
                 elif token.token_type == 'COMMA':
                     continue
@@ -842,6 +860,12 @@ class Parser(object):
 
     class LBrace(Token):
         token_type = 'LBRACE'
+
+        def __init__(self, line):
+            self.line = line
+
+    class KEY_VALUE(Token):
+        token_type = 'KEY_VALUE'
 
         def __init__(self, line):
             self.line = line
