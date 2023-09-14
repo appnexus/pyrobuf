@@ -31,8 +31,9 @@ def pytest_sessionstart(session):
     if lib_path not in sys.path:
         sys.path.insert(0, lib_path)
 
-    # for short import wihtout pyrogen prefix
-    lib_path = os.path.join(lib_path,'pyrogen')
-    if lib_path not in sys.path:
-        sys.path.insert(0, lib_path)
+    if compiler.parser.module_name:
+         # for short import wihtout pyrogen prefix
+        lib_path = os.path.join(lib_path,compiler.parser.module_name)
+        if lib_path not in sys.path:
+            sys.path.insert(0, lib_path)
 

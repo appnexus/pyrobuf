@@ -25,10 +25,12 @@ class Compiler(object):
     t_pyx = _env.get_template('proto_pyx.tmpl')
 
     def __init__(self, sources, out="out", build="build", install=False,
-                 proto3=False, force=False, package=None, includes=None,
+                 proto3=False, force=False, package=None, module_name=None, includes=None,
                  clean=False):
         self.sources = sources
-        self.out = os.path.join(out, 'pyrogen')
+        self.out = out
+        if module_name:
+            self.out = os.path.join(out, module_name)
         self.build = build
         self.install = install
         self.force = force
@@ -45,6 +47,9 @@ class Compiler(object):
             self.parser = Proto3Parser
         else:
             self.parser = Parser
+
+        if module_name:
+            self.parser.module_name = module_name+'.'
 
     @classmethod
     def parse_cli_args(cls):
@@ -66,6 +71,8 @@ class Compiler(object):
                             help="force install")
         parser.add_argument('--package', type=str, default=None,
                             help="name of package to compile to")
+        parser.add_argument('--module_name', type=str, default=None,
+                            help="name of module to compile to")
         parser.add_argument('--include', action='append',
                             help="add directory to includes path")
         parser.add_argument('--clean', action='store_true',
@@ -74,7 +81,7 @@ class Compiler(object):
 
         return cls(args.sources, out=args.out_dir, build=args.build_dir,
                    install=args.install, proto3=args.proto3, force=args.force,
-                   package=args.package, includes=args.include,
+                   package=args.package, module_name=args.module_name, includes=args.include,
                    clean=args.clean)
 
     def compile(self):
@@ -111,8 +118,9 @@ class Compiler(object):
     def _compile_spec(self):
         try:
             os.makedirs(self.out)
-            filename = Path(self.out).joinpath('__init__.py')
-            filename.touch(exist_ok=True)
+            if self.parser.module_name:
+                filename = Path(self.out).joinpath('__init__.py')
+                filename.touch(exist_ok=True)
         except _FileExistsError:
             pass
 

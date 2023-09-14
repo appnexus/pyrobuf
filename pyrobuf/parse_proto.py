@@ -143,6 +143,7 @@ class Parser(object):
     def __init__(self, string):
         self.string = string
         self.lines = string.split('\n')
+        self.module_name = ''
 
     def tokenize(self, disabled_token_types):
         token_type_to_token_class = self.get_token_type_to_token_class_map()
@@ -179,7 +180,7 @@ class Parser(object):
     def parse(self, cython_info=True, fname='', includes=None, disabled_tokens=()):
         self.verify_parsable_tokens()
         tokens = self.tokenize(disabled_tokens)
-        rep = {'imports': [], 'messages': [], 'enums': []}
+        rep = {'imports': [], 'messages': [], 'enums': [], 'module_name': self.module_name}
         enums = {}
         imported = {'messages': {}, 'enums': {}}
         messages = {}

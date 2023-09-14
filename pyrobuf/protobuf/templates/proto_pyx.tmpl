@@ -10,7 +10,7 @@ import warnings
 import enum
 
 {%- for import in imports %}
-from pyrogen.{{ import }}_proto cimport *
+from {{module_name}}{{ import }}_proto cimport *
 {%- endfor %}
 
 {%- macro enum_fields_def(enum) %}
