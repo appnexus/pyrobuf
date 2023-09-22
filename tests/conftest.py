@@ -25,7 +25,15 @@ def pytest_sessionstart(session):
     # Insert built messages into path
     build = os.path.join(here, 'build')
     lib_path = os.path.join(build, "lib.{0}-{1}".format(get_platform(),
-                                                        sys.version[0:3]))
+                                                        sys.version[0:4]))
 
+    # for import with full_name (used in templates)
     if lib_path not in sys.path:
         sys.path.insert(0, lib_path)
+
+    if compiler.parser.module_name:
+         # for short import wihtout pyrogen prefix
+        lib_path = os.path.join(lib_path,compiler.parser.module_name)
+        if lib_path not in sys.path:
+            sys.path.insert(0, lib_path)
+

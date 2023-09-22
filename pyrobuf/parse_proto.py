@@ -25,14 +25,16 @@ class Parser(object):
         ('DEFAULT', r'default\s*='),
         ('PACKED', r'packed\s*=\s*(true|false)'),
         ('DEPRECATED', r'deprecated\s*=\s*(true|false)'),
-        ('CUSTOM', r'(\([A-Za-z][0-9A-Za-z_]*\).[A-Za-z][0-9A-Za-z_]*)\s*='),
+        ('CUSTOM', r'(\([A-Za-z][0-9A-Za-z_]*\)(?:.[A-Za-z][0-9A-Za-z_]*)?)\s*='),
         ('LBRACKET', r'\['),
         ('RBRACKET', r'\]\s*;'),
         ('LBRACE', r'\{'),
+        ('KEY_VALUE', r'\:'),
         ('RBRACE', r'\}\s*;{0,1}'),
         ('COMMA', r','),
         ('SKIP', r'\s'),
         ('SEMICOLON', r';'),
+        ('HEXVALUE', r'(0x[0-9A-Fa-f]+)'),
         ('NUMERIC', r'(-?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?)'),
         ('STRING', r'("(?:\\.|[^"\\])*"|\'(?:\\.|[^"\\])*\')'),
         ('BOOLEAN', r'(true|false)'),
@@ -57,6 +59,7 @@ class Parser(object):
         'SEMICOLON',
         'ENUM',
         'LBRACE',
+        'KEY_VALUE',
         'RBRACE',
         'EXTENSION',
         'ONEOF',
@@ -136,6 +139,7 @@ class Parser(object):
     token_regex = '|'.join('(?P<%s>%s)' % pair for pair in tokens)
     get_token = re.compile(token_regex).match
     token_getter = {key: re.compile(val).match for key, val in tokens}
+    module_name = ''
 
     def __init__(self, string):
         self.string = string
@@ -176,12 +180,13 @@ class Parser(object):
     def parse(self, cython_info=True, fname='', includes=None, disabled_tokens=()):
         self.verify_parsable_tokens()
         tokens = self.tokenize(disabled_tokens)
-        rep = {'imports': [], 'messages': [], 'enums': []}
+        rep = {'imports': [], 'messages': [], 'enums': [], 'module_name': self.module_name}
         enums = {}
         imported = {'messages': {}, 'enums': {}}
         messages = {}
         includes = includes or []
         scope = {}
+        previous = self.LBrace(-1)
 
         for token in tokens:
             if token.token_type == 'OPTION':
@@ -459,7 +464,7 @@ class Parser(object):
                 elif token.token_type == 'DEPRECATED':
                     field.deprecated = token.value
                 elif token.token_type == 'CUSTOM':
-                    if self._parse_custom(field, tokens):
+                    if self._parse_custom(field, tokens, token.name):
                         return
                 elif token.token_type == 'COMMA':
                     continue
@@ -480,8 +485,12 @@ class Parser(object):
             # This will get updated later
             field.default = token.full_name
             return
+        elif token.token_type == 'HEXVALUE':
+            assert field.type in self.scalars.difference({'bool', 'enum'}), \
+                "attempting to set hex value as default for non-numeric field on line {}: '{}'".format(
+                token.line + 1, self.lines[token.line])
         elif token.token_type == 'NUMERIC':
-            assert field.type in self.scalars, \
+            assert field.type in self.scalars.difference({'bool', 'enum'}), \
                 "attempting to set numeric as default for non-numeric field on line {}: '{}'".format(
                     token.line + 1, self.lines[token.line])
             if field.type not in self.floats:
@@ -498,15 +507,18 @@ class Parser(object):
 
         field.default = token.value
 
-    def _parse_custom(self, field, tokens):
+    def _parse_custom(self, field, tokens, custom_name):
         """Parse a custom option and return whether or not we hit the closing RBRACKET"""
+
+        custom_name= custom_name[1:-1]  # remove ()
+        field.options = dict()
         token = next(tokens)
 
         if token.token_type == 'STRING':
-            field.value = token.value
+            field.options[custom_name] = token.value
             for token in tokens:
                 if token.token_type == 'STRING':
-                    field.value += token.value
+                    field.options[custom_name] += token.value
                     continue
                 elif token.token_type == 'COMMA':
                     return False
@@ -514,23 +526,39 @@ class Parser(object):
                     assert token.token_type == 'RBRACKET'
                     return True
         else:
-            assert token.token_type in {'NUMERIC', 'BOOLEAN'}, "unexpected custom option value on line {}: '{}'".format(
-                token.line + 1, self.lines[token.line])
-            field.value = token.value
+            if token.token_type == 'LBRACE':
+                field.options[custom_name] = dict()
+                while token:
+                    token = next(tokens)
+                    if token.token_type == 'RBRACE':
+                        return False
+                    elif token.token_type == 'KEY_VALUE':
+                        continue
+                    elif hasattr(token,'name'):
+                        key = token.name
+                    elif hasattr(token,'value'):
+                        field.options[custom_name][key]=token.value
+            else:
+                assert token.token_type in {'NUMERIC', 'BOOLEAN'}, "unexpected custom option value on line {}: '{}'".format(
+                    token.line + 1, self.lines[token.line])
+                field.options[custom_name] = token.value
             return False
 
     def _parse_enum(self, current, tokens, scope, current_message=None):
         token = next(tokens)
         assert token.token_type == 'LBRACE', "missing opening brace on line {}: '{}'".format(
             token.line + 1, self.lines[token.line])
+        previous = self.LBrace(-1)
+        setDefault = False
 
-        for num, token in enumerate(tokens):
+        for token in tokens:
             if token.token_type == 'ENUM_FIELD':
-                if num == 0:
+                if (setDefault is False):
                     if self.syntax == 3:
                         assert token.value == 0, "expected zero as first enum element on line {}, got {}: '{}'".format(
                             token.line + 1, token.value, self.lines[token.line])
                     current.default = token
+                    setDefault = True
 
                 token.full_name = "{}_{}".format(current.full_name, token.name)
 
@@ -551,6 +579,7 @@ class Parser(object):
                     token.token_type, token.line + 1, self.lines[token.line])
                 return current
 
+            previous = token
         raise Exception("unexpected EOF on line {}: '{}'".format(
             token.line + 1, self.lines[token.line]))
 
@@ -560,7 +589,7 @@ class Parser(object):
         if token.token_type == 'LBRACKET':
             for token in tokens:
                 if token.token_type == 'CUSTOM':
-                    if self._parse_custom(field, tokens):
+                    if self._parse_custom(field, tokens, token.name):
                         return
                 elif token.token_type == 'COMMA':
                     continue
@@ -584,9 +613,11 @@ class Parser(object):
                 return current
 
     def add_cython_info(self, message):
+        count = 0
         for index, field in message.fields.items():
-            field.bitmap_idx = (index - 1) // 64
-            field.bitmap_mask = 1 << ((index - 1) % 64)
+            field.bitmap_idx = count // 64
+            field.bitmap_mask = 1 << (count % 64)
+            count += 1
             field.list_type = self.list_type_map.get(field.type, 'TypedList')
             field.fixed_width = (field.type in {
                 'float', 'double', 'fixed32', 'sfixed32', 'fixed64', 'sfixed64'
@@ -807,6 +838,13 @@ class Parser(object):
             self.line = line
             self.value = float(value)
 
+    class HexValue(Token):
+        token_type = 'HEXVALUE'
+
+        def __init__(self, line, value):
+            self.line = line
+            self.value = int(value, 16)
+
     class String(Token):
         token_type = 'STRING'
 
@@ -823,6 +861,12 @@ class Parser(object):
 
     class LBrace(Token):
         token_type = 'LBRACE'
+
+        def __init__(self, line):
+            self.line = line
+
+    class KEY_VALUE(Token):
+        token_type = 'KEY_VALUE'
 
         def __init__(self, line):
             self.line = line

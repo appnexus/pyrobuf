@@ -7,12 +7,14 @@ from pyrobuf_util cimport *
 import base64
 import json
 import warnings
+import enum
 
 {%- for import in imports %}
-from {{ import }}_proto cimport *
+from {{module_name}}{{ import }}_proto cimport *
 {%- endfor %}
 
-{%- macro message_enum_fields_def(enum) %}
+{%- macro enum_fields_def(enum) %}
+class {{enum.full_name}}(enum.IntEnum):
     {%- for field in enum.fields.values() %}
     {{ field.name }} = _{{ field.full_name }}
     {%- endfor %}
@@ -997,10 +999,6 @@ cdef class {{ message.full_name }}:
         yield self.{{ field.name }}
     {%- endfor %}
 
-    {% for message_enum_name, message_enum in message.enums.items() %}
-        {{ message_enum_fields_def(message_enum) }}
-    {% endfor %}
-
     def Setters(self):
         """
         Iterator over functions to set the fields in a message.
@@ -1014,6 +1012,10 @@ cdef class {{ message.full_name }}:
         yield setter
     {%- endfor %}
 
+    {% for message_enum_name, message_enum in message.enums.items() %}
+{{ enum_fields_def(message_enum) }}
+    {% endfor %}
+
     {% for message_name, message_message in message.messages.items() %}
 {{ classdef(message_message) }}
     {% endfor %}
@@ -1025,12 +1027,6 @@ class DecodeError(Exception):
 {%- for message in messages %}
 {{ classdef(message) }}
 {%- endfor %}
-
-{%- macro enum_fields_def(enum) %}
-{%- for field in enum.fields.values() %}
-{{ field.name }} = _{{ field.full_name }}
-{%- endfor %}
-{%- endmacro %}
 
 {%- for enum in enums %}
 {{ enum_fields_def(enum) }}

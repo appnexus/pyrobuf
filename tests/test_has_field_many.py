@@ -19,3 +19,11 @@ def test_has_field():
 
     for field in test.Fields():
         assert not test.HasField(field)
+
+def test_has_field_withUnusedIndex():
+    from test_many_fields_proto import TestUnusedFieldIndex
+    test = TestUnusedFieldIndex()
+
+     # Assert HasField false on clean message
+    for field in test.Fields():
+        assert not test.HasField(field)
