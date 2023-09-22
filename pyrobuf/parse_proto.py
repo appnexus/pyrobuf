@@ -139,11 +139,11 @@ class Parser(object):
     token_regex = '|'.join('(?P<%s>%s)' % pair for pair in tokens)
     get_token = re.compile(token_regex).match
     token_getter = {key: re.compile(val).match for key, val in tokens}
+    module_name = ''
 
     def __init__(self, string):
         self.string = string
         self.lines = string.split('\n')
-        self.module_name = ''
 
     def tokenize(self, disabled_token_types):
         token_type_to_token_class = self.get_token_type_to_token_class_map()
